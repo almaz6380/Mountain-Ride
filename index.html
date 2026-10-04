@@ -183,7 +183,7 @@ body {
     return t;
   }
   // aspect ratios (w / h) of the cut-out sprites
-  const ASPECT = { 'rider-straight': 367 / 345, 'rider-left': 313 / 343, 'rider-air': 333 / 312, 'rider-crash': 419 / 270,
+  const ASPECT = { 'rider-straight': 175 / 267, 'rider-left': 211 / 334, 'rider-right': 232 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
     'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
   const spriteMats = [];
   function spriteMat(name) {
@@ -194,7 +194,9 @@ body {
   const SM = {};
   for (const n of ['tree-tall', 'tree-round', 'rock', 'log', 'snowman', 'coin', 'flag']) SM[n] = spriteMat(n);
   const riderTex = {};
-  for (const n of ['rider-straight', 'rider-left', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
+  for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
+  // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
+  const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.06, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
@@ -766,11 +768,12 @@ body {
     rider.position.set(P.x, P.y, -P.d + 0.2);
     const vx = (P.x - P.lastX) / Math.max(dt, 0.001);
     P.carve = lerp(P.carve, P.air ? 0 : -vx * 0.035, Math.min(1, dt * 8));
-    let pose = 'rider-left', flip = P.lastFlip || 1, rh = 1.95;
-    if (P.crashed) { pose = 'rider-crash'; rh = 1.4; }
-    else if (P.air) { pose = 'rider-air'; rh = 1.85; }
-    else if (vx < -2.5) { flip = 1; P.lastFlip = 1; }
-    else if (vx > 2.5) { flip = -1; P.lastFlip = -1; }
+    let pose = 'rider-straight';
+    if (P.crashed) pose = 'rider-crash';
+    else if (P.air) pose = 'rider-air';
+    else if (vx < -2.5) pose = 'rider-left';
+    else if (vx > 2.5) pose = 'rider-right';
+    const rh = RIDER_H[pose], flip = 1;
     if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
     // spinning in the air: squash the sprite to fake the rotation
     const spinScale = P.air ? Math.cos(P.yaw) : 1;
