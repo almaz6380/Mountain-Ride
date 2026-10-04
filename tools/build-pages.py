@@ -15,7 +15,6 @@ dist.mkdir()
 head = """<!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#2b3d63">
 <meta name="apple-mobile-web-app-capable" content="yes">
