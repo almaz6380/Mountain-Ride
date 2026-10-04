@@ -427,7 +427,8 @@ body {
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 
   function resetRider(d) {
-    P = { d, x: 0, tx: 0, y: groundAt(d, 0), vy: 0, v: 12, vxAir: 0, air: false, airT: 0, yaw: 0, spin: 0, carve: 0, lean: 0, onRamp: null, crashed: false, lastX: 0 };
+    P = { d, x: 0, tx: 0, y: groundAt(d, 0), vy: 0, v: 12, vxAir: 0, air: false, airT: 0, yaw: 0, spin: 0, carve: 0, lean: 0, onRamp: null, crashed: false, lastX: 0,
+      vx: 0, leanS: 0, pose: 'rider-straight', poseT: 0, sq: 0, sqv: 0, camRoll: 0 };
   }
 
   const OB = {
@@ -776,6 +777,7 @@ body {
     if (P.air || state !== 'play') return;
     takeOff(P.v * slopeAt(P.d, P.x) + JUMP);
     P.y += 0.05;
+    P.sq = -0.12; P.sqv = 4.5;   // crouch, then spring up
     emit(P.x, P.y, -P.d, 12, 1.5, 0, 1.5, 0);
   }
 
@@ -791,6 +793,7 @@ body {
     if (pts > 0 && diff < 0.22) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); P.v += 2; }
     else if (diff > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
     Sound.land(P.airT > 1);
+    P.sq = 0; P.sqv = -2.2 - Math.min(2.5, P.airT * 1.8);   // absorb the landing
     if (pts) { bonus += pts; popup(names.join(' · '), '+' + pts); Sound.trick(); }
     P.yaw = angDiff(P.yaw); P.spin = 0; P.tx = P.x;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
@@ -865,10 +868,16 @@ body {
         P.v += ((target - P.v) * 0.55 + (-s - 0.32) * 18) * dt;
         P.v = Math.max(8, P.v);
         const steer = steerAxis();
-        if (steer) P.tx = clamp(P.tx + steer * (11 + P.v * 0.3) * dt, -TRACK, TRACK);
-        const lat = 10 + P.v * 0.35;
-        P.x += clamp(P.tx - P.x, -lat * dt, lat * dt);
-        P.x = clamp(P.x, -TRACK, TRACK);
+        const lat = 9 + P.v * 0.3;                       // top sideways speed
+        if (steer) { P.tx = clamp(P.x + steer * 4, -TRACK, TRACK); P.keySteer = true; }   // keys: keep a target just ahead of the board
+        else if (P.keySteer) { P.tx = clamp(P.x + P.vx * 0.2, -TRACK, TRACK); P.keySteer = false; }   // key released: glide out of the turn
+        // critically damped spring towards the target lane: eases in and out of every turn
+        const K = 38, C = 2 * Math.sqrt(K);
+        P.vx += (K * (P.tx - P.x) - C * P.vx) * dt;
+        P.vx = clamp(P.vx, -lat, lat);
+        P.x += P.vx * dt;
+        if (P.x < -TRACK || P.x > TRACK) { P.x = clamp(P.x, -TRACK, TRACK); P.vx *= -0.2; }
+        P.v -= Math.abs(P.vx) * 0.012 * P.v * dt;       // carving costs a little speed
         P.d += P.v * dt;
         const r = rampUnder(P.d, P.x);
         if (P.onRamp && !r) {
@@ -881,11 +890,11 @@ body {
           P.yaw += angDiff(-P.yaw) * Math.min(1, dt * 10);
         }
         // board spray
-        const turn = Math.abs(P.x - P.lastX) / dt;
-        if (!P.air && Math.random() < 0.6) emit(P.x, P.y + 0.05, -P.d + 0.8, 1 + Math.floor(turn / 4), 0.8, -(P.x - P.lastX) / dt * 0.4, 1.2 + turn * 0.12, 1.5);
+        const turn = Math.abs(P.vx);
+        if (!P.air && Math.random() < 0.35 + turn * 0.05) emit(P.x - Math.sign(P.vx) * 0.3, P.y + 0.05, -P.d + 0.6, 1 + Math.floor(turn / 3), 0.6, -P.vx * 0.5, 1 + turn * 0.18, 1.2);
       } else {
         P.vy -= GRAV * dt;
-        P.d += P.v * dt; P.y += P.vy * dt; P.x = clamp(P.x + P.vxAir * dt, -TRACK, TRACK); P.tx = P.x;
+        P.d += P.v * dt; P.y += P.vy * dt; P.tx = P.x; P.vx *= Math.pow(0.02, dt);
         P.airT += dt;
         const steer = steerAxis();
         if (steer) { P.yaw -= steer * SPIN_RATE * dt; P.spin -= steer * SPIN_RATE * dt; }
@@ -894,6 +903,21 @@ body {
         if (P.y <= gy) land(gy);
       }
     }
+
+    // body language: smoothed lean, pose with hysteresis, squash & stretch spring
+    const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 8, -1, 1);
+    P.leanS += (leanT - P.leanS) * Math.min(1, dt * 9);
+    P.poseT += dt;
+    let want = P.pose;
+    if (P.crashed) want = 'rider-crash';
+    else if (P.air) want = 'rider-air';
+    else if (P.pose === 'rider-air' || P.pose === 'rider-crash') want = 'rider-straight';
+    else if (P.pose === 'rider-straight') { if (P.leanS < -0.38) want = 'rider-left'; else if (P.leanS > 0.38) want = 'rider-right'; }
+    else if (P.pose === 'rider-left' && P.leanS > -0.16) want = 'rider-straight';
+    else if (P.pose === 'rider-right' && P.leanS < 0.16) want = 'rider-straight';
+    if (want !== P.pose && (P.poseT > 0.12 || want === 'rider-air' || want === 'rider-crash')) { P.pose = want; P.poseT = 0; }
+    P.sqv += (-170 * P.sq - 16 * P.sqv) * dt;
+    P.sq += P.sqv * dt;
 
     if (playing) {
       const speed = P.v;
@@ -950,21 +974,19 @@ body {
   function render(dt) {
     // rider pose
     rider.position.set(P.x, P.y, -P.d + 0.2);
-    const vx = (P.x - P.lastX) / Math.max(dt, 0.001);
-    P.carve = lerp(P.carve, P.air ? 0 : -vx * 0.035, Math.min(1, dt * 8));
-    let pose = 'rider-straight';
-    if (P.crashed) pose = 'rider-crash';
-    else if (P.air) pose = 'rider-air';
-    else if (vx < -2.5) pose = 'rider-left';
-    else if (vx > 2.5) pose = 'rider-right';
-    const rh = RIDER_H[pose], flip = 1;
+    P.carve = -P.leanS * 0.3;
+    const pose = P.pose, rh = RIDER_H[pose];
     if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
-    // spinning in the air: squash the sprite to fake the rotation
+    // spinning in the air: narrow the sprite to fake the rotation (it flips at the half-turn)
     const spinScale = P.air ? Math.cos(P.yaw) : 1;
-    const sx = Math.sign(spinScale || 1) * Math.max(0.25, Math.abs(spinScale));
-    rider.scale.set(rh * ASPECT[pose] * flip * sx, rh, 1);
-    rider.center.x = sx * flip > 0 ? RIDER_CX[pose] : 1 - RIDER_CX[pose];
-    riderMat.rotation = P.crashed ? 0 : clamp(-vx * 0.012, -0.25, 0.25) + (P.air ? Math.sin(clock * 3) * 0.04 : 0);
+    const sx = Math.sign(spinScale || 1) * Math.max(0.08, Math.abs(spinScale));
+    const sq = clamp(P.sq, -0.25, 0.25);
+    // a little bob with the terrain and speed while riding
+    const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.012 * Math.min(1, P.v / 20);
+    rider.scale.set(rh * ASPECT[pose] * sx * (1 - sq * 0.5), rh * (1 + sq + bob), 1);
+    rider.center.x = sx > 0 ? RIDER_CX[pose] : 1 - RIDER_CX[pose];
+    const tilt = P.crashed ? 0 : -P.leanS * 0.16 + (P.air ? clamp(P.vy * 0.012, -0.1, 0.1) * Math.sign(sx) : 0);
+    riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
@@ -977,20 +999,25 @@ body {
 
     // camera: behind and above, looking down the fall line
     const portrait = W / H < 0.8;
-    const back = portrait ? 8.5 : 7.5, up = portrait ? 3.8 : 3.4;
+    const speedK = clamp((P.v - 12) / 20, 0, 1);
+    const back = (portrait ? 8.5 : 7.5) + speedK * 1.2, up = portrait ? 3.8 : 3.4;
     const groundBehind = baseH(P.d - back, P.x * 0.9);
-    const wantY = Math.max(groundBehind + up, lerp(groundBehind + up, P.y + up, 0.6));
-    const want = new THREE.Vector3(P.x * 0.9, wantY, -(P.d - back));
-    const k = Math.min(1, dt * 6);
-    if (camPos.lengthSq() === 0) camPos.copy(want);
-    camPos.x = lerp(camPos.x, want.x, k);
-    camPos.y = lerp(camPos.y, want.y, Math.min(1, dt * 4));
-    camPos.z = want.z;
+    const wantY = Math.max(groundBehind + up, lerp(groundBehind + up, P.y + up, 0.55));
+    const wantX = P.x * 0.88 - P.vx * 0.06;
+    if (camPos.lengthSq() === 0) camPos.set(wantX, wantY, -(P.d - back));
+    camPos.x += (wantX - camPos.x) * (1 - Math.exp(-dt * 5));
+    camPos.y += (wantY - camPos.y) * (1 - Math.exp(-dt * (P.air ? 2.5 : 5)));
+    camPos.z = -(P.d - back);
     const lookD = P.d + 9;
-    camLook.set(P.x, lerp(baseH(lookD, P.x), P.y, 0.45) + 0.8, -lookD);
+    const lookY = lerp(baseH(lookD, P.x), P.y, 0.45) + 0.8;
+    camLook.x += (P.x + P.vx * 0.22 - camLook.x) * (1 - Math.exp(-dt * 7));
+    camLook.y = camLook.y ? camLook.y + (lookY - camLook.y) * (1 - Math.exp(-dt * 6)) : lookY;
+    camLook.z = -lookD;
     camera.position.copy(camPos);
     if (shake > 0.01) { camera.position.x += rand(-shake, shake); camera.position.y += rand(-shake, shake); shake *= Math.pow(0.02, dt); }
     camera.lookAt(camLook);
+    P.camRoll += (-P.leanS * 0.035 - P.camRoll) * (1 - Math.exp(-dt * 4));
+    camera.rotateZ(P.camRoll);
     const fov = (portrait ? 70 : 58) + 14 * clamp((P.v - 12) / 20, 0, 1);
     if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = lerp(camera.fov, fov, Math.min(1, dt * 2)); camera.updateProjectionMatrix(); }
 
@@ -1015,12 +1042,17 @@ body {
   // ---------- Loop ----------
   resetRider(0);
   nextDeco = -30;
+  const STEP_DT = 1 / 120;
+  let acc = 0;
   let last = performance.now();
   function frame(now) {
-    const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000));
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
-    update(dt);
-    render(dt);
+    acc += dt;
+    let steps = 0;
+    while (acc >= STEP_DT && steps < 8) { update(STEP_DT); acc -= STEP_DT; steps++; }
+    if (steps === 8) acc = 0;
+    render(Math.max(dt, 0.001));
     updateHud();
     requestAnimationFrame(frame);
   }
