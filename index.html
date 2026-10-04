@@ -196,6 +196,7 @@ body {
   const riderTex = {};
   for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
+  const RIDER_CX = { 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
   const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
@@ -590,7 +591,7 @@ body {
 
   function takeOff(vy) {
     P.air = true; P.airT = 0; P.spin = 0; P.vy = vy;
-    P.vxAir = (P.x - P.lastX) / Math.max(0.001, lastDt);
+    P.vxAir = 0;   // jumps go straight down the lane, no sideways drift
     P.onRamp = null;
   }
   function jump() {
@@ -781,6 +782,7 @@ body {
     const spinScale = P.air ? Math.cos(P.yaw) : 1;
     const sx = Math.sign(spinScale || 1) * Math.max(0.25, Math.abs(spinScale));
     rider.scale.set(rh * ASPECT[pose] * flip * sx, rh, 1);
+    rider.center.x = sx * flip > 0 ? RIDER_CX[pose] : 1 - RIDER_CX[pose];
     riderMat.rotation = P.crashed ? 0 : clamp(-vx * 0.012, -0.25, 0.25) + (P.air ? Math.sin(clock * 3) * 0.04 : 0);
 
     const gy = groundAt(P.d, P.x);
