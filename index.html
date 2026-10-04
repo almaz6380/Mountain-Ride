@@ -766,11 +766,11 @@ body {
     rider.position.set(P.x, P.y, -P.d + 0.2);
     const vx = (P.x - P.lastX) / Math.max(dt, 0.001);
     P.carve = lerp(P.carve, P.air ? 0 : -vx * 0.035, Math.min(1, dt * 8));
-    let pose = 'rider-straight', flip = 1, rh = 1.95;
+    let pose = 'rider-left', flip = P.lastFlip || 1, rh = 1.95;
     if (P.crashed) { pose = 'rider-crash'; rh = 1.4; }
     else if (P.air) { pose = 'rider-air'; rh = 1.85; }
-    else if (vx < -2.5) pose = 'rider-left';
-    else if (vx > 2.5) { pose = 'rider-left'; flip = -1; }
+    else if (vx < -2.5) { flip = 1; P.lastFlip = 1; }
+    else if (vx > 2.5) { flip = -1; P.lastFlip = -1; }
     if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
     // spinning in the air: squash the sprite to fake the rotation
     const spinScale = P.air ? Math.cos(P.yaw) : 1;
