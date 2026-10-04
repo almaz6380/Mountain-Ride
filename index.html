@@ -1049,12 +1049,16 @@ body {
   });
   cvs.addEventListener('pointermove', e => {
     const g = input.drag;
-    if (!g || g.id !== e.pointerId || state !== 'play' || g.jumped) return;
+    if (!g || g.id !== e.pointerId || state !== 'play') return;
     const dx = e.clientX - g.x0, dy = g.y0 - e.clientY;
-    const TH = Math.max(26, Math.min(W, H) * 0.06);
-    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) { g.jumped = true; changeLane(Math.sign(dx)); }
-    else if (dy > TH && dy > Math.abs(dx)) { g.jumped = true; jump(); }
-    else if (-dy > TH && -dy > Math.abs(dx)) { g.jumped = true; duck(); }
+    const TH = Math.max(24, Math.min(W, H) * 0.05);
+    let acted = true;
+    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) changeLane(Math.sign(dx));
+    else if (dy > TH && dy > Math.abs(dx)) jump();
+    else if (-dy > TH && -dy > Math.abs(dx)) duck();
+    else acted = false;
+    // one finger can chain moves: e.g. swipe up to jump, then straight on sideways to switch lane mid-air
+    if (acted) { g.jumped = true; g.x0 = e.clientX; g.y0 = e.clientY; }
   });
   function endDrag(e) {
     const g = input.drag;
