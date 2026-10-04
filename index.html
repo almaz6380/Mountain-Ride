@@ -455,71 +455,53 @@ body {
     snowball:{ hw: 0.75, hd: 0.75, h: 1.35, reason: 'Von einer rollenden Schneekugel erwischt.' },
     crevasse:{ hw: 1.6, hd: 0.8, h: 0.6, reason: 'In eine Gletscherspalte gestürzt. Spring drüber!' },
   };
-  // small canvas textures for the new obstacles
-  function canvasTex(w, h, draw) {
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    draw(c.getContext('2d'), w, h);
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  // painted obstacle sprites (gate, fence, snowball) and the crevasse ground texture
+  const OBS_SPRITE = { gate: { ar: 346 / 320, cx: 0.497 }, fence: { ar: 488 / 320, cx: 0.498 }, snowball: { ar: 319 / 320, cx: 0.5 } };
+  for (const n of Object.keys(OBS_SPRITE)) OBS_SPRITE[n].mat = spriteMat(n);
+  const crevTex = tex('crevasse.png', { repeat: true, aniso: true });
+  const crevMat = new THREE.MeshBasicMaterial({ map: crevTex, transparent: true, depthWrite: false });
+  const CREV_TILE = 12.9, CREV_HD = 2.3;   // texture repeats every 12.9 m across; the drawn strip is 4.6 m deep
+  function obstacleSprite(name, width, mat) {
+    const s = new THREE.Sprite(mat || OBS_SPRITE[name].mat);
+    s.center.set(OBS_SPRITE[name].cx, 0.02);
+    s.scale.set(width, width / OBS_SPRITE[name].ar, 1);
+    return s;
   }
-  const netTex = canvasTex(128, 64, (x, w, h) => {
-    x.fillStyle = '#ff6a2b'; x.fillRect(0, 0, w, h);
-    x.strokeStyle = 'rgba(120,30,0,0.55)'; x.lineWidth = 3;
-    for (let i = -h; i < w + h; i += 14) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.moveTo(i + h, 0); x.lineTo(i, h); x.stroke(); }
-    x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, 6); x.fillRect(0, h - 6, w, 6);
-  });
-  netTex.wrapS = THREE.RepeatWrapping;
-  const netMat = new THREE.MeshLambertMaterial({ map: netTex, side: THREE.DoubleSide });
-  const crevTex = canvasTex(16, 64, (x, w, h) => {
-    const gr = x.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, '#e8f2fc'); gr.addColorStop(0.18, '#7fa6d2'); gr.addColorStop(0.35, '#1d3361');
-    gr.addColorStop(0.65, '#0b1733'); gr.addColorStop(0.82, '#5f86b8'); gr.addColorStop(1, '#e8f2fc');
-    x.fillStyle = gr; x.fillRect(0, 0, w, h);
-  });
-  const crevMat = new THREE.MeshBasicMaterial({ map: crevTex, transparent: false });
-  const ballGeo = new THREE.IcosahedronGeometry(0.75, 2);
-  const ballMat = new THREE.MeshLambertMaterial({ color: 0xf4f8fd, emissive: 0x1a2440 });
   function fenceMesh(lanes) {
-    const w = lanes * LANE_W - 0.3, grp = new THREE.Group();
-    for (const s of [-1, 1]) { const pl = new THREE.Mesh(gatePole, poleMat); pl.scale.y = 0.75; pl.position.set(s * w / 2, 0.9, 0); grp.add(pl); }
-    const net = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.25), netMat);
-    net.material.map.repeat.set(lanes * 1.5, 1);
-    net.position.y = 0.95; grp.add(net);
+    const grp = new THREE.Group();
+    for (let i = 0; i < lanes; i++) {
+      const s = obstacleSprite('fence', LANE_W - 0.15);
+      s.position.x = (i - (lanes - 1) / 2) * LANE_W;
+      grp.add(s);
+    }
     return grp;
   }
   function crevasseMesh(d, x0, x1) {
-    const pos = [], uv = [], n = 10, hd = 1.15;   // drawn a bit wider than the hit zone so it reads from afar
+    const pos = [], uv = [], n = 10, hd = CREV_HD;   // drawn wider than the hit zone: snowy lips around the crack
     for (let i = 0; i < n; i++) {
       const xa = lerp(x0, x1, i / n), xb = lerp(x0, x1, (i + 1) / n);
-      const P = (xx, dd, v) => { pos.push(xx, baseH(dd, xx) + 0.03, -dd); uv.push(0, v); };
+      const P = (xx, dd, v) => { pos.push(xx, baseH(dd, xx) + 0.03, -dd); uv.push((xx - x0) / CREV_TILE, v); };
       P(xa, d - hd, 0); P(xb, d - hd, 0); P(xa, d + hd, 1);
       P(xb, d - hd, 0); P(xb, d + hd, 1); P(xa, d + hd, 1);
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    return new THREE.Mesh(geo, crevMat);
+    const m = new THREE.Mesh(geo, crevMat);
+    m.renderOrder = 1;
+    return m;
   }
-  // banner gate across one lane: duck to pass underneath
-  const gateMat = new THREE.MeshLambertMaterial({ color: 0xe5396f });
-  const gateStripe = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  const poleMat = new THREE.MeshLambertMaterial({ color: 0x2c3f68 });
-  const gatePole = new THREE.CylinderGeometry(0.07, 0.07, 2.4, 6);
-  const gateBanner = new THREE.BoxGeometry(LANE_W - 0.2, 0.62, 0.06);
-  const gateBand = new THREE.BoxGeometry(LANE_W - 0.2, 0.12, 0.07);
-  function gateMesh() {
-    const grp = new THREE.Group();
-    for (const s of [-1, 1]) { const pl = new THREE.Mesh(gatePole, poleMat); pl.position.set(s * (LANE_W / 2 - 0.1), 1.2, 0); grp.add(pl); }
-    const b = new THREE.Mesh(gateBanner, gateMat); b.position.y = 1.72; grp.add(b);
-    const st = new THREE.Mesh(gateBand, gateStripe); st.position.y = 1.72; grp.add(st);
-    return grp;
-  }
-
   function addEnt(type, d, x, opts = {}) {
     const spec = OB[type], s = opts.s || 1;
     if (type === 'fence' || type === 'snowball' || type === 'crevasse') {
       let mesh, hw = spec.hw;
       if (type === 'fence') { mesh = fenceMesh(opts.lanes); hw = opts.lanes * LANE_W / 2 - 0.15; mesh.position.set(x, baseH(d, x), -d); }
-      else if (type === 'snowball') { mesh = new THREE.Mesh(ballGeo, ballMat); mesh.position.set(x, baseH(d, x) + 0.72, -d); }
+      else if (type === 'snowball') {
+        const mat = OBS_SPRITE.snowball.mat.clone();   // own material so each ball can spin
+        spriteMats.push(mat);
+        mesh = obstacleSprite('snowball', 1.5, mat);
+        mesh.position.set(x, baseH(d, x), -d);
+      }
       else { hw = opts.half; mesh = crevasseMesh(d, x - hw, x + hw); }
       scene.add(mesh);
       const e = { type, d, x, hw, hd: spec.hd, h: spec.h, deco: false, mesh, vx: opts.vx || 0 };
@@ -527,7 +509,7 @@ body {
       return e;
     }
     if (type === 'gate') {
-      const mesh = gateMesh();
+      const mesh = obstacleSprite('gate', LANE_W - 0.2);   // banner bottom sits about 1.55 m above the snow
       mesh.position.set(x, baseH(d, x), -d);
       scene.add(mesh);
       const e = { type, d, x, hw: spec.hw, hd: spec.hd, h: spec.h, deco: false, mesh };
@@ -577,32 +559,8 @@ body {
     double: { name: 'Doppelte Punkte', color: '#7d55e8', time: 15 },
     spring: { name: 'Super-Sprung', color: '#22a866', time: 12 },
   };
-  function drawPowerIcon(x, type, s) {
-    const c = s / 2;
-    x.fillStyle = POWERS[type].color; x.beginPath(); x.arc(c, c, s * 0.46, 0, TAU); x.fill();
-    x.strokeStyle = '#ffffff'; x.lineWidth = s * 0.06; x.stroke();
-    x.fillStyle = '#ffffff'; x.strokeStyle = '#ffffff'; x.lineCap = 'round'; x.lineJoin = 'round';
-    const u = s / 100;
-    x.beginPath();
-    if (type === 'magnet') {
-      x.lineWidth = 14 * u; x.arc(c, 46 * u, 18 * u, Math.PI, 0, true); x.moveTo(32 * u, 46 * u); x.lineTo(32 * u, 30 * u); x.moveTo(68 * u, 46 * u); x.lineTo(68 * u, 30 * u); x.stroke();
-      x.strokeStyle = '#ffd7e2'; x.beginPath(); x.moveTo(32 * u, 32 * u); x.lineTo(32 * u, 26 * u); x.moveTo(68 * u, 32 * u); x.lineTo(68 * u, 26 * u); x.stroke();
-    } else if (type === 'shield') {
-      x.moveTo(c, 24 * u); x.lineTo(72 * u, 32 * u); x.quadraticCurveTo(72 * u, 64 * u, c, 78 * u); x.quadraticCurveTo(28 * u, 64 * u, 28 * u, 32 * u); x.closePath(); x.fill();
-    } else if (type === 'turbo') {
-      x.moveTo(56 * u, 20 * u); x.lineTo(32 * u, 56 * u); x.lineTo(48 * u, 56 * u); x.lineTo(42 * u, 82 * u); x.lineTo(68 * u, 44 * u); x.lineTo(52 * u, 44 * u); x.closePath(); x.fill();
-    } else if (type === 'double') {
-      x.font = `900 ${42 * u}px system-ui, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('×2', c, c + 2 * u);
-    } else {
-      x.lineWidth = 11 * u; x.moveTo(32 * u, 52 * u); x.lineTo(c, 30 * u); x.lineTo(68 * u, 52 * u); x.moveTo(32 * u, 72 * u); x.lineTo(c, 50 * u); x.lineTo(68 * u, 72 * u); x.stroke();
-    }
-  }
-  const powerMats = {}, powerIcons = {};
-  for (const t of Object.keys(POWERS)) {
-    powerMats[t] = new THREE.SpriteMaterial({ map: canvasTex(128, 128, (x, w) => drawPowerIcon(x, t, w)), transparent: true, depthWrite: false, fog: false });
-    const c = document.createElement('canvas'); c.width = c.height = 64; drawPowerIcon(c.getContext('2d'), t, 64);
-    powerIcons[t] = c.toDataURL();
-  }
+  const powerMats = {};
+  for (const t of Object.keys(POWERS)) powerMats[t] = new THREE.SpriteMaterial({ map: tex('power-' + t + '.png'), transparent: true, depthWrite: false, fog: false });
   let pups = [], nextPowerD = 0;
   const PW = { magnet: 0, turbo: 0, double: 0, spring: 0, shield: 0, invuln: 0 };
   function addPower(d, x) {
@@ -636,7 +594,7 @@ body {
   const chipEls = {};
   for (const t of Object.keys(POWERS)) {
     const el = document.createElement('div'); el.className = 'pchip'; el.hidden = true;
-    el.innerHTML = `<img alt="${POWERS[t].name}" src="${powerIcons[t]}"><span class="pbar"><i></i></span>`;
+    el.innerHTML = `<img alt="${POWERS[t].name}" src="assets/power-${t}.png"><span class="pbar"><i></i></span>`;
     $('powers').appendChild(el);
     chipEls[t] = { el, bar: el.querySelector('i') };
   }
@@ -756,15 +714,19 @@ body {
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
     if (state === 'play') while (nextD < ahead) nextD += spawnRow(nextD);
     const cut = P.d - 20;
-    ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); if (e.type === 'crevasse') e.mesh.geometry.dispose(); return false; } return true; });
+    ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); dropEnt(e); return false; } return true; });
     coins = coins.filter(c => { if (c.d < cut || (c.taken && c.tt > 0.35)) { scene.remove(c.mesh); return false; } return true; });
     pups = pups.filter(u => { if (u.d < cut || u.taken) { scene.remove(u.mesh); return false; } return true; });
     poles = poles.filter(p => { if (p.d < cut) { scene.remove(p.mesh); return false; } return true; });
     ramps = ramps.filter(r => { if (r.d1 < cut) { scene.remove(r.mesh); r.mesh.geometry.dispose(); return false; } return true; });
   }
 
+  function dropEnt(e) {
+    if (e.type === 'crevasse') e.mesh.geometry.dispose();
+    if (e.type === 'snowball') { const i = spriteMats.indexOf(e.mesh.material); if (i >= 0) spriteMats.splice(i, 1); e.mesh.material.dispose(); }
+  }
   function clearWorld() {
-    for (const e of ents) scene.remove(e.mesh);
+    for (const e of ents) { scene.remove(e.mesh); dropEnt(e); }
     for (const c of coins) scene.remove(c.mesh);
     for (const u of pups) scene.remove(u.mesh);
     pups = [];
@@ -1220,8 +1182,8 @@ body {
       if (e.type !== 'snowball' || e.dead) continue;
       e.x += e.vx * dt;
       if (Math.abs(e.x) > 2 * LANE_W) { e.x = clamp(e.x, -2 * LANE_W, 2 * LANE_W); e.vx *= -1; }
-      e.mesh.position.set(e.x, baseH(e.d, e.x) + 0.72, -e.d);
-      e.mesh.rotation.z -= e.vx * dt / 0.75;
+      e.mesh.position.set(e.x, baseH(e.d, e.x), -e.d);
+      e.mesh.material.rotation -= e.vx * dt / 0.75;
     }
     for (const u of pups) {
       u.mesh.position.y = u.y + Math.sin(clock * 3 + u.d) * 0.15;
