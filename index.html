@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#2b3d63">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -9,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mountain Ride">
 <link rel="manifest" href="manifest.webmanifest">
+<meta charset="utf-8">
 <title>Mountain Ride</title>
 <link rel="icon" href="assets/icon-180.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
@@ -126,7 +126,7 @@ body {
     <ul class="controls">
       <li><span class="key">Wischen</span><span>Lenken (oder Pfeiltasten ← →)</span></li>
       <li><span class="key">Tippen</span><span>Springen (oder Leertaste)</span></li>
-      <li><span class="key">In der Luft</span><span>Wischen oder ← → dreht dich: 360°, 720°…</span></li>
+      <li><span class="key">In der Luft</span><span>Seitlich wischen oder ← → für eine 360°-Drehung</span></li>
     </ul>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
     <p class="best-line" id="menuBest"></p>
@@ -161,7 +161,7 @@ body {
   // ---------- Tuning (units are metres) ----------
   const GRAV = 25;
   const JUMP = 9.5;
-  const SPIN_RATE = 10;        // rad/s while steering in the air
+  const SPIN_RATE = 13;        // rad/s while steering in the air
   const TRACK = 13;            // rider may move within ±TRACK
   const KMH = 3.6;
   const TAU = Math.PI * 2;
@@ -779,10 +779,22 @@ body {
   }
 
   function takeOff(vy) {
+    P.airDrag = 0; P.spinTarget = 0; P.yaw = 0; P.spinChain = 0;
     P.air = true; P.airT = 0; P.spin = 0; P.vy = vy;
     P.vxAir = 0;   // jumps go straight down the lane, no sideways drift
     P.onRamp = null;
     if (state === 'play') Sound.jump();
+  }
+  // one input = one full 360; it only starts if there is enough air time left to finish it
+  function timeToLand() {
+    const h = P.y - groundAt(P.d, P.x), vr = P.vy - P.v * slopeAt(P.d, P.x);
+    return (vr + Math.sqrt(Math.max(0, vr * vr + 2 * GRAV * Math.max(0, h)))) / GRAV;
+  }
+  function startSpin(dir) {
+    if (!P.air || state !== 'play') return;
+    const left = Math.abs(P.spinTarget - P.yaw) + TAU;
+    if (left / SPIN_RATE > timeToLand() - 0.04) return;
+    P.spinTarget -= dir * TAU;
   }
   function jump() {
     if (P.air || state !== 'play') return;
@@ -793,9 +805,10 @@ body {
   }
 
   function land(gy) {
-    const diff = Math.abs(angDiff(P.yaw));
+    const diff = Math.abs(P.spinTarget - P.yaw);
     P.y = gy;
-    if (diff > 0.75) { crash('Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.'); return; }
+    if (diff > 1.6) { crash('Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.'); return; }
+    P.spin = P.spinTarget;
     P.air = false; P.vy = 0;
     const spins = Math.round(Math.abs(P.spin) / TAU);
     let pts = 0; const names = [];
@@ -824,7 +837,11 @@ body {
     const g = input.drag;
     if (!g || g.id !== e.pointerId || state !== 'play') return;
     const dx = e.clientX - g.lx; g.lx = e.clientX;
-    if (P.air) { P.yaw -= dx * 0.03; P.spin -= dx * 0.03; }
+    if (P.air) {
+      // a clear sideways swipe in the air starts a spin; small finger wobble from steering does nothing
+      P.airDrag += dx;
+      if (Math.abs(P.airDrag) > 40) { startSpin(Math.sign(P.airDrag)); P.airDrag = 0; }
+    }
     else P.tx = clamp(P.tx + dx * (38 / Math.min(W, 640)), -TRACK, TRACK);
     if (!g.jumped && g.y0 - e.clientY > 45 && performance.now() - g.t0 < 350) { g.jumped = true; jump(); }
   });
@@ -840,7 +857,12 @@ body {
 
   const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
   addEventListener('keydown', e => {
-    if (KEYS[e.code]) { input[KEYS[e.code]] = true; e.preventDefault(); return; }
+    if (KEYS[e.code]) {
+      input[KEYS[e.code]] = true; e.preventDefault();
+      // a fresh arrow press in the air starts a spin; an arrow already held for steering does not
+      if (P.air && !e.repeat) { const dir = KEYS[e.code] === 'right' ? 1 : -1; P.spinChain = dir; startSpin(dir); }
+      return;
+    }
     if (e.code === 'KeyM') { Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); return; }
     if (!['Space', 'ArrowUp', 'KeyW'].includes(e.code)) return;
     e.preventDefault();
@@ -908,8 +930,9 @@ body {
         P.d += P.v * dt; P.y += P.vy * dt; P.tx = P.x; P.vx *= Math.pow(0.02, dt);
         P.airT += dt;
         const steer = steerAxis();
-        if (steer) { P.yaw -= steer * SPIN_RATE * dt; P.spin -= steer * SPIN_RATE * dt; }
-        else if (!input.drag) { const dd = angDiff(-P.yaw); if (Math.abs(dd) < 0.9) P.yaw += dd * Math.min(1, dt * 3); }
+        // holding an arrow chains another spin once the current one is done
+        if (steer && steer === P.spinChain && Math.abs(P.spinTarget - P.yaw) < 0.3) startSpin(steer);
+        P.yaw += clamp(P.spinTarget - P.yaw, -SPIN_RATE * dt, SPIN_RATE * dt);
         const gy = groundAt(P.d, P.x);
         if (P.y <= gy) land(gy);
       }
@@ -989,15 +1012,19 @@ body {
     const pose = P.pose, rh = RIDER_H[pose];
     if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
     // spinning in the air: narrow the sprite to fake the rotation (it flips at the half-turn)
-    const spinScale = P.air ? Math.cos(P.yaw) : 1;
-    const sx = Math.sign(spinScale || 1) * Math.max(0.08, Math.abs(spinScale));
+    const sx = 1;
     const sq = clamp(P.sq, -0.25, 0.25);
     // a little bob with the terrain and speed while riding
     const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.012 * Math.min(1, P.v / 20);
     rider.scale.set(rh * ASPECT[pose] * sx * (1 - sq * 0.5), rh * (1 + sq + bob), 1);
     rider.center.x = sx > 0 ? RIDER_CX[pose] : 1 - RIDER_CX[pose];
-    const tilt = P.crashed ? 0 : -P.leanS * 0.16 + (P.air ? clamp(P.vy * 0.012, -0.1, 0.1) * Math.sign(sx) : 0);
-    riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
+    if (P.air && !P.crashed) {
+      riderMat.rotation = P.yaw + clamp(P.vy * 0.012, -0.1, 0.1);   // spins show as a full rotation of the figure
+    } else {
+      riderMat.rotation = angDiff(riderMat.rotation);
+      const tilt = P.crashed ? 0 : -P.leanS * 0.16;
+      riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
+    }
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
@@ -1006,7 +1033,7 @@ body {
     shadow.material.opacity = 0.3 * clamp(1 - hgt / 8, 0.15, 1);
     const sh = 1 + hgt * 0.08;
     shadow.scale.set(0.9 * sh, 1.8 * sh, 1);
-    shadow.rotation.z = -(P.yaw + P.carve);
+    shadow.rotation.z = -P.carve;
 
     // camera: behind and above, looking down the fall line
     const portrait = W / H < 0.8;
