@@ -26,4 +26,5 @@ Landen musst du mit dem Brett in Fahrtrichtung, sonst gibt's eine Bruchlandung.
 - Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte
 - Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
 - Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
+- Soundeffekte (Carven, Wind, Sprung, Landung, Münzen, Tricks, Sturz) und Musik, alles live per Web Audio erzeugt; die Musik wird mit dem Tempo dichter. Ton-Knopf unten rechts oder Taste M
 - Bestwert wird lokal gespeichert

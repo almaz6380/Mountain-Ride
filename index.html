@@ -81,11 +81,21 @@ body {
 .stats dt { font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
 .stats dd { margin: 2px 0 0; font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; }
 .record { justify-self: center; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; color: var(--ink); background: var(--jacket); padding: 4px 10px; border-radius: 99px; }
+.sound-btn {
+  position: fixed; z-index: 5; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  color: var(--snow); background: var(--card); cursor: pointer;
+}
+.sound-btn:focus-visible { outline: 3px solid var(--jacket); outline-offset: 2px; }
 .best-line { margin: 0; font-size: 16px; opacity: 0.8; font-variant-numeric: tabular-nums; }
 </style>
 
 <canvas id="game" aria-label="Mountain Ride Spielfeld"></canvas>
 
+<button class="sound-btn" id="soundBtn" type="button" aria-label="Ton ausschalten" aria-pressed="true">
+  <svg class="on" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  <svg class="off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
 <div class="hud" id="hud" hidden>
   <div class="hud-block">
     <span class="hud-label">Strecke</span>
@@ -549,8 +559,174 @@ body {
     popTimer = 1.4;
   }
 
+  // ---------- Sound & music (synthesised with Web Audio, no files) ----------
+  const Sound = (() => {
+    const MUTE_KEY = 'mountain-ride-muted';
+    let ac = null, master, sfx, musicBus, noiseBuf, carve, wind, muted = false;
+    try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+    const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+    // iPhones mute Web Audio in silent mode unless a media element is playing
+    function silentWav() {
+      const n = 4410, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+      const s = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+      s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
+      v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, n * 2, true);
+      let bin = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]);
+      return 'data:audio/wav;base64,' + btoa(bin);
+    }
+    let unlockEl = null;
+    function unlockSilentSwitch() {
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      try {
+        if (!unlockEl) { unlockEl = new Audio(silentWav()); unlockEl.loop = true; unlockEl.setAttribute('playsinline', ''); }
+        const p = unlockEl.play(); if (p && p.catch) p.catch(() => {});
+      } catch (e) {}
+    }
+
+    function loopNoise(type, freq, q) {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+      const g = ac.createGain(); g.gain.value = 0;
+      src.connect(f); f.connect(g); g.connect(sfx); src.start();
+      return { f, g };
+    }
+
+    function init() {
+      unlockSilentSwitch();
+      if (ac) { if (ac.state !== 'running') ac.resume(); return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      try { ac = new AC(); } catch (e) { ac = null; return; }
+      master = ac.createGain(); master.gain.value = muted ? 0 : 0.9;
+      const comp = ac.createDynamicsCompressor();
+      comp.connect(master); master.connect(ac.destination);
+      sfx = ac.createGain(); sfx.gain.value = 0.8; sfx.connect(comp);
+      musicBus = ac.createGain(); musicBus.gain.value = 0.3; musicBus.connect(comp);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      carve = loopNoise('bandpass', 1100, 0.8);
+      wind = loopNoise('lowpass', 450, 0.5);
+      nextStep = ac.currentTime + 0.1;
+      setInterval(schedule, 25);
+    }
+
+    // ---- one-shot effects ----
+    function tone(freq, type, dur, vol, slideTo, delay = 0) {
+      if (!ac) return;
+      const t = ac.currentTime + delay;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(sfx); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function noise(dur, type, f0, f1, vol, delay = 0) {
+      if (!ac) return;
+      const t = ac.currentTime + delay;
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const f = ac.createBiquadFilter(); f.type = type; f.Q.value = 1;
+      f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(g); g.connect(sfx); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+    }
+    const fx = {
+      jump() { noise(0.4, 'bandpass', 500, 2600, 0.35); tone(260, 'sine', 0.14, 0.18, 520); },
+      land(hard) { noise(0.3, 'lowpass', 2200, 260, hard ? 0.6 : 0.4); tone(120, 'sine', 0.22, 0.45, 50); },
+      coin() { tone(1319, 'triangle', 0.09, 0.22); tone(1760, 'triangle', 0.22, 0.22, null, 0.07); },
+      trick() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 'triangle', 0.18, 0.2, null, i * 0.06)); tone(1568, 'sine', 0.5, 0.12, null, 0.24); },
+      crash() { noise(0.9, 'lowpass', 3000, 180, 0.8); tone(95, 'sine', 0.5, 0.7, 38); noise(0.5, 'highpass', 4000, 1500, 0.25, 0.05); },
+    };
+
+    // ---- continuous board + wind noise ----
+    function frame(o) {
+      if (!ac) return;
+      const t = ac.currentTime;
+      const ride = o.playing && !o.air && !o.crashed;
+      carve.g.gain.setTargetAtTime(ride ? 0.035 + o.speed * 0.0035 + Math.min(0.12, o.turn * 0.012) : 0, t, 0.06);
+      carve.f.frequency.setTargetAtTime(700 + o.speed * 25 + o.turn * 60, t, 0.1);
+      wind.g.gain.setTargetAtTime(o.playing ? Math.max(0, (o.speed - 8) * 0.006) + (o.air ? 0.06 : 0) : 0.015, t, 0.3);
+      wind.f.frequency.setTargetAtTime(300 + o.speed * 18 + (o.air ? 300 : 0), t, 0.3);
+      intensity = o.playing ? clamp((o.speed - 12) / 18, 0, 1) : (o.over ? -1 : 0);
+    }
+
+    // ---- music: chill alpine loop, gets busier with speed ----
+    const BPM = 108, STEP = 60 / BPM / 4;
+    const CHORDS = [[57, 60, 64], [57, 60, 65], [55, 60, 64], [55, 59, 62]];   // Am F C G
+    const ROOTS = [45, 41, 48, 43];
+    const BASS = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+    const ARP = [0, 1, 2, 1, 2, 0, 1, 2];
+    let nextStep = 0, step = 0, intensity = 0;
+    function voice(freq, type, t, dur, vol, cutoff) {
+      const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+      o.type = type; o.frequency.value = freq;
+      f.type = 'lowpass'; f.frequency.value = cutoff;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.3, dur * 0.3));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(f); f.connect(g); g.connect(musicBus); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function kick(t) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18);
+      g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      o.connect(g); g.connect(musicBus); o.start(t); o.stop(t + 0.3);
+    }
+    function hat(t, vol) {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf;
+      const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+      const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      src.connect(f); f.connect(g); g.connect(musicBus); src.start(t, Math.random()); src.stop(t + 0.08);
+    }
+    function schedule() {
+      if (!ac || ac.state !== 'running') return;
+      while (nextStep < ac.currentTime + 0.15) {
+        const t = nextStep, s = step % 16, bar = Math.floor(step / 16) % 4;
+        const chord = CHORDS[bar];
+        if (s === 0) {   // pad
+          for (const n of chord) { voice(mtof(n), 'sawtooth', t, STEP * 16 + 0.3, 0.05, 900); voice(mtof(n) * 1.004, 'sawtooth', t, STEP * 16 + 0.3, 0.04, 700); }
+        }
+        if (intensity >= 0) {
+          if (BASS[s]) voice(mtof(ROOTS[bar] - 12), 'triangle', t, STEP * 2.5, 0.35, 600);
+          if (s % 4 === 0 && (s === 0 || s === 8 || intensity > 0.15)) kick(t);
+          if (intensity > 0.25 && s % 2 === 0) hat(t, s % 4 === 2 ? 0.12 : 0.06);
+          if (intensity > 0.55) voice(mtof(chord[ARP[s % 8]] + 12), 'triangle', t, STEP * 1.5, 0.12, 3000);
+          if (intensity > 0.85 && s % 4 === 3) voice(mtof(chord[2] + 24), 'sine', t, STEP * 2, 0.06, 5000);
+        }
+        nextStep += STEP; step++;
+      }
+    }
+
+    function setMuted(m) {
+      muted = m;
+      try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch (e) {}
+      if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ac.currentTime, 0.05);
+      if (!m) init();
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!ac) return;
+      if (document.hidden) ac.suspend(); else { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); }
+    });
+    return { init, frame, setMuted, isMuted: () => muted, ...fx };
+  })();
+
+  const soundBtn = $('soundBtn');
+  function syncSoundBtn() {
+    const m = Sound.isMuted();
+    soundBtn.setAttribute('aria-pressed', String(!m));
+    soundBtn.setAttribute('aria-label', m ? 'Ton einschalten' : 'Ton ausschalten');
+    soundBtn.querySelector('.on').toggleAttribute('hidden', m); soundBtn.querySelector('.off').toggleAttribute('hidden', !m);
+  }
+  soundBtn.addEventListener('click', e => { e.stopPropagation(); Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); });
+  soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  syncSoundBtn();
+
   // ---------- Game flow ----------
   function start() {
+    Sound.init();
     clearWorld();
     resetRider(P.d);
     P.v = 13;
@@ -570,6 +746,7 @@ body {
     state = 'crash'; crashT = 0; crashReason = reason; P.crashed = true;
     shake = reduceMotion ? 0 : 0.5;
     emit(P.x, P.y + 0.6, -P.d, 40, 3, 0, 3, -P.v * 0.2);
+    Sound.crash();
   }
 
   function gameOver() {
@@ -593,6 +770,7 @@ body {
     P.air = true; P.airT = 0; P.spin = 0; P.vy = vy;
     P.vxAir = 0;   // jumps go straight down the lane, no sideways drift
     P.onRamp = null;
+    if (state === 'play') Sound.jump();
   }
   function jump() {
     if (P.air || state !== 'play') return;
@@ -612,7 +790,8 @@ body {
     if (P.airT > 1.1) { pts += Math.round(P.airT * 120); names.push('Big Air'); }
     if (pts > 0 && diff < 0.22) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); P.v += 2; }
     else if (diff > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
-    if (pts) { bonus += pts; popup(names.join(' · '), '+' + pts); }
+    Sound.land(P.airT > 1);
+    if (pts) { bonus += pts; popup(names.join(' · '), '+' + pts); Sound.trick(); }
     P.yaw = angDiff(P.yaw); P.spin = 0; P.tx = P.x;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
   }
@@ -648,6 +827,7 @@ body {
   const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
   addEventListener('keydown', e => {
     if (KEYS[e.code]) { input[KEYS[e.code]] = true; e.preventDefault(); return; }
+    if (e.code === 'KeyM') { Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); return; }
     if (!['Space', 'ArrowUp', 'KeyW'].includes(e.code)) return;
     e.preventDefault();
     if (e.repeat) return;
@@ -724,7 +904,7 @@ body {
         if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h) { crash(OB[e.type].reason); break; }
       }
       for (const c of coins) {
-        if (!c.taken && Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; coinCount++; }
+        if (!c.taken && Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; coinCount++; Sound.coin(); }
       }
       score = (P.d - startD) + bonus + coinCount * 25;
     }
@@ -760,6 +940,7 @@ body {
 
     if (popTimer > 0) { popTimer -= dt; if (popTimer <= 0) { popEl.style.opacity = '0'; popEl.style.transform = 'translateY(0)'; } }
 
+    Sound.frame({ playing, air: P.air, crashed: P.crashed, over: state === 'over' || state === 'crash', speed: P.v, turn: Math.abs(P.x - P.lastX) / Math.max(dt, 0.001) });
     generate();
     updateGround(P.d);
     applyPalette(state === 'menu' ? 0 : P.d - startD);
