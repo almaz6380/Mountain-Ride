@@ -183,7 +183,7 @@ body {
     return t;
   }
   // aspect ratios (w / h) of the cut-out sprites
-  const ASPECT = { 'rider-straight': 175 / 267, 'rider-left': 211 / 334, 'rider-right': 232 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
+  const ASPECT = { 'rider-straight': 173 / 266, 'rider-left': 231 / 324, 'rider-right': 231 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
     'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
   const spriteMats = [];
   function spriteMat(name) {
@@ -196,7 +196,7 @@ body {
   const riderTex = {};
   for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
-  const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.06, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
+  const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
