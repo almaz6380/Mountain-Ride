@@ -207,7 +207,7 @@ body {
     return t;
   }
   // aspect ratios (w / h) of the cut-out sprites
-  const ASPECT = { 'rider-straight': 173 / 266, 'rider-left': 231 / 324, 'rider-right': 231 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
+  const ASPECT = { 'rider-duck': 0.5222, 'rider-straight': 173 / 266, 'rider-left': 231 / 324, 'rider-right': 231 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
     'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
   const spriteMats = [];
   function spriteMat(name) {
@@ -218,13 +218,13 @@ body {
   const SM = {};
   for (const n of ['tree-tall', 'tree-round', 'rock', 'log', 'snowman', 'coin', 'flag']) SM[n] = spriteMat(n);
   const riderTex = {};
-  for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
+  for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash', 'rider-duck']) riderTex[n] = tex(n + '.png');
   // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
   const SPIN_META = [[0.7857, 1.95, 0.544], [0.8441, 1.928, 0.567], [0.4248, 1.95, 0.633], [0.7623, 1.943, 0.414], [0.7321, 1.943, 0.376], [0.7208, 1.943, 0.554], [0.4549, 1.95, 0.541], [0.8441, 1.928, 0.428]];
   const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
-  const RIDER_CX = { 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
-  const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
+  const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
+  const RIDER_H = { 'rider-duck': 1.5, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
@@ -1070,11 +1070,12 @@ body {
       const f = SPIN_VIEWS[Math.round(a / (TAU / 8)) % 8];
       tex = f.tex; ar = f.ar; rh = f.h; cx = f.cx;
     } else {
-      const pose = P.pose;
+      const pose = P.duckS > 0.4 ? 'rider-duck' : P.pose;
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
     if (riderMat.map !== tex) riderMat.map = tex;
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 + 0.12 * P.duckS), rh * (1 + sq + bob) * (1 - 0.4 * P.duckS), 1);
+    const squat = tex === riderTex['rider-duck'] ? 0 : P.duckS;   // short blend into the duck pose
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 + 0.1 * squat), rh * (1 + sq + bob) * (1 - 0.3 * squat), 1);
     rider.center.x = cx;
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
