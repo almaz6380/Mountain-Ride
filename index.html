@@ -133,7 +133,7 @@ body {
       <li><span class="key">← →</span><span>Wischen: eine Spur nach links oder rechts</span></li>
       <li><span class="key">↑</span><span>Wischen oder Tippen: springen</span></li>
       <li><span class="key">↓</span><span>Wischen: ducken, unter Bannern durch</span></li>
-      <li><span class="key">In der Luft</span><span>Seitlich wischen für eine 360°-Drehung</span></li>
+      <li><span class="key">In der Luft</span><span>Seitlich: Spur wechseln · Hoch wischen oder Tippen: 360°-Drehung</span></li>
     </ul>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
     <p class="best-line" id="menuBest"></p>
@@ -230,7 +230,7 @@ body {
   const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
   const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
-  const RIDER_H = { 'rider-duck': 1.5, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
+  const RIDER_H = { 'rider-duck': 1.3, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
@@ -342,12 +342,19 @@ body {
 
   // ---------- Rider ----------
   // drawn last and without depth test, so neither the snow nor the shadow can cover the board
-  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.5, transparent: true, depthTest: false, depthWrite: false });
+  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false });
   spriteMats.push(riderMat);
   const rider = new THREE.Sprite(riderMat);
   rider.renderOrder = 10;
   rider.center.set(0.5, 0.04);
   scene.add(rider);
+  // second sprite for the duck pose so it can fade in and out instead of popping
+  const duckMat = new THREE.SpriteMaterial({ map: riderTex['rider-duck'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false, opacity: 0 });
+  spriteMats.push(duckMat);
+  const duckSprite = new THREE.Sprite(duckMat);
+  duckSprite.renderOrder = 11;
+  duckSprite.center.set(RIDER_CX['rider-duck'], 0.04);
+  scene.add(duckSprite);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x3a5478, transparent: true, opacity: 0.3, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2;
@@ -722,7 +729,8 @@ body {
   function generate() {
     const ahead = P.d + 190;
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
-    if (state === 'play') while (nextD < ahead) nextD += spawnRow(nextD);
+    // gaps between rows grow with speed so there is always about the same reaction time
+    if (state === 'play') while (nextD < ahead) nextD += spawnRow(nextD) * Math.max(1, P.v / 20);
     const cut = P.d - 20;
     ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); dropEnt(e); return false; } return true; });
     coins = coins.filter(c => { if (c.d < cut || (c.taken && c.tt > 0.35)) { scene.remove(c.mesh); return false; } return true; });
@@ -928,7 +936,7 @@ body {
     Sound.init();
     clearWorld();
     resetRider(P.d);
-    P.v = 13;
+    P.v = 17;
     startD = P.d; nextD = P.d + 45; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
@@ -987,7 +995,6 @@ body {
   }
   function changeLane(dir) {
     if (state !== 'play') return;
-    if (P.air) { P.spinChain = dir; startSpin(dir); return; }   // sideways in the air = 360 spin
     const l = clamp(P.lane + dir, 0, 4);
     if (l === P.lane) return;
     P.lane = l; P.tx = laneX(l);
@@ -998,7 +1005,8 @@ body {
     P.duckT = 0.75;
   }
   function jump() {
-    if (P.air || state !== 'play') return;
+    if (state !== 'play') return;
+    if (P.air) { startSpin(1); return; }   // up again while flying = 360 spin
     P.duckT = 0;
     takeOff(P.v * slopeAt(P.d, P.x) + JUMP * (PW.spring > 0 ? 1.45 : 1));
     P.y += 0.05;
@@ -1025,7 +1033,7 @@ body {
       bonus += pts; score += pts * m;
       popup(names.join(' · '), '+' + pts * m); Sound.trick();
     }
-    P.yaw = angDiff(P.yaw); P.spin = 0; P.tx = P.x;
+    P.yaw = angDiff(P.yaw); P.spin = 0;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
   }
 
@@ -1082,6 +1090,13 @@ body {
 
   // ---------- Update ----------
   let lastDt = 0.016;
+  // critically damped spring towards the target lane: eases in and out of every lane change
+  function moveToLane(dt) {
+    const lat = 18 + P.v * 0.4, K = 120, C = 2 * Math.sqrt(K);
+    P.vx += (K * (P.tx - P.x) - C * P.vx) * dt;
+    P.vx = clamp(P.vx, -lat, lat);
+    P.x += P.vx * dt;
+  }
   function update(dt) {
     clock += dt; lastDt = dt;
     const playing = state === 'play';
@@ -1097,19 +1112,13 @@ body {
         if (crashT > 1.3) gameOver();
       }
     } else {
-      const target = (playing ? 13 + Math.min(21, dist * 0.009) : 11) + (PW.turbo > 0 ? 12 : 0);
+      const target = (playing ? 17 + Math.min(26, dist * 0.012) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
         P.v += ((target - P.v) * 0.55 + (-s - 0.32) * 18) * dt;
         P.v = Math.max(8, P.v);
-        const lat = 18 + P.v * 0.4;                       // top sideways speed
-        // critically damped spring towards the target lane: eases in and out of every turn
-        const K = 120, C = 2 * Math.sqrt(K);
-        P.vx += (K * (P.tx - P.x) - C * P.vx) * dt;
-        P.vx = clamp(P.vx, -lat, lat);
-        P.x += P.vx * dt;
-        
+        moveToLane(dt);
         P.v -= Math.abs(P.vx) * 0.012 * P.v * dt;       // carving costs a little speed
         P.d += P.v * dt;
         const r = rampUnder(P.d, P.x);
@@ -1127,7 +1136,8 @@ body {
         if (!P.air && Math.random() < 0.35 + turn * 0.05) emit(P.x - Math.sign(P.vx) * 0.3, P.y + 0.05, -P.d + 0.6, 1 + Math.floor(turn / 3), 0.6, -P.vx * 0.5, 1 + turn * 0.18, 1.2);
       } else {
         P.vy -= GRAV * dt;
-        P.d += P.v * dt; P.y += P.vy * dt; P.tx = P.x; P.vx *= Math.pow(0.02, dt);
+        P.d += P.v * dt; P.y += P.vy * dt;
+        moveToLane(dt);   // lane changes work in the air too
         P.airT += dt;
         const steer = steerAxis();
         // holding an arrow chains another spin once the current one is done
@@ -1253,16 +1263,24 @@ body {
       const f = SPIN_VIEWS[Math.round(a / (TAU / 8)) % 8];
       tex = f.tex; ar = f.ar; rh = f.h; cx = f.cx;
     } else {
-      const pose = P.duckS > 0.4 ? 'rider-duck' : P.pose;
+      const pose = P.pose;
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
     if (riderMat.map !== tex) riderMat.map = tex;
-    const squat = tex === riderTex['rider-duck'] ? 0 : P.duckS;   // short blend into the duck pose
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 + 0.1 * squat), rh * (1 + sq + bob) * (1 - 0.3 * squat), 1);
+    // ducking: the riding pose sinks a little while the duck pose fades in on top of it
+    const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
+    rider.scale.set(rh * ar * (1 - sq * 0.5), rh * (1 + sq + bob) * (1 - 0.18 * dk), 1);
     rider.center.x = cx;
-    riderMat.opacity = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
+    const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
+    riderMat.opacity = blink * (1 - dk);
+    duckMat.opacity = blink * dk;
+    duckSprite.visible = dk > 0.01;
+    duckSprite.position.copy(rider.position);
+    const dh = RIDER_H['rider-duck'] * (1 + 0.12 * (1 - dk));
+    duckSprite.scale.set(dh * ASPECT['rider-duck'], dh, 1);
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
+    duckMat.rotation = riderMat.rotation;
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
