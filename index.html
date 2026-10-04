@@ -82,6 +82,11 @@ body {
 .stats dt { font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
 .stats dd { margin: 2px 0 0; font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; }
 .record { justify-self: center; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; color: var(--ink); background: var(--jacket); padding: 4px 10px; border-radius: 99px; }
+.powers { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.pchip { display: grid; gap: 3px; justify-items: center; }
+.pchip img { width: 30px; height: 30px; display: block; }
+.pbar { width: 30px; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(244, 248, 252, 0.3); }
+.pbar i { display: block; height: 100%; width: 100%; background: var(--snow); }
 .sound-btn {
   position: fixed; z-index: 5; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
   width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
@@ -106,6 +111,7 @@ body {
   <div class="hud-block right">
     <span class="hud-label">Punkte</span>
     <span class="hud-big" id="hudScore">0</span>
+    <div class="powers" id="powers"></div>
   </div>
 </div>
 
@@ -430,6 +436,7 @@ body {
   let state = 'menu';
   let poleCount = 0;
   let P, ents = [], coins = [], poles = [], nextD = 0, nextDeco = 0, startD = 0;
+  let lastScoreD = 0;
   let score = 0, bonus = 0, coinCount = 0, topSpeed = 0, crashT = 0, crashReason = '', clock = 0, shake = 0;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 
@@ -444,7 +451,54 @@ body {
     snowman: { hw: 0.6, hd: 0.6, h: 2.4, size: 2.6, reason: 'Einen Schneemann umgefahren.' },
     log:     { hw: 1.45, hd: 0.5, h: 0.75, size: 2.0, reason: 'Über den Baumstamm gestolpert. Spring drüber!' },
     gate:    { hw: 1.5, hd: 0.4, h: 2.2, reason: 'Gegen das Banner gefahren. Wisch nach unten zum Ducken!' },
+    fence:   { hw: 1.5, hd: 0.4, h: 9, reason: 'In die Absperrung gefahren. Wechsel rechtzeitig die Spur!' },
+    snowball:{ hw: 0.75, hd: 0.75, h: 1.35, reason: 'Von einer rollenden Schneekugel erwischt.' },
+    crevasse:{ hw: 1.6, hd: 0.8, h: 0.6, reason: 'In eine Gletscherspalte gestürzt. Spring drüber!' },
   };
+  // small canvas textures for the new obstacles
+  function canvasTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    draw(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  const netTex = canvasTex(128, 64, (x, w, h) => {
+    x.fillStyle = '#ff6a2b'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = 'rgba(120,30,0,0.55)'; x.lineWidth = 3;
+    for (let i = -h; i < w + h; i += 14) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.moveTo(i + h, 0); x.lineTo(i, h); x.stroke(); }
+    x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, 6); x.fillRect(0, h - 6, w, 6);
+  });
+  netTex.wrapS = THREE.RepeatWrapping;
+  const netMat = new THREE.MeshLambertMaterial({ map: netTex, side: THREE.DoubleSide });
+  const crevTex = canvasTex(16, 64, (x, w, h) => {
+    const gr = x.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#e8f2fc'); gr.addColorStop(0.18, '#7fa6d2'); gr.addColorStop(0.35, '#1d3361');
+    gr.addColorStop(0.65, '#0b1733'); gr.addColorStop(0.82, '#5f86b8'); gr.addColorStop(1, '#e8f2fc');
+    x.fillStyle = gr; x.fillRect(0, 0, w, h);
+  });
+  const crevMat = new THREE.MeshBasicMaterial({ map: crevTex, transparent: false });
+  const ballGeo = new THREE.IcosahedronGeometry(0.75, 2);
+  const ballMat = new THREE.MeshLambertMaterial({ color: 0xf4f8fd, emissive: 0x1a2440 });
+  function fenceMesh(lanes) {
+    const w = lanes * LANE_W - 0.3, grp = new THREE.Group();
+    for (const s of [-1, 1]) { const pl = new THREE.Mesh(gatePole, poleMat); pl.scale.y = 0.75; pl.position.set(s * w / 2, 0.9, 0); grp.add(pl); }
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(w, 1.25), netMat);
+    net.material.map.repeat.set(lanes * 1.5, 1);
+    net.position.y = 0.95; grp.add(net);
+    return grp;
+  }
+  function crevasseMesh(d, x0, x1) {
+    const pos = [], uv = [], n = 10, hd = 1.15;   // drawn a bit wider than the hit zone so it reads from afar
+    for (let i = 0; i < n; i++) {
+      const xa = lerp(x0, x1, i / n), xb = lerp(x0, x1, (i + 1) / n);
+      const P = (xx, dd, v) => { pos.push(xx, baseH(dd, xx) + 0.03, -dd); uv.push(0, v); };
+      P(xa, d - hd, 0); P(xb, d - hd, 0); P(xa, d + hd, 1);
+      P(xb, d - hd, 0); P(xb, d + hd, 1); P(xa, d + hd, 1);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return new THREE.Mesh(geo, crevMat);
+  }
   // banner gate across one lane: duck to pass underneath
   const gateMat = new THREE.MeshLambertMaterial({ color: 0xe5396f });
   const gateStripe = new THREE.MeshLambertMaterial({ color: 0xffffff });
@@ -462,6 +516,16 @@ body {
 
   function addEnt(type, d, x, opts = {}) {
     const spec = OB[type], s = opts.s || 1;
+    if (type === 'fence' || type === 'snowball' || type === 'crevasse') {
+      let mesh, hw = spec.hw;
+      if (type === 'fence') { mesh = fenceMesh(opts.lanes); hw = opts.lanes * LANE_W / 2 - 0.15; mesh.position.set(x, baseH(d, x), -d); }
+      else if (type === 'snowball') { mesh = new THREE.Mesh(ballGeo, ballMat); mesh.position.set(x, baseH(d, x) + 0.72, -d); }
+      else { hw = opts.half; mesh = crevasseMesh(d, x - hw, x + hw); }
+      scene.add(mesh);
+      const e = { type, d, x, hw, hd: spec.hd, h: spec.h, deco: false, mesh, vx: opts.vx || 0 };
+      ents.push(e);
+      return e;
+    }
     if (type === 'gate') {
       const mesh = gateMesh();
       mesh.position.set(x, baseH(d, x), -d);
@@ -505,6 +569,86 @@ body {
     return r;
   }
 
+  // ---------- Power-ups ----------
+  const POWERS = {
+    magnet: { name: 'Magnet', color: '#e5396f', time: 10 },
+    shield: { name: 'Schild', color: '#2f8fe0', time: 0 },
+    turbo:  { name: 'Turbo', color: '#ff8a1f', time: 5 },
+    double: { name: 'Doppelte Punkte', color: '#7d55e8', time: 15 },
+    spring: { name: 'Super-Sprung', color: '#22a866', time: 12 },
+  };
+  function drawPowerIcon(x, type, s) {
+    const c = s / 2;
+    x.fillStyle = POWERS[type].color; x.beginPath(); x.arc(c, c, s * 0.46, 0, TAU); x.fill();
+    x.strokeStyle = '#ffffff'; x.lineWidth = s * 0.06; x.stroke();
+    x.fillStyle = '#ffffff'; x.strokeStyle = '#ffffff'; x.lineCap = 'round'; x.lineJoin = 'round';
+    const u = s / 100;
+    x.beginPath();
+    if (type === 'magnet') {
+      x.lineWidth = 14 * u; x.arc(c, 46 * u, 18 * u, Math.PI, 0, true); x.moveTo(32 * u, 46 * u); x.lineTo(32 * u, 30 * u); x.moveTo(68 * u, 46 * u); x.lineTo(68 * u, 30 * u); x.stroke();
+      x.strokeStyle = '#ffd7e2'; x.beginPath(); x.moveTo(32 * u, 32 * u); x.lineTo(32 * u, 26 * u); x.moveTo(68 * u, 32 * u); x.lineTo(68 * u, 26 * u); x.stroke();
+    } else if (type === 'shield') {
+      x.moveTo(c, 24 * u); x.lineTo(72 * u, 32 * u); x.quadraticCurveTo(72 * u, 64 * u, c, 78 * u); x.quadraticCurveTo(28 * u, 64 * u, 28 * u, 32 * u); x.closePath(); x.fill();
+    } else if (type === 'turbo') {
+      x.moveTo(56 * u, 20 * u); x.lineTo(32 * u, 56 * u); x.lineTo(48 * u, 56 * u); x.lineTo(42 * u, 82 * u); x.lineTo(68 * u, 44 * u); x.lineTo(52 * u, 44 * u); x.closePath(); x.fill();
+    } else if (type === 'double') {
+      x.font = `900 ${42 * u}px system-ui, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('×2', c, c + 2 * u);
+    } else {
+      x.lineWidth = 11 * u; x.moveTo(32 * u, 52 * u); x.lineTo(c, 30 * u); x.lineTo(68 * u, 52 * u); x.moveTo(32 * u, 72 * u); x.lineTo(c, 50 * u); x.lineTo(68 * u, 72 * u); x.stroke();
+    }
+  }
+  const powerMats = {}, powerIcons = {};
+  for (const t of Object.keys(POWERS)) {
+    powerMats[t] = new THREE.SpriteMaterial({ map: canvasTex(128, 128, (x, w) => drawPowerIcon(x, t, w)), transparent: true, depthWrite: false, fog: false });
+    const c = document.createElement('canvas'); c.width = c.height = 64; drawPowerIcon(c.getContext('2d'), t, 64);
+    powerIcons[t] = c.toDataURL();
+  }
+  let pups = [], nextPowerD = 0;
+  const PW = { magnet: 0, turbo: 0, double: 0, spring: 0, shield: 0, invuln: 0 };
+  function addPower(d, x) {
+    const types = ['magnet', 'shield', 'turbo', 'double', 'spring'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const m = new THREE.Sprite(powerMats[type]);
+    m.scale.set(1.2, 1.2, 1);
+    const y = baseH(d, x) + 1.1;
+    m.position.set(x, y, -d);
+    scene.add(m);
+    pups.push({ d, x, y, type, mesh: m, taken: false });
+  }
+  function collectPower(type) {
+    if (type === 'shield') PW.shield = 1; else PW[type] = POWERS[type].time;
+    popup(POWERS[type].name, type === 'shield' ? 'schützt vor einem Treffer' : POWERS[type].time + ' Sekunden');
+    Sound.power();
+  }
+  // returns true if the rider is out of the run
+  function hitObstacle(e, reason) {
+    if (PW.turbo > 0 || PW.invuln > 0) { smash(e); return false; }
+    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild verbraucht', ''); Sound.shieldBreak(); return false; }
+    crash(reason); return true;
+  }
+  function smash(e) {
+    e.dead = true;
+    if (e.type !== 'crevasse') { scene.remove(e.mesh); emit(e.x, baseH(e.d, e.x) + 0.8, -e.d, 26, 3, 0, 3, -P.v * 0.2); }
+    shake = reduceMotion ? 0 : 0.15;
+  }
+
+  // ---------- HUD chips for active power-ups ----------
+  const chipEls = {};
+  for (const t of Object.keys(POWERS)) {
+    const el = document.createElement('div'); el.className = 'pchip'; el.hidden = true;
+    el.innerHTML = `<img alt="${POWERS[t].name}" src="${powerIcons[t]}"><span class="pbar"><i></i></span>`;
+    $('powers').appendChild(el);
+    chipEls[t] = { el, bar: el.querySelector('i') };
+  }
+  function updatePowerHud() {
+    for (const t of Object.keys(POWERS)) {
+      const on = t === 'shield' ? PW.shield > 0 : PW[t] > 0;
+      const c = chipEls[t];
+      if (c.el.hidden === on) c.el.hidden = !on;
+      if (on) c.bar.style.width = (t === 'shield' ? 100 : Math.round(100 * PW[t] / POWERS[t].time)) + '%';
+    }
+  }
+
   function difficulty() { return clamp((P.d - startD) / 3000, 0, 1); }
 
   function pickLanes(k) {
@@ -512,34 +656,74 @@ body {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
     return a.slice(0, Math.min(k, 4));   // always leave at least one lane open
   }
+  function freeLanes(used) { return [0, 1, 2, 3, 4].filter(l => !used.includes(l)); }
+  function maybePower(d, used) {
+    if (state !== 'play' || d < nextPowerD) return;
+    const free = freeLanes(used);
+    if (!free.length) return;
+    addPower(d, laneX(free[Math.floor(Math.random() * free.length)]));
+    nextPowerD = d + rand(220, 380);
+  }
   function spawnRow(d) {
     const diff = difficulty();
     const roll = Math.random();
+    if (roll >= 0.48 && roll < 0.66 && diff > 0.04) {   // the newer obstacles
+      const kind = Math.random();
+      if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
+        const n = 2 + Math.floor(Math.random() * (diff > 0.3 ? 4 : 3));
+        const l0 = Math.floor(Math.random() * (6 - n)), used = [];
+        for (let l = l0; l < l0 + n; l++) { used.push(l); addCoin(d, laneX(l), baseH(d, laneX(l)) + 1.6); }
+        addEnt('crevasse', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { half: (n * LANE_W) / 2 - 0.1 });
+        maybePower(d - 6, used);
+        return lerp(20, 14, diff);
+      }
+      if (kind < 0.68) {   // fence over one or two lanes: change lane
+        const n = Math.random() < 0.5 ? 1 : 2, l0 = Math.floor(Math.random() * (6 - n)), used = [];
+        for (let l = l0; l < l0 + n; l++) used.push(l);
+        addEnt('fence', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { lanes: n });
+        const extra = pickLanes(1 + Math.floor(diff * 2)).filter(l => !used.includes(l)).slice(0, diff > 0.4 ? 2 : 1);
+        for (const l of extra) { addEnt(Math.random() < 0.5 ? 'rock' : 'tree', d + rand(-1, 1), laneX(l), { s: 0.8 }); used.push(l); }
+        if (used.length >= 5) used.pop();
+        maybePower(d, used);
+        return lerp(16, 10, diff);
+      }
+      // snowball rolling across the lanes: jump it or time your lane change
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      addEnt('snowball', d + 8, laneX(dir < 0 ? 4 : 0), { vx: dir * rand(2.5, 3.5 + diff * 2) });
+      return lerp(22, 15, diff);
+    }
     if (roll < 0.12) {
       const r = addRamp(d, laneX(Math.floor(Math.random() * 5)));
       return r.d1 - d + 22;
     }
     if (roll < 0.24) {   // logs: jump over or switch lane
-      for (const l of pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2.5)))) {
+      const used = pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2.5)));
+      for (const l of used) {
         addEnt('log', d, laneX(l));
         addCoin(d, laneX(l), baseH(d, laneX(l)) + 2.4);
       }
+      maybePower(d, used);
       return lerp(18, 12, diff);
     }
     if (roll < 0.36) {   // banner gates: duck under or switch lane
-      for (const l of pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2)))) {
+      const used = pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2)));
+      for (const l of used) {
         addEnt('gate', d, laneX(l));
         addCoin(d, laneX(l), baseH(d, laneX(l)) + 0.7);
       }
+      maybePower(d, used);
       return lerp(18, 12, diff);
     }
     if (roll < 0.48) {   // coin line in one lane
-      const x = laneX(Math.floor(Math.random() * 5));
+      const lane = Math.floor(Math.random() * 5), x = laneX(lane);
       for (let i = 0; i < 7; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
+      maybePower(d + 10, [lane]);
       return 24;
     }
     const types = diff < 0.1 ? ['tree', 'rock'] : ['tree', 'tree', 'rock', 'snowman'];
-    for (const l of pickLanes(1 + Math.floor(Math.random() * (2 + diff * 2.5)))) {
+    const used = pickLanes(1 + Math.floor(Math.random() * (2 + diff * 2.5)));
+    maybePower(d, used);
+    for (const l of used) {
       const type = types[Math.floor(Math.random() * types.length)];
       addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
     }
@@ -572,8 +756,9 @@ body {
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
     if (state === 'play') while (nextD < ahead) nextD += spawnRow(nextD);
     const cut = P.d - 20;
-    ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); return false; } return true; });
+    ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); if (e.type === 'crevasse') e.mesh.geometry.dispose(); return false; } return true; });
     coins = coins.filter(c => { if (c.d < cut || (c.taken && c.tt > 0.35)) { scene.remove(c.mesh); return false; } return true; });
+    pups = pups.filter(u => { if (u.d < cut || u.taken) { scene.remove(u.mesh); return false; } return true; });
     poles = poles.filter(p => { if (p.d < cut) { scene.remove(p.mesh); return false; } return true; });
     ramps = ramps.filter(r => { if (r.d1 < cut) { scene.remove(r.mesh); r.mesh.geometry.dispose(); return false; } return true; });
   }
@@ -581,6 +766,8 @@ body {
   function clearWorld() {
     for (const e of ents) scene.remove(e.mesh);
     for (const c of coins) scene.remove(c.mesh);
+    for (const u of pups) scene.remove(u.mesh);
+    pups = [];
     for (const p of poles) scene.remove(p.mesh);
     for (const r of ramps) { scene.remove(r.mesh); r.mesh.geometry.dispose(); }
     ents = []; coins = []; poles = []; ramps = [];
@@ -677,6 +864,8 @@ body {
       land(hard) { noise(0.3, 'lowpass', 2200, 260, hard ? 0.6 : 0.4); tone(120, 'sine', 0.22, 0.45, 50); },
       coin() { tone(1319, 'triangle', 0.09, 0.22); tone(1760, 'triangle', 0.22, 0.22, null, 0.07); },
       trick() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 'triangle', 0.18, 0.2, null, i * 0.06)); tone(1568, 'sine', 0.5, 0.12, null, 0.24); },
+      power() { [660, 880, 1175, 1568].forEach((f, i) => tone(f, 'square', 0.12, 0.09, null, i * 0.05)); tone(2093, 'sine', 0.4, 0.12, null, 0.2); },
+      shieldBreak() { tone(1400, 'triangle', 0.3, 0.25, 500); noise(0.3, 'highpass', 5000, 2000, 0.3); },
       crash() { noise(0.9, 'lowpass', 3000, 180, 0.8); tone(95, 'sine', 0.5, 0.7, 38); noise(0.5, 'highpass', 4000, 1500, 0.25, 0.05); },
     };
 
@@ -769,7 +958,9 @@ body {
     resetRider(P.d);
     P.v = 13;
     startD = P.d; nextD = P.d + 45; nextDeco = P.d - 20;
-    score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0;
+    score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
+    for (const k of Object.keys(PW)) PW[k] = 0;
+    nextPowerD = P.d + rand(120, 200);
     resetBody();
     state = 'play';
     input.drag = null;
@@ -837,7 +1028,7 @@ body {
   function jump() {
     if (P.air || state !== 'play') return;
     P.duckT = 0;
-    takeOff(P.v * slopeAt(P.d, P.x) + JUMP);
+    takeOff(P.v * slopeAt(P.d, P.x) + JUMP * (PW.spring > 0 ? 1.45 : 1));
     P.y += 0.05;
     P.sq = -0.12; P.sqv = 4.5;   // crouch, then spring up
     emit(P.x, P.y, -P.d, 12, 1.5, 0, 1.5, 0);
@@ -857,7 +1048,11 @@ body {
     else if (diff > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
     Sound.land(P.airT > 1);
     P.sq = 0; P.sqv = -2.2 - Math.min(2.5, P.airT * 1.8);   // absorb the landing
-    if (pts) { bonus += pts; popup(names.join(' · '), '+' + pts); Sound.trick(); }
+    if (pts) {
+      const m = PW.double > 0 ? 2 : 1;
+      bonus += pts; score += pts * m;
+      popup(names.join(' · '), '+' + pts * m); Sound.trick();
+    }
     P.yaw = angDiff(P.yaw); P.spin = 0; P.tx = P.x;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
   }
@@ -911,7 +1106,7 @@ body {
   addEventListener('blur', () => { input.left = input.right = false; input.drag = null; });
   $('startBtn').addEventListener('click', start);
   $('againBtn').addEventListener('click', start);
-  $('menuBest').textContent = best ? 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte' : 'Sammle Münzen und lande Drehungen für Extrapunkte.';
+  $('menuBest').textContent = best ? 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte' : 'Sammle Münzen und Power-ups: Magnet, Schild, Turbo, ×2 und Super-Sprung.';
 
   // ---------- Update ----------
   let lastDt = 0.016;
@@ -930,7 +1125,7 @@ body {
         if (crashT > 1.3) gameOver();
       }
     } else {
-      const target = playing ? 13 + Math.min(21, dist * 0.009) : 11;
+      const target = (playing ? 13 + Math.min(21, dist * 0.009) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
@@ -992,21 +1187,47 @@ body {
     if (playing) {
       const speed = P.v;
       topSpeed = Math.max(topSpeed, speed);
+      for (const k of ['magnet', 'turbo', 'double', 'spring', 'invuln']) if (PW[k] > 0) PW[k] = Math.max(0, PW[k] - dt);
+      const mult = PW.double > 0 ? 2 : 1;
       for (const e of ents) {
-        if (e.deco) continue;
+        if (e.deco || e.dead) continue;
         const along = P.x - e.x, across = P.d - e.d;
-        if (e.type === 'gate') {
-          if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw - 0.2 && !P.ducking && P.y - baseH(e.d, e.x) < e.h) { crash(OB.gate.reason); break; }
-          continue;
-        }
-        if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h) { crash(OB[e.type].reason); break; }
+        if (Math.abs(across) > e.hd + 0.4) continue;
+        let hit = false;
+        if (e.type === 'gate') hit = Math.abs(along) < e.hw - 0.2 && !P.ducking && P.y - baseH(e.d, e.x) < e.h;
+        else if (e.type === 'crevasse') hit = Math.abs(along) < e.hw - 0.3 && !P.air;
+        else hit = Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h;
+        if (hit && hitObstacle(e, OB[e.type].reason)) break;
       }
       for (const c of coins) {
-        if (!c.taken && Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; coinCount++; Sound.coin(); }
+        if (c.taken) continue;
+        if (PW.magnet > 0 && c.d - P.d < 16 && c.d - P.d > -1 && Math.abs(c.x - P.x) < 8) {
+          const k = Math.min(1, dt * 9);
+          c.x += (P.x - c.x) * k; c.y += (P.y + 0.8 - c.y) * k; c.d += (P.d + 0.3 - c.d) * Math.min(1, dt * 6);
+          c.mesh.position.set(c.x, c.y, -c.d);
+        }
+        if (Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; coinCount++; score += 25 * mult; Sound.coin(); }
       }
-      score = (P.d - startD) + bonus + coinCount * 25;
+      for (const u of pups) {
+        if (!u.taken && Math.abs(u.d - P.d) < 1.3 && Math.abs(u.x - P.x) < 1.4 && Math.abs(u.y - (P.y + 0.8)) < 1.6) { u.taken = true; collectPower(u.type); }
+      }
+      score += Math.max(0, P.d - lastScoreD) * mult; lastScoreD = P.d;
+      if (PW.turbo > 0 && Math.random() < 0.8) emit(P.x, P.y + 0.3, -P.d + 0.5, 3, 1.2, 0, 1.5, 3);
     }
 
+    // moving obstacles and floating power-ups
+    for (const e of ents) {
+      if (e.type !== 'snowball' || e.dead) continue;
+      e.x += e.vx * dt;
+      if (Math.abs(e.x) > 2 * LANE_W) { e.x = clamp(e.x, -2 * LANE_W, 2 * LANE_W); e.vx *= -1; }
+      e.mesh.position.set(e.x, baseH(e.d, e.x) + 0.72, -e.d);
+      e.mesh.rotation.z -= e.vx * dt / 0.75;
+    }
+    for (const u of pups) {
+      u.mesh.position.y = u.y + Math.sin(clock * 3 + u.d) * 0.15;
+      const s = 1.2 + Math.sin(clock * 5 + u.d) * 0.06;
+      u.mesh.scale.set(s, s, 1);
+    }
     // coins spin / fly away
     for (const c of coins) {
       const k = c.taken ? Math.max(0.01, 1 - c.tt * 2.5) : 1;
@@ -1067,6 +1288,7 @@ body {
     const squat = tex === riderTex['rider-duck'] ? 0 : P.duckS;   // short blend into the duck pose
     rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 + 0.1 * squat), rh * (1 + sq + bob) * (1 - 0.3 * squat), 1);
     rider.center.x = cx;
+    riderMat.opacity = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
 
@@ -1114,6 +1336,7 @@ body {
   const hud = { dist: -1, speed: -1, coins: -1, score: -1 };
   function updateHud() {
     if (state !== 'play') return;
+    updatePowerHud();
     const d = Math.floor(P.d - startD), s = Math.round(P.v * KMH), sc = Math.floor(score);
     if (d !== hud.dist) { hud.dist = d; $('hudDist').innerHTML = d.toLocaleString('de-DE') + '<small>m</small>'; }
     if (s !== hud.speed) { hud.speed = s; $('hudSpeed').textContent = s + ' km/h'; }

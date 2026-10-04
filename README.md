@@ -30,7 +30,8 @@ Fünf Spuren, ein Wischer = eine Spur.
 
 - 3D mit three.js (per CDN geladen), gemalte Grafik aus `assets/` (Fahrer, Hindernisse, Himmel für Tag/Sonnenuntergang/Nacht/Morgen, Pisten-Textur)
 - Prozedural erzeugte, endlose Piste mit Kickern (Sprungschanzen)
-- Hindernisse: Bäume, Felsen, Schneemänner, Baumstämme (drüberspringen) und Banner-Tore (drunter durchducken)
+- Hindernisse: Bäume, Felsen, Schneemänner, Baumstämme (drüberspringen), Banner-Tore (drunter durchducken), Gletscherspalten (drüberspringen), Absperrungen (Spur wechseln) und rollende Schneekugeln
+- Power-ups: Magnet (10 s, zieht Münzen an), Schild (fängt einen Treffer ab), Turbo (5 s, schneller und unverwundbar), ×2 (15 s, doppelte Punkte), Super-Sprung (12 s, höhere Sprünge)
 - Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte
 - Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
 - Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
