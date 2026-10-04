@@ -814,7 +814,7 @@ body {
     if (!g || g.id !== e.pointerId || state !== 'play') return;
     const dx = e.clientX - g.lx; g.lx = e.clientX;
     if (P.air) { P.yaw -= dx * 0.03; P.spin -= dx * 0.03; }
-    else P.tx = clamp(P.tx + dx * (30 / Math.min(W, 640)), -TRACK, TRACK);
+    else P.tx = clamp(P.tx + dx * (38 / Math.min(W, 640)), -TRACK, TRACK);
     if (!g.jumped && g.y0 - e.clientY > 45 && performance.now() - g.t0 < 350) { g.jumped = true; jump(); }
   });
   function endDrag(e) {
@@ -868,11 +868,11 @@ body {
         P.v += ((target - P.v) * 0.55 + (-s - 0.32) * 18) * dt;
         P.v = Math.max(8, P.v);
         const steer = steerAxis();
-        const lat = 9 + P.v * 0.3;                       // top sideways speed
-        if (steer) { P.tx = clamp(P.x + steer * 4, -TRACK, TRACK); P.keySteer = true; }   // keys: keep a target just ahead of the board
-        else if (P.keySteer) { P.tx = clamp(P.x + P.vx * 0.2, -TRACK, TRACK); P.keySteer = false; }   // key released: glide out of the turn
+        const lat = 15 + P.v * 0.4;                       // top sideways speed
+        if (steer) { P.tx = clamp(P.x + steer * 6, -TRACK, TRACK); P.keySteer = true; }   // keys: keep a target just ahead of the board
+        else if (P.keySteer) { P.tx = clamp(P.x + P.vx * 0.1, -TRACK, TRACK); P.keySteer = false; }   // key released: glide out of the turn
         // critically damped spring towards the target lane: eases in and out of every turn
-        const K = 38, C = 2 * Math.sqrt(K);
+        const K = 120, C = 2 * Math.sqrt(K);
         P.vx += (K * (P.tx - P.x) - C * P.vx) * dt;
         P.vx = clamp(P.vx, -lat, lat);
         P.x += P.vx * dt;
@@ -905,8 +905,8 @@ body {
     }
 
     // body language: smoothed lean, pose with hysteresis, squash & stretch spring
-    const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 8, -1, 1);
-    P.leanS += (leanT - P.leanS) * Math.min(1, dt * 9);
+    const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 10, -1, 1);
+    P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
     P.poseT += dt;
     let want = P.pose;
     if (P.crashed) want = 'rider-crash';
@@ -915,7 +915,7 @@ body {
     else if (P.pose === 'rider-straight') { if (P.leanS < -0.38) want = 'rider-left'; else if (P.leanS > 0.38) want = 'rider-right'; }
     else if (P.pose === 'rider-left' && P.leanS > -0.16) want = 'rider-straight';
     else if (P.pose === 'rider-right' && P.leanS < 0.16) want = 'rider-straight';
-    if (want !== P.pose && (P.poseT > 0.12 || want === 'rider-air' || want === 'rider-crash')) { P.pose = want; P.poseT = 0; }
+    if (want !== P.pose && (P.poseT > 0.08 || want === 'rider-air' || want === 'rider-crash')) { P.pose = want; P.poseT = 0; }
     P.sqv += (-170 * P.sq - 16 * P.sqv) * dt;
     P.sq += P.sqv * dt;
 
@@ -1005,12 +1005,12 @@ body {
     const wantY = Math.max(groundBehind + up, lerp(groundBehind + up, P.y + up, 0.55));
     const wantX = P.x * 0.88 - P.vx * 0.06;
     if (camPos.lengthSq() === 0) camPos.set(wantX, wantY, -(P.d - back));
-    camPos.x += (wantX - camPos.x) * (1 - Math.exp(-dt * 5));
+    camPos.x += (wantX - camPos.x) * (1 - Math.exp(-dt * 8));
     camPos.y += (wantY - camPos.y) * (1 - Math.exp(-dt * (P.air ? 2.5 : 5)));
     camPos.z = -(P.d - back);
     const lookD = P.d + 9;
     const lookY = lerp(baseH(lookD, P.x), P.y, 0.45) + 0.8;
-    camLook.x += (P.x + P.vx * 0.22 - camLook.x) * (1 - Math.exp(-dt * 7));
+    camLook.x += (P.x + P.vx * 0.15 - camLook.x) * (1 - Math.exp(-dt * 10));
     camLook.y = camLook.y ? camLook.y + (lookY - camLook.y) * (1 - Math.exp(-dt * 6)) : lookY;
     camLook.z = -lookD;
     camera.position.copy(camPos);
