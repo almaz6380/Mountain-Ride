@@ -1,0 +1,771 @@
+<title>Mountain Ride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap">
+<style>
+/* Layout: full-bleed canvas slope, HUD pinned to the top corners, one centred overlay card for start / game over */
+:root {
+  --snow: #f4f8fc;
+  --ink: #14233a;
+  --glacier: #8fb6d8;
+  --jacket: #ffc531;
+  --board: #e5396f;
+  --dusk: #2b3d63;
+  --card: rgba(20, 35, 58, 0.78);
+  --display: "Bowlby One SC", "Arial Black", Impact, sans-serif;
+  --ui: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; background: var(--dusk); overflow: hidden; }
+body {
+  font-family: var(--ui); color: var(--snow);
+  -webkit-user-select: none; user-select: none; touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+.hud {
+  position: fixed; left: 16px; right: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  pointer-events: none; font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(20, 35, 58, 0.45);
+}
+.hud-block { display: grid; gap: 2px; }
+.hud-block.right { text-align: right; justify-items: end; }
+.hud-big { font-weight: 800; font-size: clamp(30px, 6vw, 44px); line-height: 1; letter-spacing: 0.01em; }
+.hud-big small { font-size: 0.5em; font-weight: 600; margin-left: 3px; }
+.hud-label { font-weight: 600; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
+.hud-row { display: flex; gap: 14px; font-weight: 600; font-size: 18px; }
+.coin-dot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--jacket); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.18); margin-right: 5px; vertical-align: 0.02em; }
+
+.overlay {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding-inline: 16px;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.card {
+  width: min(440px, 100%); box-sizing: border-box;
+  background: var(--card); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border-radius: 18px; padding: 28px 24px 24px;
+  display: grid; gap: 18px; text-align: center;
+  box-shadow: 0 20px 60px rgba(10, 18, 34, 0.35);
+}
+.title {
+  font-family: var(--display); font-weight: 400; margin: 0;
+  font-size: clamp(40px, 11vw, 64px); line-height: 0.92; letter-spacing: 0.01em;
+  text-wrap: balance; color: var(--snow);
+}
+.title span { color: var(--jacket); display: block; }
+.sub { margin: 0; font-size: 19px; font-weight: 500; opacity: 0.9; text-wrap: balance; }
+.controls { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; text-align: left; font-size: 17px; }
+.controls li { display: grid; grid-template-columns: 5.5em 1fr; gap: 10px; align-items: baseline; }
+.key {
+  font-weight: 800; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink); background: var(--snow); border-radius: 6px; padding: 3px 7px; justify-self: start;
+}
+.btn {
+  font: 800 24px/1 var(--ui); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink); background: var(--jacket); border: 0; border-radius: 12px;
+  padding: 16px 20px; cursor: pointer; box-shadow: 0 4px 0 #c48d0d;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #c48d0d; }
+.btn:focus-visible { outline: 3px solid var(--snow); outline-offset: 3px; }
+.btn:disabled { opacity: 0.5; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.stats div { background: rgba(244, 248, 252, 0.08); border-radius: 10px; padding: 10px 12px; text-align: left; }
+.stats dt { font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
+.stats dd { margin: 2px 0 0; font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; }
+.record { justify-self: center; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; color: var(--ink); background: var(--jacket); padding: 4px 10px; border-radius: 99px; }
+.best-line { margin: 0; font-size: 16px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+</style>
+
+<canvas id="game" aria-label="Mountain Ride Spielfeld"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="hud-block">
+    <span class="hud-label">Strecke</span>
+    <span class="hud-big" id="hudDist">0<small>m</small></span>
+    <div class="hud-row"><span id="hudSpeed">0 km/h</span><span><i class="coin-dot"></i><span id="hudCoins">0</span></span></div>
+  </div>
+  <div class="hud-block right">
+    <span class="hud-label">Punkte</span>
+    <span class="hud-big" id="hudScore">0</span>
+  </div>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="card">
+    <h1 class="title">Mountain<span>Ride</span></h1>
+    <p class="sub">Brett anschnallen und runter. Je weiter du kommst, desto schneller wird der Hang.</p>
+    <ul class="controls">
+      <li><span class="key">Tippen</span><span>Springen (oder Leertaste)</span></li>
+      <li><span class="key">Halten</span><span>In der Luft: Backflip drehen</span></li>
+      <li><span class="key">Landen</span><span>Brett parallel zum Hang aufsetzen</span></li>
+    </ul>
+    <button class="btn" id="startBtn" type="button">Losfahren</button>
+    <p class="best-line" id="menuBest"></p>
+  </div>
+</div>
+
+<div class="overlay" id="over" hidden>
+  <div class="card">
+    <h2 class="title" id="overTitle">Gestürzt</h2>
+    <p class="sub" id="overReason"></p>
+    <span class="record" id="overRecord" hidden>Neuer Rekord</span>
+    <dl class="stats">
+      <div><dt>Punkte</dt><dd id="stScore">0</dd></div>
+      <div><dt>Strecke</dt><dd id="stDist">0 m</dd></div>
+      <div><dt>Top-Speed</dt><dd id="stSpeed">0 km/h</dd></div>
+      <div><dt>Münzen</dt><dd id="stCoins">0</dd></div>
+    </dl>
+    <button class="btn" id="againBtn" type="button">Nochmal</button>
+    <p class="best-line" id="overBest"></p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cvs = document.getElementById('game');
+  const ctx = cvs.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Tuning ----------
+  const G = 1400;            // gravity, world units / s²
+  const JUMP = 640;          // jump impulse
+  const SPIN = 8.5;          // backflip rotation speed, rad / s
+  const SPIN_DELAY = 0.16;   // hold this long before the board starts rotating
+  const MIN_SPEED = 160;
+  const KMH = 0.07;          // world units / s -> km/h for display
+  const TAU = Math.PI * 2;
+
+  // ---------- Canvas sizing ----------
+  let W = 0, H = 0, DPR = 1, baseScale = 1, scale = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+    baseScale = Math.min(H / 640, W / 800);
+    if (!scale || scale === 1) scale = baseScale;
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ---------- Best score ----------
+  const BEST_KEY = 'mountain-ride-best';
+  let best = 0;
+  try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch (e) {}
+  function saveBest() { try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {} }
+
+  // ---------- Terrain ----------
+  let ramps = [];
+  function baseY(x) {
+    return x * 0.42 + 70 * Math.sin(x / 380) + 38 * Math.sin(x / 160 + 1.3) + 140 * Math.sin(x / 1250 + 0.5);
+  }
+  function baseSlope(x) {
+    return 0.42 + (70 / 380) * Math.cos(x / 380) + (38 / 160) * Math.cos(x / 160 + 1.3) + (140 / 1250) * Math.cos(x / 1250 + 0.5);
+  }
+  function rampAt(x) {
+    for (const r of ramps) if (x >= r.x0 && x < r.x1) return r;
+    return null;
+  }
+  function groundY(x) {
+    const r = rampAt(x);
+    if (!r) return baseY(x);
+    const t = (x - r.x0) / (r.x1 - r.x0);
+    return baseY(x) - r.h * t * t;
+  }
+  function slopeAt(x) {
+    const r = rampAt(x);
+    if (!r) return baseSlope(x);
+    const len = r.x1 - r.x0, t = (x - r.x0) / len;
+    return baseSlope(x) - (2 * r.h * t) / len;
+  }
+
+  // ---------- Helpers ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const angDiff = (a, b) => ((a - b + Math.PI) % TAU + TAU) % TAU - Math.PI;
+  function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+  function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+  function mix(c1, c2, t) {
+    const a = hexToRgb(c1), b = hexToRgb(c2);
+    return `rgb(${Math.round(lerp(a[0], b[0], t))},${Math.round(lerp(a[1], b[1], t))},${Math.round(lerp(a[2], b[2], t))})`;
+  }
+
+  // ---------- Day cycle palettes ----------
+  const PAL = {
+    day:    { top: '#5b8fd3', bot: '#d4e7f5', far: '#a7c0dc', near: '#7f9ec6', hill: '#557aa3', tree: '#3d5f86', snow: '#f4f8fc', shade: '#9cc0e0', star: 0 },
+    sunset: { top: '#2f4472', bot: '#f4a27c', far: '#a07ea6', near: '#6d5e8f', hill: '#454a7a', tree: '#323862', snow: '#fbeee8', shade: '#c9a3c4', star: 0.2 },
+    night:  { top: '#0b1530', bot: '#2c3f68', far: '#34466f', near: '#26355d', hill: '#1c2a4f', tree: '#14203e', snow: '#d4e0f0', shade: '#7f99c4', star: 1 },
+    dawn:   { top: '#4a5f97', bot: '#f6c9a0', far: '#9b9cc3', near: '#7581b0', hill: '#4d6091', tree: '#384a78', snow: '#fbf3ee', shade: '#b4b8dc', star: 0.1 },
+  };
+  const CYCLE = [PAL.day, PAL.sunset, PAL.night, PAL.dawn, PAL.day];
+  function paletteAt(meters) {
+    const p = (meters / 2400) % 4;        // every 2400 m a new phase
+    const i = Math.floor(p);
+    const raw = p - i;
+    const t = raw < 0.6 ? 0 : (raw - 0.6) / 0.4; // hold, then blend
+    const a = CYCLE[i], b = CYCLE[i + 1];
+    const out = { star: lerp(a.star, b.star, t), t, a, b };
+    for (const k of ['top', 'bot', 'far', 'near', 'hill', 'tree', 'snow', 'shade']) out[k] = mix(a[k], b[k], t);
+    return out;
+  }
+
+  // ---------- State ----------
+  let state = 'menu';
+  let P, cam, obs, coins, particles, popups, nextX, startX;
+  let score, bonus, coinCount, topSpeed, crashT, crashReason, shake, clock = 0;
+  const input = { down: false, pressT: 0 };
+
+  function resetRider(x) {
+    P = { x, y: groundY(x), vx: 0, vy: 0, s: 380, rot: Math.atan(slopeAt(x)), air: false, airT: 0, spin: 0, tuck: 0, crashed: false };
+  }
+  function resetWorld() {
+    ramps = []; obs = []; coins = []; particles = []; popups = [];
+    score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0;
+  }
+  resetWorld();
+  resetRider(0);
+  cam = { x: P.x, y: P.y - H * 0.42 / baseScale };
+
+  const flakes = Array.from({ length: reduceMotion ? 30 : 90 }, () => ({ x: Math.random(), y: Math.random(), r: rand(0.8, 2.6), d: Math.random() }));
+
+  // ---------- Level generation ----------
+  function difficulty() { return clamp((P.x - startX) / 60000, 0, 1); }
+  const OBSTACLES = {
+    rock:    { w: 46, h: 30, reason: 'Gegen einen Felsen gekracht.' },
+    log:     { w: 70, h: 24, reason: 'Den Baumstamm übersehen.' },
+    snowman: { w: 34, h: 64, reason: 'Einen Schneemann umgefahren.' },
+  };
+  function generate(xMax) {
+    while (nextX < xMax) {
+      const d = difficulty();
+      const r = Math.random();
+      if (r < 0.27) {
+        const len = rand(170, 250), h = rand(45, 85);
+        const ramp = { x0: nextX, x1: nextX + len, h };
+        ramps.push(ramp);
+        const lip = ramp.x1, ly = groundY(lip - 1);
+        for (let i = 0; i < 7; i++) {
+          const t = i / 6, cx = lip + 70 + i * 62;
+          coins.push({ x: cx, y: Math.min(ly - 40, groundY(cx) - 80) - Math.sin(t * Math.PI) * 70, taken: false });
+        }
+        nextX = lip + rand(520, 800);
+      } else if (r < 0.8) {
+        const types = d < 0.15 ? ['rock', 'log'] : ['rock', 'log', 'snowman'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const spec = OBSTACLES[type];
+        obs.push({ type, x: nextX, w: spec.w, h: spec.h });
+        for (let i = -2; i <= 2; i++) {
+          const cx = nextX + i * 46;
+          coins.push({ x: cx, y: groundY(cx) - spec.h - 55 - 38 * (1 - (i / 2.6) ** 2), taken: false });
+        }
+        if (Math.random() < 0.15 + d * 0.5) {
+          const gap = lerp(170, 120, d);
+          const t2 = types[Math.floor(Math.random() * types.length)];
+          obs.push({ type: t2, x: nextX + gap, w: OBSTACLES[t2].w, h: OBSTACLES[t2].h });
+          nextX += gap;
+        }
+        nextX += lerp(820, 400, d) + rand(0, 320);
+      } else {
+        for (let i = 0; i < 8; i++) {
+          const cx = nextX + i * 50;
+          coins.push({ x: cx, y: groundY(cx) - 34, taken: false });
+        }
+        nextX += 400 + rand(150, 350);
+      }
+    }
+    const cut = P.x - 1500;
+    obs = obs.filter(o => o.x > cut);
+    coins = coins.filter(c => c.x > cut && !c.gone);
+    ramps = ramps.filter(r => r.x1 > cut);
+  }
+
+  // ---------- Effects ----------
+  function emit(x, y, n, spread, vx, vy, life = 0.7) {
+    if (reduceMotion) n = Math.ceil(n / 3);
+    for (let i = 0; i < n; i++) {
+      particles.push({ x, y, vx: vx + rand(-spread, spread), vy: vy + rand(-spread, spread * 0.4), life, max: life, r: rand(1.5, 4) });
+    }
+    if (particles.length > 400) particles.splice(0, particles.length - 400);
+  }
+  function popup(text, sub) { popups.push({ text, sub, t: 0 }); }
+
+  // ---------- Game flow ----------
+  function start() {
+    resetWorld();
+    resetRider(P.x);
+    P.s = 420;
+    startX = P.x;
+    nextX = P.x + 900;
+    state = 'play';
+    input.down = false;
+    $('menu').hidden = true; $('over').hidden = true; $('hud').hidden = false;
+  }
+
+  function crash(reason) {
+    if (state !== 'play') return;
+    state = 'crash'; crashT = 0; crashReason = reason; P.crashed = true;
+    shake = reduceMotion ? 0 : 14;
+    emit(P.x, P.y - 20, 40, 260, P.vx * 0.3, -200, 1);
+  }
+
+  function gameOver() {
+    state = 'over';
+    const total = Math.floor(score);
+    const isRecord = total > best;
+    if (isRecord) { best = total; saveBest(); }
+    $('overTitle').textContent = 'Gestürzt';
+    $('overReason').textContent = crashReason;
+    $('overRecord').hidden = !isRecord;
+    $('stScore').textContent = total.toLocaleString('de-DE');
+    $('stDist').textContent = Math.floor((P.x - startX) / 10).toLocaleString('de-DE') + ' m';
+    $('stSpeed').textContent = Math.round(topSpeed * KMH) + ' km/h';
+    $('stCoins').textContent = coinCount;
+    $('overBest').textContent = 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte';
+    $('hud').hidden = true;
+    $('over').hidden = false;
+    const btn = $('againBtn');
+    btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; btn.focus({ preventScroll: true }); }, 600);
+  }
+
+  function jump() {
+    P.air = true; P.airT = 0; P.spin = 0;
+    P.vy -= JUMP; P.y -= 2;
+    emit(P.x, P.y, 10, 120, -P.vx * 0.2, -60, 0.5);
+  }
+
+  function land(gy) {
+    const a = Math.atan(slopeAt(P.x));
+    const diff = Math.abs(angDiff(P.rot, a));
+    if (diff > 0.8) { P.y = gy; crash('Bruchlandung. Das Brett muss parallel zum Hang sein.'); return; }
+    P.y = gy; P.air = false;
+    let s = Math.max(P.vx * Math.cos(a) + P.vy * Math.sin(a), 200);
+    const flips = Math.floor((Math.abs(P.spin) + 0.9) / TAU);
+    let pts = 0; const names = [];
+    if (flips > 0) { pts += 400 * flips * flips; names.push(flips === 1 ? 'Backflip' : flips === 2 ? 'Doppel-Backflip' : flips + '× Backflip'); }
+    if (P.airT > 0.9) { pts += Math.round(P.airT * 150); names.push('Big Air'); }
+    if (pts > 0 && diff < 0.22) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); s += 90; }
+    else if (diff > 0.45) { s *= 0.8; if (pts > 0) names.push('Wackelig'); }
+    if (pts > 0) { bonus += pts; popup(names.join(' · '), '+' + pts); }
+    P.s = s; P.rot = lerp(P.rot, P.rot - angDiff(P.rot, a), 0.5);
+    emit(P.x, P.y, 18 + Math.min(30, P.airT * 20), 200, P.vx * 0.15, -120, 0.7);
+  }
+
+  // ---------- Update ----------
+  function update(dt) {
+    clock += dt;
+    const playing = state === 'play';
+    const dist = playing ? P.x - startX : 0;
+    const target = playing ? 430 + Math.min(1150, dist * 0.022) : 420;
+
+    if (state === 'crash' || state === 'over') {
+      // tumble to a stop
+      P.vx *= Math.pow(0.25, dt);
+      P.x += P.vx * dt;
+      P.y = groundY(P.x);
+      P.rot += P.vx * dt * 0.02;
+      if (state === 'crash') { crashT += dt; if (crashT > 1.3) gameOver(); }
+    } else if (!P.air) {
+      const a = Math.atan(slopeAt(P.x));
+      P.s += (G * Math.sin(a) * 0.32 + (target - P.s) * 0.6) * dt;
+      P.s = Math.max(MIN_SPEED, P.s);
+      P.vx = P.s * Math.cos(a); P.vy = P.s * Math.sin(a);
+      P.x += P.vx * dt;
+      const yPred = P.y + P.vy * dt, gy = groundY(P.x);
+      if (yPred < gy - 4) { P.air = true; P.y = yPred; P.airT = 0; P.spin = 0; }
+      else { P.y = gy; P.rot += angDiff(Math.atan(slopeAt(P.x)), P.rot) * Math.min(1, dt * 18); }
+      if (Math.random() < 0.4 + P.s / 2000) {
+        const bx = P.x - Math.cos(P.rot) * 24, by = P.y - Math.sin(P.rot) * 24;
+        emit(bx, by, 1 + Math.floor(P.s / 700), 40, -P.vx * 0.25, -80 - P.s * 0.08, 0.5);
+      }
+    } else {
+      P.vy += G * dt;
+      P.x += P.vx * dt; P.y += P.vy * dt; P.airT += dt;
+      const spinning = playing && input.down && clock - input.pressT > SPIN_DELAY;
+      if (spinning) { P.rot -= SPIN * dt; P.spin -= SPIN * dt; }
+      else {
+        const want = Math.atan(slopeAt(P.x + P.vx * 0.15));
+        const d = angDiff(want, P.rot);
+        if (Math.abs(d) < 0.9) P.rot += d * Math.min(1, dt * 3);
+      }
+      P.tuck += ((spinning ? 1 : 0) - P.tuck) * Math.min(1, dt * 12);
+      const gy = groundY(P.x);
+      if (P.y >= gy) land(gy);
+    }
+    if (!P.air) P.tuck += (0 - P.tuck) * Math.min(1, dt * 10);
+
+    if (playing) {
+      generate(P.x + W / scale + 1200);
+      const speed = Math.hypot(P.vx, P.vy);
+      topSpeed = Math.max(topSpeed, speed);
+      // obstacles
+      for (const o of obs) {
+        if (Math.abs(P.x - o.x) < o.w / 2 + 14) {
+          const top = groundY(o.x) - o.h;
+          if (P.y > top + 6) { crash(OBSTACLES[o.type].reason); break; }
+        }
+      }
+      // coins
+      const cx = P.x + Math.sin(P.rot) * 30, cy = P.y - Math.cos(P.rot) * 30;
+      for (const c of coins) {
+        if (!c.taken && Math.abs(c.x - cx) < 40 && Math.hypot(c.x - cx, c.y - cy) < 38) {
+          c.taken = true; c.tt = 0; coinCount++;
+        }
+      }
+      score = (P.x - startX) / 10 + bonus + coinCount * 25;
+    }
+    for (const c of coins) if (c.taken) { c.tt += dt; if (c.tt > 0.4) c.gone = true; }
+
+    // particles
+    for (const p of particles) { p.life -= dt; p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+    particles = particles.filter(p => p.life > 0);
+    for (const p of popups) p.t += dt;
+    popups = popups.filter(p => p.t < 1.6);
+
+    // camera
+    const sp = clamp((Math.hypot(P.vx, P.vy) - 400) / 1200, 0, 1);
+    const wantScale = baseScale * (1 - 0.24 * sp);
+    scale += (wantScale - scale) * Math.min(1, dt * 2);
+    cam.x = P.x - (W * 0.28) / scale;
+    const wantY = P.y - (H * 0.42) / scale;
+    cam.y += (wantY - cam.y) * Math.min(1, dt * 5);
+    shake *= Math.pow(0.02, dt);
+
+    // snow
+    for (const f of flakes) {
+      f.x -= (P.vx * 0.00025 * (0.5 + f.d) + 0.01 * Math.sin(clock + f.d * 6)) * dt * 60 / 60;
+      f.y += (0.05 + f.d * 0.08 - P.vy * 0.0002) * dt;
+      f.x = ((f.x % 1) + 1) % 1; f.y = ((f.y % 1) + 1) % 1;
+    }
+  }
+
+  // ---------- Drawing ----------
+  function ridge(x, seed, sharp) {
+    return 0.55 * Math.abs(Math.sin(x * 0.0021 + seed)) + 0.3 * Math.sin(x * 0.0057 + seed * 2.1) + sharp * Math.abs(Math.sin(x * 0.019 + seed * 3.3));
+  }
+
+  function drawBackground(pal) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, pal.top); g.addColorStop(0.75, pal.bot);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    if (pal.star > 0.02) {
+      ctx.fillStyle = `rgba(255,255,255,${0.8 * pal.star})`;
+      for (let i = 0; i < 70; i++) {
+        const sx = hash(i) * W, sy = hash(i + 99) * H * 0.55;
+        const r = 0.6 + hash(i + 7) * 1.2;
+        ctx.fillRect(sx, sy, r, r);
+      }
+    }
+    // sun or moon
+    const night = pal.star > 0.5;
+    ctx.fillStyle = night ? 'rgba(240,244,255,0.9)' : 'rgba(255,246,220,0.85)';
+    ctx.beginPath(); ctx.arc(W * 0.78, H * 0.18, Math.min(W, H) * 0.045, 0, TAU); ctx.fill();
+
+    const layers = [
+      { col: pal.far, base: 0.5, amp: 0.26, par: 0.03, seed: 1.7, sharp: 0.12, cap: true },
+      { col: pal.near, base: 0.6, amp: 0.2, par: 0.07, seed: 4.2, sharp: 0.08, cap: false },
+    ];
+    for (const L of layers) {
+      const off = cam.x * scale * L.par;
+      ctx.fillStyle = L.col;
+      ctx.beginPath(); ctx.moveTo(0, H);
+      for (let sx = 0; sx <= W + 8; sx += 8) ctx.lineTo(sx, H * L.base - ridge(sx + off, L.seed, L.sharp) * H * L.amp);
+      ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+      if (L.cap) {
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        for (let sx = 0; sx <= W + 8; sx += 8) {
+          const y = H * L.base - ridge(sx + off, L.seed, L.sharp) * H * L.amp;
+          sx === 0 ? ctx.moveTo(sx, y) : ctx.lineTo(sx, y);
+        }
+        for (let sx = W + 8; sx >= 0; sx -= 8) {
+          const y = H * L.base - ridge(sx + off, L.seed, L.sharp) * H * L.amp;
+          ctx.lineTo(sx, Math.min(y + H * 0.035, H * L.base - H * L.amp * 0.55));
+        }
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    // forest hills
+    const off = cam.x * scale * 0.18;
+    const hillY = sx => H * 0.7 - (0.5 + 0.5 * Math.sin((sx + off) * 0.004)) * H * 0.08;
+    ctx.fillStyle = pal.hill;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    for (let sx = 0; sx <= W + 8; sx += 8) ctx.lineTo(sx, hillY(sx));
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = pal.tree;
+    const step = 22;
+    const first = Math.floor(off / step) * step;
+    for (let wx = first; wx < off + W + step; wx += step) {
+      const k = wx / step;
+      if (hash(k) < 0.35) continue;
+      const sx = wx - off, th = (14 + hash(k + 3) * 18) * Math.max(0.7, baseScale);
+      const y = hillY(sx) + 4;
+      ctx.beginPath(); ctx.moveTo(sx, y - th); ctx.lineTo(sx + th * 0.32, y); ctx.lineTo(sx - th * 0.32, y); ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function drawGround(pal) {
+    const x0 = cam.x - 40, x1 = cam.x + W / scale + 40, bottom = cam.y + H / scale + 60;
+    const path = new Path2D();
+    path.moveTo(x0, groundY(x0));
+    for (let x = x0; x <= x1; x += 6) path.lineTo(x, groundY(x));
+    // keep ramp lips crisp
+    for (const r of ramps) if (r.x1 > x0 && r.x1 < x1) { /* sampled closely enough */ }
+    const surface = new Path2D(path);
+    path.lineTo(x1, bottom); path.lineTo(x0, bottom); path.closePath();
+    ctx.fillStyle = pal.snow; ctx.fill(path);
+    ctx.save(); ctx.clip(path);
+    ctx.strokeStyle = pal.shade; ctx.globalAlpha = 0.35; ctx.lineWidth = 40;
+    ctx.translate(0, 34); ctx.stroke(surface);
+    ctx.globalAlpha = 0.18; ctx.lineWidth = 90; ctx.translate(0, 70); ctx.stroke(surface);
+    ctx.restore();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke(surface);
+
+    // ramp flags
+    for (const r of ramps) {
+      if (r.x1 < x0 || r.x0 > x1) continue;
+      const lx = r.x1 - 4, ly = groundY(lx);
+      ctx.strokeStyle = '#14233a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx, ly - 48); ctx.stroke();
+      const wave = Math.sin(clock * 9 + r.x0) * 3;
+      ctx.fillStyle = '#e5396f';
+      ctx.beginPath(); ctx.moveTo(lx, ly - 48); ctx.lineTo(lx - 24, ly - 42 + wave); ctx.lineTo(lx, ly - 34); ctx.closePath(); ctx.fill();
+      // groomed lines on the kicker face
+      ctx.strokeStyle = pal.shade; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.5;
+      for (let k = 1; k < 4; k++) {
+        const fx = lerp(r.x0, r.x1, 0.35 + k * 0.15), fy = groundY(fx);
+        ctx.beginPath(); ctx.moveTo(fx, fy + 4); ctx.lineTo(fx + 6, fy + 18); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawObstacle(o) {
+    const gy = groundY(o.x);
+    ctx.save(); ctx.translate(o.x, gy);
+    ctx.rotate(Math.atan(slopeAt(o.x)) * 0.6);
+    if (o.type === 'rock') {
+      ctx.fillStyle = '#5d6b80';
+      ctx.beginPath();
+      ctx.moveTo(-24, 6); ctx.lineTo(-20, -16); ctx.lineTo(-6, -30); ctx.lineTo(10, -26); ctx.lineTo(23, -10); ctx.lineTo(25, 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#46536a';
+      ctx.beginPath(); ctx.moveTo(10, -26); ctx.lineTo(23, -10); ctx.lineTo(25, 6); ctx.lineTo(6, 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f4f8fc';
+      ctx.beginPath(); ctx.moveTo(-20, -16); ctx.lineTo(-6, -30); ctx.lineTo(10, -26); ctx.lineTo(4, -20); ctx.lineTo(-8, -22); ctx.closePath(); ctx.fill();
+    } else if (o.type === 'log') {
+      ctx.fillStyle = '#7a4a2a';
+      ctx.beginPath(); ctx.roundRect(-35, -24, 70, 24, 12); ctx.fill();
+      ctx.fillStyle = '#5e3820';
+      ctx.fillRect(-20, -18, 30, 2); ctx.fillRect(-10, -10, 34, 2);
+      ctx.fillStyle = '#d9a774';
+      ctx.beginPath(); ctx.ellipse(32, -12, 6, 12, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#a8784a'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(32, -12, 3, 6.5, 0, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#f4f8fc';
+      ctx.beginPath(); ctx.roundRect(-30, -27, 52, 7, 4); ctx.fill();
+    } else {
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#b9cfe4'; ctx.lineWidth = 2;
+      for (const [y, r] of [[-15, 17], [-39, 12], [-56, 9]]) { ctx.beginPath(); ctx.arc(0, y, r, 0, TAU); ctx.fill(); ctx.stroke(); }
+      ctx.fillStyle = '#14233a';
+      ctx.fillRect(-9, -66, 18, 3); ctx.fillRect(-6, -78, 12, 12);
+      ctx.beginPath(); ctx.arc(-3, -58, 1.5, 0, TAU); ctx.arc(3, -58, 1.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#ff7a2a';
+      ctx.beginPath(); ctx.moveTo(-1, -55); ctx.lineTo(-11, -53); ctx.lineTo(-1, -52); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#7a4a2a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(-24, -50); ctx.moveTo(10, -40); ctx.lineTo(24, -48); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawCoin(c) {
+    let r = 11, alpha = 1, y = c.y;
+    if (c.taken) { const t = c.tt / 0.4; r *= 1 + t * 0.6; alpha = 1 - t; y -= t * 30; }
+    const squash = Math.abs(Math.cos(clock * 4 + c.x * 0.01));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#c48d0d';
+    ctx.beginPath(); ctx.ellipse(c.x, y + 1.5, r * Math.max(0.2, squash), r, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#ffc531';
+    ctx.beginPath(); ctx.ellipse(c.x, y, r * Math.max(0.15, squash), r, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(c.x - r * 0.25 * squash, y - r * 0.3, r * 0.25 * squash, r * 0.3, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function limb(points, color, width) {
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+    ctx.stroke();
+  }
+
+  function drawRider() {
+    ctx.save();
+    ctx.translate(P.x, P.y);
+    ctx.rotate(P.rot);
+    const t = P.tuck;
+    const crashed = P.crashed;
+    // pose (board space: +x = forward, -y = up)
+    const hip = [lerp(-3, -2, t), lerp(-36, -26, t)];
+    const kneeF = [lerp(9, 12, t), lerp(-22, -24, t)];
+    const kneeB = [lerp(-13, -10, t), lerp(-20, -22, t)];
+    const shoulder = [lerp(3, 6, t), lerp(-60, -46, t)];
+    const head = [lerp(6, 11, t), lerp(-71, -56, t)];
+    const handF = [lerp(22, 14, t), lerp(-44, -14, t)];
+    const handB = [lerp(-20, -6, t), lerp(-46, -14, t)];
+
+    // scarf
+    const flap = Math.sin(clock * 18) * 3;
+    ctx.fillStyle = '#e5396f';
+    ctx.beginPath();
+    ctx.moveTo(shoulder[0], shoulder[1] - 4);
+    ctx.quadraticCurveTo(shoulder[0] - 14, shoulder[1] - 6 + flap, shoulder[0] - 26, shoulder[1] - 2 - flap);
+    ctx.lineTo(shoulder[0] - 24, shoulder[1] + 4 - flap);
+    ctx.quadraticCurveTo(shoulder[0] - 12, shoulder[1] + 2 + flap, shoulder[0], shoulder[1] + 2);
+    ctx.closePath(); ctx.fill();
+
+    // board
+    ctx.fillStyle = '#e5396f';
+    ctx.beginPath(); ctx.roundRect(-30, -6, 60, 6, 3); ctx.fill();
+    ctx.fillStyle = '#14233a';
+    ctx.fillRect(-16, -9, 8, 3); ctx.fillRect(9, -9, 8, 3);
+
+    if (!crashed) {
+      limb([[-12, -8], kneeB, hip], '#2c3f68', 7);
+      limb([[12, -8], kneeF, hip], '#34497a', 7);
+      limb([shoulder, handB], '#e0a722', 5.5);
+      limb([hip, shoulder], '#ffc531', 13);
+      limb([shoulder, handF], '#ffc531', 5.5);
+      ctx.fillStyle = '#14233a';
+      ctx.beginPath(); ctx.arc(handF[0], handF[1], 3.2, 0, TAU); ctx.arc(handB[0], handB[1], 3.2, 0, TAU); ctx.fill();
+      // head
+      ctx.fillStyle = '#f2c7a5';
+      ctx.beginPath(); ctx.arc(head[0], head[1], 8.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#14233a';
+      ctx.beginPath(); ctx.arc(head[0], head[1] - 1, 9.5, Math.PI * 1.05, Math.PI * 2.02); ctx.fill();
+      ctx.fillStyle = '#7ad3e8';
+      ctx.beginPath(); ctx.roundRect(head[0] + 1, head[1] - 3, 9, 5, 2.5); ctx.fill();
+    }
+    ctx.restore();
+
+    if (crashed) {
+      // rider tumbling next to the board
+      ctx.save();
+      ctx.translate(P.x - 18, P.y - 10);
+      ctx.rotate(clock * 6);
+      limb([[0, 0], [10, 14]], '#2c3f68', 7);
+      limb([[0, 0], [-10, 14]], '#34497a', 7);
+      limb([[0, 0], [0, -20]], '#ffc531', 13);
+      limb([[0, -18], [14, -8]], '#ffc531', 5.5);
+      ctx.fillStyle = '#14233a';
+      ctx.beginPath(); ctx.arc(0, -30, 9.5, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function draw() {
+    const meters = state === 'menu' ? P.x / 10 : (P.x - startX) / 10;
+    const pal = paletteAt(Math.max(0, meters));
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawBackground(pal);
+
+    const sx = shake ? rand(-shake, shake) : 0, sy = shake ? rand(-shake, shake) : 0;
+    ctx.setTransform(scale * DPR, 0, 0, scale * DPR, (-cam.x * scale + sx) * DPR, (-cam.y * scale + sy) * DPR);
+    drawGround(pal);
+    const vx0 = cam.x - 100, vx1 = cam.x + W / scale + 100;
+    for (const o of obs) if (o.x > vx0 && o.x < vx1) drawObstacle(o);
+    for (const c of coins) if (c.x > vx0 && c.x < vx1) drawCoin(c);
+    drawRider();
+    ctx.fillStyle = '#ffffff';
+    for (const p of particles) {
+      ctx.globalAlpha = clamp(p.life / p.max, 0, 1) * 0.9;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // screen space: snowfall, speed lines, popups
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    for (const f of flakes) { ctx.beginPath(); ctx.arc(f.x * W, f.y * H, f.r, 0, TAU); ctx.fill(); }
+
+    const speed = Math.hypot(P.vx, P.vy);
+    if (!reduceMotion && state === 'play' && speed > 900) {
+      const k = clamp((speed - 900) / 700, 0, 1);
+      ctx.strokeStyle = `rgba(255,255,255,${0.25 * k})`; ctx.lineWidth = 2;
+      for (let i = 0; i < 10; i++) {
+        const y = hash(i + Math.floor(clock * 20) * 13) * H;
+        const x = hash(i * 3 + Math.floor(clock * 20)) * W;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 80 * k, y - 30 * k); ctx.stroke();
+      }
+    }
+
+    for (const p of popups) {
+      const a = p.t < 1.2 ? 1 : 1 - (p.t - 1.2) / 0.4;
+      const rise = Math.min(1, p.t * 4);
+      const y = H * 0.3 - rise * 20;
+      ctx.globalAlpha = a; ctx.textAlign = 'center';
+      ctx.font = `800 ${Math.round(clamp(W * 0.06, 26, 40))}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+      ctx.fillStyle = 'rgba(20,35,58,0.35)'; ctx.fillText(p.text, W / 2 + 2, y + 2);
+      ctx.fillStyle = '#ffffff'; ctx.fillText(p.text, W / 2, y);
+      ctx.font = `400 ${Math.round(clamp(W * 0.05, 22, 32))}px "Bowlby One SC", Impact, sans-serif`;
+      ctx.fillStyle = '#ffc531'; ctx.fillText(p.sub, W / 2, y + 36);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- HUD ----------
+  const hud = { dist: -1, speed: -1, coins: -1, score: -1 };
+  function updateHud() {
+    if (state !== 'play') return;
+    const d = Math.floor((P.x - startX) / 10), s = Math.round(Math.hypot(P.vx, P.vy) * KMH), sc = Math.floor(score);
+    if (d !== hud.dist) { hud.dist = d; $('hudDist').innerHTML = d.toLocaleString('de-DE') + '<small>m</small>'; }
+    if (s !== hud.speed) { hud.speed = s; $('hudSpeed').textContent = s + ' km/h'; }
+    if (coinCount !== hud.coins) { hud.coins = coinCount; $('hudCoins').textContent = coinCount; }
+    if (sc !== hud.score) { hud.score = sc; $('hudScore').textContent = sc.toLocaleString('de-DE'); }
+  }
+
+  // ---------- Input ----------
+  function press() {
+    if (state !== 'play') return;
+    if (input.down) return;
+    input.down = true; input.pressT = clock;
+    if (!P.air) jump();
+  }
+  function release() { input.down = false; }
+  cvs.addEventListener('pointerdown', e => { e.preventDefault(); press(); });
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+  addEventListener('blur', release);
+  addEventListener('keydown', e => {
+    if (!['Space', 'ArrowUp', 'KeyW', 'Enter'].includes(e.code)) return;
+    if (e.code !== 'Enter') e.preventDefault();
+    if (e.repeat) return;
+    if (state === 'play') press();
+    else if (state === 'menu' && e.code !== 'Enter') start();
+    else if (state === 'over' && !$('againBtn').disabled && e.code !== 'Enter') start();
+  });
+  addEventListener('keyup', e => { if (['Space', 'ArrowUp', 'KeyW'].includes(e.code)) release(); });
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  $('menuBest').textContent = best ? 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte' : 'Sammle Münzen und lande Backflips für Extrapunkte.';
+
+  // ---------- Loop ----------
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw();
+    updateHud();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
