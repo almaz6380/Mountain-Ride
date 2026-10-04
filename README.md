@@ -1,6 +1,6 @@
 # Mountain Ride
 
-Snowboard-Downhill im Browser. Du fährst einen endlosen Hang hinunter, der mit jedem Meter schneller wird.
+Snowboard-Downhill im Browser, in 3D aus Sicht hinter dem Fahrer. Du fährst einen endlosen Hang frontal hinunter, und es wird mit jedem Meter schneller.
 
 ## Spielen
 
@@ -10,17 +10,18 @@ Snowboard-Downhill im Browser. Du fährst einen endlosen Hang hinunter, der mit 
 
 | Eingabe | Aktion |
 | --- | --- |
-| Tippen / Leertaste / Pfeil hoch | Springen |
-| In der Luft gedrückt halten | Backflip drehen |
-| Loslassen | Brett richtet sich zum Hang aus |
+| Wischen links/rechts · Pfeiltasten · A/D | Lenken |
+| Tippen · Wischen nach oben · Leertaste | Springen |
+| In der Luft wischen oder ← → | Drehen (360°, 720° …) |
 
-Landen musst du mit dem Brett ungefähr parallel zum Hang, sonst gibt's eine Bruchlandung.
+Landen musst du mit dem Brett in Fahrtrichtung, sonst gibt's eine Bruchlandung.
 
 ## Inhalt
 
-- Prozedural erzeugter, endloser Hang mit Kickern (Sprungschanzen)
-- Hindernisse: Felsen, Baumstämme, Schneemänner (ab und zu doppelt hintereinander)
-- Münzen, Backflips, Big Air und perfekte Landungen geben Punkte
-- Tempo steigt mit der Strecke, Kamera zoomt bei hoher Geschwindigkeit raus
+- 3D mit three.js (per CDN geladen), Low-Poly-Look
+- Prozedural erzeugte, endlose Piste mit Kickern (Sprungschanzen)
+- Hindernisse: Bäume, Felsen, Schneemänner, quer liegende Baumstämme
+- Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte
+- Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
 - Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
 - Bestwert wird lokal gespeichert
