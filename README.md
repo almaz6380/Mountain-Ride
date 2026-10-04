@@ -17,19 +17,20 @@ Neu bauen und veröffentlichen: `python3 tools/build-pages.py` erzeugt `dist/`, 
 
 ## Steuerung
 
+Fünf Spuren, ein Wischer = eine Spur.
+
 | Eingabe | Aktion |
 | --- | --- |
-| Wischen links/rechts · Pfeiltasten · A/D | Lenken |
-| Tippen · Wischen nach oben · Leertaste | Springen |
-| In der Luft wischen oder ← → | Drehen (360°, 720° …) |
-
-Landen musst du mit dem Brett in Fahrtrichtung, sonst gibt's eine Bruchlandung.
+| Wischen links/rechts · ← → | Eine Spur wechseln |
+| Wischen hoch · Tippen · Leertaste · ↑ | Springen |
+| Wischen runter · ↓ | Ducken (unter Bannern durch); in der Luft: schnell runter |
+| In der Luft seitlich wischen · ← → | 360°-Drehung |
 
 ## Inhalt
 
 - 3D mit three.js (per CDN geladen), gemalte Grafik aus `assets/` (Fahrer, Hindernisse, Himmel für Tag/Sonnenuntergang/Nacht/Morgen, Pisten-Textur)
 - Prozedural erzeugte, endlose Piste mit Kickern (Sprungschanzen)
-- Hindernisse: Bäume, Felsen, Schneemänner, quer liegende Baumstämme
+- Hindernisse: Bäume, Felsen, Schneemänner, Baumstämme (drüberspringen) und Banner-Tore (drunter durchducken)
 - Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte
 - Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
 - Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
