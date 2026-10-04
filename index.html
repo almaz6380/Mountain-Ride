@@ -73,7 +73,7 @@ body {
 .title span { color: var(--jacket); display: block; }
 .sub { margin: 0; font-size: 19px; font-weight: 500; opacity: 0.9; text-wrap: balance; }
 .controls { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; text-align: left; font-size: 17px; }
-.controls li { display: grid; grid-template-columns: 6.5em 1fr; gap: 10px; align-items: baseline; }
+.controls li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; }
 .key {
   font-weight: 800; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--ink); background: var(--snow); border-radius: 6px; padding: 3px 7px; justify-self: start;
@@ -124,9 +124,10 @@ body {
     <h1 class="title">Mountain<span>Ride</span></h1>
     <p class="sub">Brett anschnallen und runter. Je weiter du kommst, desto schneller wird der Hang.</p>
     <ul class="controls">
-      <li><span class="key">Wischen</span><span>Lenken (oder Pfeiltasten ← →)</span></li>
-      <li><span class="key">Tippen</span><span>Springen (oder Leertaste)</span></li>
-      <li><span class="key">In der Luft</span><span>Seitlich wischen oder ← → für eine 360°-Drehung</span></li>
+      <li><span class="key">← →</span><span>Wischen: eine Spur nach links oder rechts</span></li>
+      <li><span class="key">↑</span><span>Wischen oder Tippen: springen</span></li>
+      <li><span class="key">↓</span><span>Wischen: ducken, unter Bannern durch</span></li>
+      <li><span class="key">In der Luft</span><span>Seitlich wischen für eine 360°-Drehung</span></li>
     </ul>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
     <p class="best-line" id="menuBest"></p>
@@ -162,7 +163,9 @@ body {
   const GRAV = 25;
   const JUMP = 9.5;
   const SPIN_RATE = 13;        // rad/s while steering in the air
-  const TRACK = 13;            // rider may move within ±TRACK
+  const LANE_W = 3.2;          // five lanes, one swipe = one lane
+  const laneX = l => (l - 2) * LANE_W;
+  const TRACK = 8.5;           // piste edge (poles, forest beyond)
   const KMH = 3.6;
   const TAU = Math.PI * 2;
 
@@ -442,7 +445,7 @@ body {
 
   function resetRider(d) {
     P = { d, x: 0, tx: 0, y: groundAt(d, 0), vy: 0, v: 12, vxAir: 0, air: false, airT: 0, yaw: 0, spin: 0, carve: 0, lean: 0, onRamp: null, crashed: false, lastX: 0,
-      vx: 0, leanS: 0, pose: 'rider-straight', poseT: 0, sq: 0, sqv: 0, camRoll: 0 };
+      vx: 0, lane: 2, duckT: 0, duckS: 0, ducking: false, leanS: 0, pose: 'rider-straight', poseT: 0, sq: 0, sqv: 0, camRoll: 0 };
   }
 
   const OB = {
@@ -450,10 +453,33 @@ body {
     rock:    { hw: 0.75, hd: 0.7, h: 1.05, size: 1.5, reason: 'Gegen einen Felsen gekracht.' },
     snowman: { hw: 0.6, hd: 0.6, h: 2.4, size: 2.6, reason: 'Einen Schneemann umgefahren.' },
     log:     { hw: 1.45, hd: 0.5, h: 0.75, size: 2.0, reason: 'Über den Baumstamm gestolpert. Spring drüber!' },
+    gate:    { hw: 1.5, hd: 0.4, h: 2.2, reason: 'Gegen das Banner gefahren. Wisch nach unten zum Ducken!' },
   };
+  // banner gate across one lane: duck to pass underneath
+  const gateMat = new THREE.MeshLambertMaterial({ color: 0xe5396f });
+  const gateStripe = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x2c3f68 });
+  const gatePole = new THREE.CylinderGeometry(0.07, 0.07, 2.4, 6);
+  const gateBanner = new THREE.BoxGeometry(LANE_W - 0.2, 0.62, 0.06);
+  const gateBand = new THREE.BoxGeometry(LANE_W - 0.2, 0.12, 0.07);
+  function gateMesh() {
+    const grp = new THREE.Group();
+    for (const s of [-1, 1]) { const pl = new THREE.Mesh(gatePole, poleMat); pl.position.set(s * (LANE_W / 2 - 0.1), 1.2, 0); grp.add(pl); }
+    const b = new THREE.Mesh(gateBanner, gateMat); b.position.y = 1.72; grp.add(b);
+    const st = new THREE.Mesh(gateBand, gateStripe); st.position.y = 1.72; grp.add(st);
+    return grp;
+  }
 
   function addEnt(type, d, x, opts = {}) {
     const spec = OB[type], s = opts.s || 1;
+    if (type === 'gate') {
+      const mesh = gateMesh();
+      mesh.position.set(x, baseH(d, x), -d);
+      scene.add(mesh);
+      const e = { type, d, x, hw: spec.hw, hd: spec.hd, h: spec.h, deco: false, mesh };
+      ents.push(e);
+      return e;
+    }
     const look = type === 'tree' ? (opts.round ?? Math.random() < 0.45 ? 'tree-round' : 'tree-tall') : type;
     const hgt = spec.size * s * (look === 'tree-round' ? 0.75 : 1);
     const mesh = new THREE.Sprite(SM[look]);
@@ -473,7 +499,7 @@ body {
     coins.push({ d, x, y, mesh: m, taken: false, tt: 0 });
   }
   function addRamp(d, x) {
-    const r = { d0: d, d1: d + rand(6, 8), x, w: rand(4.5, 6), h: rand(1.4, 2.1) };
+    const r = { d0: d, d1: d + rand(6, 8), x, w: LANE_W - 0.3, h: rand(1.4, 2.1) };
     r.mesh = buildRampMesh(r);
     scene.add(r.mesh);
     ramps.push(r);
@@ -491,36 +517,43 @@ body {
 
   function difficulty() { return clamp((P.d - startD) / 3000, 0, 1); }
 
+  function pickLanes(k) {
+    const a = [0, 1, 2, 3, 4];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a.slice(0, Math.min(k, 4));   // always leave at least one lane open
+  }
   function spawnRow(d) {
     const diff = difficulty();
     const roll = Math.random();
-    if (roll < 0.13) {
-      const r = addRamp(d, rand(-8, 8));
+    if (roll < 0.12) {
+      const r = addRamp(d, laneX(Math.floor(Math.random() * 5)));
       return r.d1 - d + 22;
     }
-    if (roll < 0.25) {
-      const n = 1 + Math.floor(Math.random() * (1.5 + diff * 2.5));
-      const x0 = rand(-TRACK + 1.5, TRACK - 1.5 - (n - 1) * 3);
-      for (let k = 0; k < n; k++) addEnt('log', d, x0 + k * 3);
-      for (let i = 0; i < n * 2; i++) addCoin(d, x0 - 0.75 + i * 1.5, baseH(d, x0) + 2.4);
+    if (roll < 0.24) {   // logs: jump over or switch lane
+      for (const l of pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2.5)))) {
+        addEnt('log', d, laneX(l));
+        addCoin(d, laneX(l), baseH(d, laneX(l)) + 2.4);
+      }
       return lerp(18, 12, diff);
     }
-    if (roll < 0.37) {
-      const x = rand(-10, 10), curve = rand(-0.25, 0.25);
-      for (let i = 0; i < 7; i++) addCoin(d + i * 3, x + curve * i * i * 0.3, baseH(d + i * 3, x) + 0.9);
+    if (roll < 0.36) {   // banner gates: duck under or switch lane
+      for (const l of pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2)))) {
+        addEnt('gate', d, laneX(l));
+        addCoin(d, laneX(l), baseH(d, laneX(l)) + 0.7);
+      }
+      return lerp(18, 12, diff);
+    }
+    if (roll < 0.48) {   // coin line in one lane
+      const x = laneX(Math.floor(Math.random() * 5));
+      for (let i = 0; i < 7; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
       return 24;
     }
-    const n = 1 + Math.floor(Math.random() * (2 + diff * 2.5));
     const types = diff < 0.1 ? ['tree', 'rock'] : ['tree', 'tree', 'rock', 'snowman'];
-    const used = [];
-    for (let k = 0; k < n; k++) {
-      let x, tries = 0;
-      do { x = rand(-TRACK + 1, TRACK - 1); tries++; } while (used.some(u => Math.abs(u - x) < 4) && tries < 12);
-      used.push(x);
+    for (const l of pickLanes(1 + Math.floor(Math.random() * (2 + diff * 2.5)))) {
       const type = types[Math.floor(Math.random() * types.length)];
-      addEnt(type, d + rand(-1.5, 1.5), x, type === 'tree' ? { s: rand(0.85, 1.2) } : {});
+      addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
     }
-    return lerp(15, 8.5, diff) + rand(0, 4);
+    return lerp(15, 9, diff) + rand(0, 4);
   }
 
   function spawnDeco(d) {
@@ -799,8 +832,21 @@ body {
     if (left / SPIN_RATE > timeToLand() - 0.04) return;
     P.spinTarget -= dir * TAU;
   }
+  function changeLane(dir) {
+    if (state !== 'play') return;
+    if (P.air) { P.spinChain = dir; startSpin(dir); return; }   // sideways in the air = 360 spin
+    const l = clamp(P.lane + dir, 0, 4);
+    if (l === P.lane) return;
+    P.lane = l; P.tx = laneX(l);
+  }
+  function duck() {
+    if (state !== 'play') return;
+    if (P.air) P.vy = Math.min(P.vy, P.v * slopeAt(P.d, P.x) - 14);   // dive back to the snow
+    P.duckT = 0.75;
+  }
   function jump() {
     if (P.air || state !== 'play') return;
+    P.duckT = 0;
     takeOff(P.v * slopeAt(P.d, P.x) + JUMP);
     P.y += 0.05;
     P.sq = -0.12; P.sqv = 4.5;   // crouch, then spring up
@@ -838,15 +884,12 @@ body {
   });
   cvs.addEventListener('pointermove', e => {
     const g = input.drag;
-    if (!g || g.id !== e.pointerId || state !== 'play') return;
-    const dx = e.clientX - g.lx; g.lx = e.clientX;
-    if (P.air) {
-      // a clear sideways swipe in the air starts a spin; small finger wobble from steering does nothing
-      P.airDrag += dx;
-      if (Math.abs(P.airDrag) > 40) { startSpin(Math.sign(P.airDrag)); P.airDrag = 0; }
-    }
-    else P.tx = clamp(P.tx + dx * (38 / Math.min(W, 640)), -TRACK, TRACK);
-    if (!g.jumped && g.y0 - e.clientY > 45 && performance.now() - g.t0 < 350) { g.jumped = true; jump(); }
+    if (!g || g.id !== e.pointerId || state !== 'play' || g.jumped) return;
+    const dx = e.clientX - g.x0, dy = g.y0 - e.clientY;
+    const TH = Math.max(26, Math.min(W, H) * 0.06);
+    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) { g.jumped = true; changeLane(Math.sign(dx)); }
+    else if (dy > TH && dy > Math.abs(dx)) { g.jumped = true; jump(); }
+    else if (-dy > TH && -dy > Math.abs(dx)) { g.jumped = true; duck(); }
   });
   function endDrag(e) {
     const g = input.drag;
@@ -862,10 +905,10 @@ body {
   addEventListener('keydown', e => {
     if (KEYS[e.code]) {
       input[KEYS[e.code]] = true; e.preventDefault();
-      // a fresh arrow press in the air starts a spin; an arrow already held for steering does not
-      if (P.air && !e.repeat) { const dir = KEYS[e.code] === 'right' ? 1 : -1; P.spinChain = dir; startSpin(dir); }
+      if (!e.repeat) changeLane(KEYS[e.code] === 'right' ? 1 : -1);
       return;
     }
+    if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !e.repeat) { e.preventDefault(); duck(); return; }
     if (e.code === 'KeyM') { Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); return; }
     if (!['Space', 'ArrowUp', 'KeyW'].includes(e.code)) return;
     e.preventDefault();
@@ -903,16 +946,13 @@ body {
         const s = slopeAt(P.d, P.x);
         P.v += ((target - P.v) * 0.55 + (-s - 0.32) * 18) * dt;
         P.v = Math.max(8, P.v);
-        const steer = steerAxis();
-        const lat = 15 + P.v * 0.4;                       // top sideways speed
-        if (steer) { P.tx = clamp(P.x + steer * 6, -TRACK, TRACK); P.keySteer = true; }   // keys: keep a target just ahead of the board
-        else if (P.keySteer) { P.tx = clamp(P.x + P.vx * 0.1, -TRACK, TRACK); P.keySteer = false; }   // key released: glide out of the turn
+        const lat = 18 + P.v * 0.4;                       // top sideways speed
         // critically damped spring towards the target lane: eases in and out of every turn
         const K = 120, C = 2 * Math.sqrt(K);
         P.vx += (K * (P.tx - P.x) - C * P.vx) * dt;
         P.vx = clamp(P.vx, -lat, lat);
         P.x += P.vx * dt;
-        if (P.x < -TRACK || P.x > TRACK) { P.x = clamp(P.x, -TRACK, TRACK); P.vx *= -0.2; }
+        
         P.v -= Math.abs(P.vx) * 0.012 * P.v * dt;       // carving costs a little speed
         P.d += P.v * dt;
         const r = rampUnder(P.d, P.x);
@@ -941,6 +981,9 @@ body {
       }
     }
 
+    P.duckT -= dt;
+    P.ducking = P.duckT > 0 && !P.air && !P.crashed;
+    P.duckS += ((P.ducking ? 1 : 0) - P.duckS) * Math.min(1, dt * 18);
     // body language: smoothed lean, pose with hysteresis, squash & stretch spring
     const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 10, -1, 1);
     P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
@@ -962,6 +1005,10 @@ body {
       for (const e of ents) {
         if (e.deco) continue;
         const along = P.x - e.x, across = P.d - e.d;
+        if (e.type === 'gate') {
+          if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw - 0.2 && !P.ducking && P.y - baseH(e.d, e.x) < e.h) { crash(OB.gate.reason); break; }
+          continue;
+        }
         if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h) { crash(OB[e.type].reason); break; }
       }
       for (const c of coins) {
@@ -1027,7 +1074,7 @@ body {
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
     if (riderMat.map !== tex) riderMat.map = tex;
-    rider.scale.set(rh * ar * (1 - sq * 0.5), rh * (1 + sq + bob), 1);
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 + 0.12 * P.duckS), rh * (1 + sq + bob) * (1 - 0.4 * P.duckS), 1);
     rider.center.x = cx;
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
