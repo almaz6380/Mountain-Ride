@@ -307,9 +307,11 @@ body {
   }
 
   // ---------- Rider ----------
-  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.5, transparent: false });
+  // drawn last and without depth test, so neither the snow nor the shadow can cover the board
+  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.5, transparent: true, depthTest: false, depthWrite: false });
   spriteMats.push(riderMat);
   const rider = new THREE.Sprite(riderMat);
+  rider.renderOrder = 10;
   rider.center.set(0.5, 0.04);
   scene.add(rider);
 
