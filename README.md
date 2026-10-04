@@ -1,10 +1,12 @@
 # Mountain Ride
 
+![Mountain Ride](assets/key-art.jpg)
+
 Snowboard-Downhill im Browser, in 3D aus Sicht hinter dem Fahrer. Du fährst einen endlosen Hang frontal hinunter, und es wird mit jedem Meter schneller.
 
 ## Spielen
 
-`index.html` im Browser öffnen – keine Installation, kein Build. Läuft auf Handy und Desktop.
+Über einen Webserver öffnen (z. B. `python3 -m http.server` im Ordner, dann http://localhost:8000). Direkt per Doppelklick lädt der Browser die Bilder nicht. Läuft auf Handy und Desktop.
 
 ## Steuerung
 
@@ -18,7 +20,7 @@ Landen musst du mit dem Brett in Fahrtrichtung, sonst gibt's eine Bruchlandung.
 
 ## Inhalt
 
-- 3D mit three.js (per CDN geladen), Low-Poly-Look
+- 3D mit three.js (per CDN geladen), gemalte Grafik aus `assets/` (Fahrer, Hindernisse, Himmel für Tag/Sonnenuntergang/Nacht/Morgen, Pisten-Textur)
 - Prozedural erzeugte, endlose Piste mit Kickern (Sprungschanzen)
 - Hindernisse: Bäume, Felsen, Schneemänner, quer liegende Baumstämme
 - Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte

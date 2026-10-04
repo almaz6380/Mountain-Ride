@@ -1,4 +1,6 @@
 <title>Mountain Ride</title>
+<link rel="icon" href="assets/icon-180.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap">
@@ -30,7 +32,7 @@ body {
   top: calc(env(safe-area-inset-top, 0px) + 12px);
   display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
   pointer-events: none; font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 2px rgba(20, 35, 58, 0.45);
+  text-shadow: 0 1px 3px rgba(20, 35, 58, 0.75), 0 0 12px rgba(20, 35, 58, 0.35);
 }
 .hud-block { display: grid; gap: 2px; }
 .hud-block.right { text-align: right; justify-items: end; }
@@ -171,74 +173,45 @@ body {
   addEventListener('resize', resize);
   resize();
 
-  // sky gradient as background texture
-  const skyCanvas = document.createElement('canvas');
-  skyCanvas.width = 2; skyCanvas.height = 256;
-  const skyCtx = skyCanvas.getContext('2d');
-  const skyTex = new THREE.CanvasTexture(skyCanvas);
-  scene.background = skyTex;
-
-  // ---------- Materials & geometry helpers ----------
-  const vcMat = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 0 });
-  const vcMatDouble = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 0, side: THREE.DoubleSide });
-  const M4 = () => new THREE.Matrix4();
-  function tr(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
-    return M4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
+  // ---------- Assets ----------
+  const loader = new THREE.TextureLoader();
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  function tex(name, opts = {}) {
+    const t = loader.load('assets/' + name, img => { if (opts.onload) opts.onload(t); });
+    t.anisotropy = opts.aniso ? maxAniso : 1;
+    if (opts.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
+    return t;
   }
-  function merge(parts) {
-    const pos = [], col = [];
-    for (const p of parts) {
-      const g = p.geo.index ? p.geo.toNonIndexed() : p.geo.clone();
-      if (p.m) g.applyMatrix4(p.m);
-      const a = g.attributes.position.array;
-      const c = new THREE.Color(p.color);
-      for (let i = 0; i < a.length; i += 3) { pos.push(a[i], a[i + 1], a[i + 2]); col.push(c.r, c.g, c.b); }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.computeVertexNormals();
-    return g;
+  // aspect ratios (w / h) of the cut-out sprites
+  const ASPECT = { 'rider-straight': 367 / 345, 'rider-left': 313 / 343, 'rider-air': 333 / 312, 'rider-crash': 419 / 270,
+    'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
+  const spriteMats = [];
+  function spriteMat(name) {
+    const m = new THREE.SpriteMaterial({ map: tex(name + '.png'), alphaTest: 0.5, transparent: false });
+    spriteMats.push(m);
+    return m;
   }
+  const SM = {};
+  for (const n of ['tree-tall', 'tree-round', 'rock', 'log', 'snowman', 'coin', 'flag']) SM[n] = spriteMat(n);
+  const riderTex = {};
+  for (const n of ['rider-straight', 'rider-left', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
 
-  const GEO = {
-    tree: merge([
-      { geo: new THREE.CylinderGeometry(0.22, 0.3, 1.2, 5), m: tr(0, 0.6, 0), color: 0x6b4428 },
-      { geo: new THREE.ConeGeometry(2.0, 2.6, 7), m: tr(0, 2.2, 0), color: 0x2c5a4c },
-      { geo: new THREE.ConeGeometry(1.6, 2.2, 7), m: tr(0, 3.4, 0, 0, 0.4), color: 0x31655a },
-      { geo: new THREE.ConeGeometry(1.1, 1.8, 7), m: tr(0, 4.5, 0, 0, 0.8), color: 0x2c5a4c },
-      { geo: new THREE.ConeGeometry(0.55, 0.7, 7), m: tr(0, 5.2, 0, 0, 0.8), color: 0xf4f8fc },
-      { geo: new THREE.ConeGeometry(1.25, 0.5, 7), m: tr(0, 3.45, 0, 0, 0.4), color: 0xeaf2fa },
-    ]),
-    rock: merge([
-      { geo: new THREE.IcosahedronGeometry(1, 0), m: tr(0, 0.35, 0, 0.3, 0.5, 0, 1.25, 0.85, 1.05), color: 0x66758c },
-      { geo: new THREE.IcosahedronGeometry(0.7, 0), m: tr(0.1, 0.95, 0, 0, 0.2, 0, 1.1, 0.35, 0.9), color: 0xf4f8fc },
-    ]),
-    snowman: merge([
-      { geo: new THREE.SphereGeometry(0.8, 9, 7), m: tr(0, 0.7, 0), color: 0xffffff },
-      { geo: new THREE.SphereGeometry(0.6, 9, 7), m: tr(0, 1.75, 0), color: 0xffffff },
-      { geo: new THREE.SphereGeometry(0.42, 9, 7), m: tr(0, 2.55, 0), color: 0xffffff },
-      { geo: new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), m: tr(0, 2.86, 0), color: 0x14233a },
-      { geo: new THREE.CylinderGeometry(0.28, 0.28, 0.42, 10), m: tr(0, 3.08, 0), color: 0x14233a },
-      { geo: new THREE.ConeGeometry(0.08, 0.45, 6), m: tr(0, 2.55, 0.55, Math.PI / 2), color: 0xff7a2a },
-      { geo: new THREE.BoxGeometry(0.08, 0.08, 0.04), m: tr(-0.14, 2.68, 0.38), color: 0x14233a },
-      { geo: new THREE.BoxGeometry(0.08, 0.08, 0.04), m: tr(0.14, 2.68, 0.38), color: 0x14233a },
-      { geo: new THREE.CylinderGeometry(0.62, 0.62, 0.16, 10), m: tr(0, 2.18, 0), color: 0xe5396f },
-      { geo: new THREE.CylinderGeometry(0.04, 0.04, 1.2, 4), m: tr(-0.9, 1.9, 0, 0, 0, 0.9), color: 0x6b4428 },
-      { geo: new THREE.CylinderGeometry(0.04, 0.04, 1.2, 4), m: tr(0.9, 1.9, 0, 0, 0, -0.9), color: 0x6b4428 },
-    ]),
-    log: merge([
-      { geo: new THREE.CylinderGeometry(0.45, 0.45, 1, 8), m: tr(0, 0.42, 0, 0, 0, Math.PI / 2), color: 0x7a4a2a },
-      { geo: new THREE.BoxGeometry(0.9, 0.12, 0.5), m: tr(0, 0.88, 0), color: 0xf4f8fc },
-    ]),
-    pole: merge([
-      { geo: new THREE.CylinderGeometry(0.06, 0.06, 1.8, 5), m: tr(0, 0.9, 0), color: 0xff6a2b },
-      { geo: new THREE.BoxGeometry(0.5, 0.35, 0.03), m: tr(0, 1.6, 0), color: 0xff6a2b },
-    ]),
-  };
-  const coinGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.1, 16);
-  coinGeo.rotateX(Math.PI / 2);
-  const coinMat = new THREE.MeshPhongMaterial({ color: 0xffc531, emissive: 0x6b4a00, shininess: 60, specular: 0xffffff });
+  // painted sky + mountains: two camera-locked planes that cross-fade between times of day
+  const SKY_AR = 1584 / 672;
+  const SKY_HORIZON = 0.8;   // fraction from the image top where the valley mist sits
+  const skyTex = { day: tex('sky-day.jpg'), sunset: tex('sky-sunset.jpg'), night: tex('sky-night.jpg'), dawn: tex('sky-dawn.jpg') };
+  const SKY_D = 550;
+  function skyPlane(order) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: skyTex.day, fog: false, depthWrite: false, transparent: order > -20 }));
+    m.position.z = -SKY_D; m.renderOrder = order; m.frustumCulled = false;
+    camera.add(m);
+    return m;
+  }
+  const skyA = skyPlane(-20), skyB = skyPlane(-19);
+  scene.add(camera);
+  scene.background = new THREE.Color(0xe7e8e3);
+
+  const vcMatDouble = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
 
   // ---------- Terrain ----------
   let ramps = [];
@@ -263,7 +236,7 @@ body {
   for (let j = 0; j < GL; j++) for (let i = 0; i < GX; i++) {
     const x = (i - (GX - 1) / 2) * SX;
     const off = clamp((Math.abs(x) - TRACK) / 8, 0, 1);
-    const c = new THREE.Color(0xf2f7fd).lerp(new THREE.Color(0xd3e2f2), off);
+    const c = new THREE.Color(0xffffff).lerp(new THREE.Color(0xdde6f2), off);
     const k = (j * GX + i) * 3;
     gCol[k] = c.r; gCol[k + 1] = c.g; gCol[k + 2] = c.b;
     if (i < GX - 1 && j < GL - 1) {
@@ -271,13 +244,14 @@ body {
       gIdx.push(a, b, c2, b, d2, c2);
     }
   }
-  const gBase = gCol.slice();
-  function noise2(d, x) { const s = Math.sin(d * 12.9898 + x * 78.233) * 43758.5453; return s - Math.floor(s); }
+  const gUv = new Float32Array(GX * GL * 2);
   const groundGeo = new THREE.BufferGeometry();
+  groundGeo.setAttribute('uv', new THREE.BufferAttribute(gUv, 2));
   groundGeo.setAttribute('position', new THREE.BufferAttribute(gPos, 3));
   groundGeo.setAttribute('color', new THREE.BufferAttribute(gCol, 3));
   groundGeo.setIndex(gIdx);
-  const ground = new THREE.Mesh(groundGeo, vcMatDouble);
+  const snowTex = tex('snow.jpg', { repeat: true, aniso: true });
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: snowTex, vertexColors: true, side: THREE.DoubleSide }));
   ground.frustumCulled = false;
   scene.add(ground);
   let groundBase = null;
@@ -290,19 +264,19 @@ body {
       for (let i = 0; i < GX; i++) {
         const x = (i - (GX - 1) / 2) * SX, k = (j * GX + i) * 3;
         gPos[k] = x; gPos[k + 1] = baseH(dd, x); gPos[k + 2] = -dd;
-        const n = 1 - noise2(dd, x) * 0.12;
-        gCol[k] = gBase[k] * n; gCol[k + 1] = gBase[k + 1] * n; gCol[k + 2] = gBase[k + 2] * (1 - (1 - n) * 0.4);
+        const u = (j * GX + i) * 2;
+        gUv[u] = x / 12; gUv[u + 1] = dd / 12;
       }
     }
     groundGeo.attributes.position.needsUpdate = true;
-    groundGeo.attributes.color.needsUpdate = true;
+    groundGeo.attributes.uv.needsUpdate = true;
     groundGeo.computeVertexNormals();
     groundGeo.computeBoundingSphere();
   }
 
   function buildRampMesh(r) {
     const nx = 4, nz = 10, pos = [], col = [];
-    const top = new THREE.Color(0xe8f2fc), wall = new THREE.Color(0xb3cce6), lip = new THREE.Color(0xe5396f);
+    const top = new THREE.Color(0xf4f8fd), wall = new THREE.Color(0xc5d6ea), lip = new THREE.Color(0xe5396f);
     const P = (x, d, lift) => [x, baseH(d, x) + lift, -d];
     const tri = (a, b, c, color) => { pos.push(...a, ...b, ...c); for (let i = 0; i < 3; i++) col.push(color.r, color.g, color.b); };
     const len = r.d1 - r.d0, x0 = r.x - r.w / 2;
@@ -330,50 +304,11 @@ body {
     return new THREE.Mesh(g, vcMatDouble);
   }
 
-  // distant mountains, they travel with the rider and ignore fog
-  const mountains = new THREE.Group();
-  const mtnMat = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 0, fog: false });
-  for (let i = 0; i < 16; i++) {
-    const r = rand(55, 90), h = rand(95, 150);
-    const g = merge([
-      { geo: new THREE.ConeGeometry(r, h, 6), m: tr(0, h / 2, 0, 0, rand(0, 3)), color: 0x7f9ec6 },
-      { geo: new THREE.ConeGeometry(r * 0.36, h * 0.36, 6), m: tr(0, h * 0.82 + 0.5, 0, 0, rand(0, 3)), color: 0xf4f8fc },
-    ]);
-    const m = new THREE.Mesh(g, mtnMat);
-    m.position.set((i - 7.5) * 46 + rand(-15, 15), rand(-150, -135), -rand(380, 460));
-    mountains.add(m);
-  }
-  scene.add(mountains);
-
   // ---------- Rider ----------
-  function box(w, h, d, color, x, y, z) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshPhongMaterial({ color, flatShading: true, shininess: 10 }));
-    m.position.set(x, y, z);
-    return m;
-  }
-  const rider = new THREE.Group();          // position
-  const pitchG = new THREE.Group();         // follows the slope
-  const yawG = new THREE.Group();           // carving + spins
-  const rollG = new THREE.Group();          // lean into turns
-  rider.add(pitchG); pitchG.add(yawG); yawG.add(rollG);
-  const board = box(0.34, 0.06, 1.65, 0xe5396f, 0, 0.03, 0);
-  const body = new THREE.Group();
-  body.add(
-    box(0.17, 0.55, 0.17, 0x2c3f68, 0, 0.34, 0.24),
-    box(0.17, 0.55, 0.17, 0x34497a, 0, 0.34, -0.24),
-    box(0.3, 0.62, 0.46, 0xffc531, 0, 0.92, 0),
-    box(0.12, 0.12, 0.62, 0xffc531, 0, 1.1, 0.5),
-    box(0.12, 0.12, 0.62, 0xffc531, 0, 1.1, -0.5),
-    box(0.33, 0.1, 0.48, 0xe5396f, 0, 1.25, 0)
-  );
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), new THREE.MeshPhongMaterial({ color: 0xf2c7a5, flatShading: true }));
-  head.position.set(0, 1.45, 0);
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8, 0, TAU, 0, Math.PI / 2), new THREE.MeshPhongMaterial({ color: 0x14233a, flatShading: true }));
-  helmet.position.set(0, 1.47, 0);
-  const goggles = box(0.3, 0.08, 0.1, 0x7ad3e8, 0, 1.47, -0.14);
-  const scarf = box(0.06, 0.08, 0.6, 0xe5396f, 0.05, 1.27, 0.45);
-  body.add(head, helmet, goggles, scarf);
-  rollG.add(board, body);
+  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.5, transparent: false });
+  spriteMats.push(riderMat);
+  const rider = new THREE.Sprite(riderMat);
+  rider.center.set(0.5, 0.04);
   scene.add(rider);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x3a5478, transparent: true, opacity: 0.3, depthWrite: false }));
@@ -381,6 +316,13 @@ body {
   scene.add(shadow);
 
   // ---------- Particles ----------
+  const dotCanvas = document.createElement('canvas');
+  dotCanvas.width = dotCanvas.height = 32;
+  const dctx = dotCanvas.getContext('2d');
+  const dg = dctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  dg.addColorStop(0, 'rgba(255,255,255,1)'); dg.addColorStop(0.55, 'rgba(255,255,255,0.9)'); dg.addColorStop(1, 'rgba(255,255,255,0)');
+  dctx.fillStyle = dg; dctx.fillRect(0, 0, 32, 32);
+  const dotTex = new THREE.CanvasTexture(dotCanvas);
   const SPRAY = 260;
   const sprayPos = new Float32Array(SPRAY * 3).fill(-9999);
   const sprayVel = new Float32Array(SPRAY * 3);
@@ -388,7 +330,7 @@ body {
   let sprayHead = 0;
   const sprayGeo = new THREE.BufferGeometry();
   sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
-  const spray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.16, transparent: true, opacity: 0.9, depthWrite: false }));
+  const spray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ map: dotTex, color: 0xffffff, size: 0.22, transparent: true, opacity: 0.95, depthWrite: false }));
   spray.frustumCulled = false;
   scene.add(spray);
   function emit(x, y, z, n, spread, vx, vy, vz) {
@@ -407,16 +349,16 @@ body {
   for (let i = 0; i < FLAKES; i++) { flakeOff[i * 3] = rand(-30, 30); flakeOff[i * 3 + 1] = rand(-5, 25); flakeOff[i * 3 + 2] = rand(-60, 10); }
   const flakeGeo = new THREE.BufferGeometry();
   flakeGeo.setAttribute('position', new THREE.BufferAttribute(flakePos, 3));
-  const flakes = new THREE.Points(flakeGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.85, depthWrite: false }));
+  const flakes = new THREE.Points(flakeGeo, new THREE.PointsMaterial({ map: dotTex, color: 0xffffff, size: 0.18, transparent: true, opacity: 0.9, depthWrite: false }));
   flakes.frustumCulled = false;
   scene.add(flakes);
 
   // ---------- Day cycle ----------
   const PAL = {
-    day:    { top: '#4f86cf', bot: '#d6e9f6', fog: '#d6e9f6', hemi: 0.72, sun: '#ffffff', sunI: 0.6, mtn: 1.0 },
-    sunset: { top: '#2f4472', bot: '#f4a27c', fog: '#e9b49c', hemi: 0.65, sun: '#ffb27a', sunI: 0.7, mtn: 0.8 },
-    night:  { top: '#0b1530', bot: '#2c3f68', fog: '#2c3f68', hemi: 0.45, sun: '#9db4ff', sunI: 0.35, mtn: 0.45 },
-    dawn:   { top: '#4a5f97', bot: '#f6c9a0', fog: '#efcdb4', hemi: 0.65, sun: '#ffd2a8', sunI: 0.65, mtn: 0.85 },
+    day:    { sky: 'day',    fog: '#e7e8e3', hemi: 0.75, sun: '#ffffff', sunI: 0.6,  tint: '#ffffff' },
+    sunset: { sky: 'sunset', fog: '#e5b9ba', hemi: 0.65, sun: '#ffb27a', sunI: 0.65, tint: '#ffe2d6' },
+    night:  { sky: 'night',  fog: '#2a426a', hemi: 0.42, sun: '#9db4ff', sunI: 0.3,  tint: '#8796bd' },
+    dawn:   { sky: 'dawn',   fog: '#cccbd8', hemi: 0.65, sun: '#ffd2a8', sunI: 0.6,  tint: '#f1e9f2' },
   };
   const CYCLE = [PAL.day, PAL.sunset, PAL.night, PAL.dawn, PAL.day];
   const cA = new THREE.Color(), cB = new THREE.Color();
@@ -425,21 +367,35 @@ body {
   function applyPalette(meters) {
     const p = (Math.max(0, meters) / 1500) % 4, i = Math.floor(p), raw = p - i;
     const t = raw < 0.6 ? 0 : (raw - 0.6) / 0.4;
-    const key = Math.round(p * 200);
+    const key = Math.round(p * 300);
     if (key === lastSky) return;
     lastSky = key;
     const a = CYCLE[i], b = CYCLE[i + 1];
-    const top = mixC(a.top, b.top, t), bot = mixC(a.bot, b.bot, t), fog = mixC(a.fog, b.fog, t);
-    const g = skyCtx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, '#' + top.getHexString()); g.addColorStop(0.62, '#' + bot.getHexString()); g.addColorStop(1, '#' + bot.getHexString());
-    skyCtx.fillStyle = g; skyCtx.fillRect(0, 0, 2, 256);
-    skyTex.needsUpdate = true;
+    skyA.material.map = skyTex[a.sky]; skyB.material.map = skyTex[b.sky];
+    skyB.material.opacity = t; skyB.visible = t > 0.001;
+    const fog = mixC(a.fog, b.fog, t);
     scene.fog.color.copy(fog);
+    scene.background.copy(fog);
     hemi.intensity = lerp(a.hemi, b.hemi, t);
     sun.color.copy(mixC(a.sun, b.sun, t));
     sun.intensity = lerp(a.sunI, b.sunI, t);
-    mtnMat.color.setScalar(lerp(a.mtn, b.mtn, t));
-    document.body.style.background = '#' + top.getHexString();
+    const tint = mixC(a.tint, b.tint, t);
+    for (const m of spriteMats) m.color.copy(tint);
+    document.body.style.background = '#' + fog.getHexString();
+  }
+
+  // keep the painted horizon lined up with the far end of the slope
+  const horizonV = new THREE.Vector3();
+  function placeSky() {
+    horizonV.set(P.x, baseH(P.d + 190, P.x), -(P.d + 190)).project(camera);
+    const h = 2 * SKY_D * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), w = h * camera.aspect;
+    const ndcY = clamp(horizonV.y, -0.6, 0.9);
+    const yH = ndcY * h / 2;
+    // the image must reach the top of the screen and span the full width
+    let ph = Math.max(h * 0.75, w / SKY_AR, (h / 2 - yH) / SKY_HORIZON * 1.02);
+    const pw = ph * SKY_AR;
+    const cy = yH + (SKY_HORIZON - 0.5) * ph;
+    for (const m of [skyA, skyB]) { m.scale.set(pw, ph, 1); m.position.set(0, cy, -SKY_D); }
   }
 
   // ---------- Best score ----------
@@ -460,26 +416,28 @@ body {
   }
 
   const OB = {
-    tree:    { hw: 0.9, hd: 0.9, h: 6, reason: 'Gegen einen Baum gefahren.' },
-    rock:    { hw: 1.1, hd: 0.9, h: 1.05, reason: 'Gegen einen Felsen gekracht.' },
-    snowman: { hw: 0.75, hd: 0.75, h: 3.1, reason: 'Einen Schneemann umgefahren.' },
-    log:     { hw: 0, hd: 0.5, h: 0.85, reason: 'Über den Baumstamm gestolpert. Spring drüber!' },
+    tree:    { hw: 0.8, hd: 0.8, h: 6, size: 6.5, reason: 'Gegen einen Baum gefahren.' },
+    rock:    { hw: 0.75, hd: 0.7, h: 1.05, size: 1.5, reason: 'Gegen einen Felsen gekracht.' },
+    snowman: { hw: 0.6, hd: 0.6, h: 2.4, size: 2.6, reason: 'Einen Schneemann umgefahren.' },
+    log:     { hw: 1.45, hd: 0.5, h: 0.75, size: 2.0, reason: 'Über den Baumstamm gestolpert. Spring drüber!' },
   };
 
   function addEnt(type, d, x, opts = {}) {
-    const spec = OB[type];
-    const mesh = new THREE.Mesh(GEO[type], vcMat);
-    const e = { type, d, x, hw: opts.hw ?? spec.hw, hd: spec.hd, h: spec.h * (opts.s || 1), deco: !!opts.deco, mesh };
-    mesh.position.set(x, baseH(d, x) - 0.05, -d);
-    mesh.rotation.y = opts.ry ?? rand(0, TAU);
-    if (opts.s) mesh.scale.setScalar(opts.s);
-    if (type === 'log') { mesh.scale.set(opts.len, 1, 1); mesh.rotation.y = opts.ry || 0; e.hw = opts.len / 2; }
+    const spec = OB[type], s = opts.s || 1;
+    const look = type === 'tree' ? (opts.round ?? Math.random() < 0.45 ? 'tree-round' : 'tree-tall') : type;
+    const hgt = spec.size * s * (look === 'tree-round' ? 0.75 : 1);
+    const mesh = new THREE.Sprite(SM[look]);
+    mesh.center.set(0.5, 0.03);
+    mesh.scale.set(hgt * ASPECT[look] * (Math.random() < 0.5 ? -1 : 1), hgt, 1);
+    mesh.position.set(x, baseH(d, x) - 0.08, -d);
     scene.add(mesh);
+    const e = { type, d, x, hw: spec.hw * s, hd: spec.hd, h: spec.h * s, deco: !!opts.deco, mesh };
     ents.push(e);
     return e;
   }
   function addCoin(d, x, y) {
-    const m = new THREE.Mesh(coinGeo, coinMat);
+    const m = new THREE.Sprite(SM.coin);
+    m.scale.set(0.9, 0.9, 1);
     m.position.set(x, y, -d);
     scene.add(m);
     coins.push({ d, x, y, mesh: m, taken: false, tt: 0 });
@@ -511,9 +469,10 @@ body {
       return r.d1 - d + 22;
     }
     if (roll < 0.25) {
-      const len = rand(7, 11 + diff * 8), x = rand(-TRACK + len / 2 - 2, TRACK - len / 2 + 2);
-      addEnt('log', d, x, { len, ry: rand(-0.12, 0.12) });
-      for (let i = -1; i <= 1; i++) addCoin(d, x + i * 1.6, baseH(d, x) + 2.4);
+      const n = 1 + Math.floor(Math.random() * (1.5 + diff * 2.5));
+      const x0 = rand(-TRACK + 1.5, TRACK - 1.5 - (n - 1) * 3);
+      for (let k = 0; k < n; k++) addEnt('log', d, x0 + k * 3);
+      for (let i = 0; i < n * 2; i++) addCoin(d, x0 - 0.75 + i * 1.5, baseH(d, x0) + 2.4);
       return lerp(18, 12, diff);
     }
     if (roll < 0.37) {
@@ -544,10 +503,11 @@ body {
     }
     if (++poleCount % 3 === 0) {
       for (const side of [-1, 1]) {
-        const m = new THREE.Mesh(GEO.pole, vcMat);
+        const m = new THREE.Sprite(SM.flag);
         const x = side * (TRACK + 1.4);
-        m.position.set(x, baseH(d, x), -d);
-        m.rotation.y = side > 0 ? Math.PI : 0;
+        m.center.set(0.5, 0.02);
+        m.scale.set(2 * ASPECT.flag * -side, 2, 1);
+        m.position.set(x, baseH(d, x) - 0.05, -d);
         scene.add(m);
         poles.push({ d, mesh: m });
       }
@@ -597,7 +557,7 @@ body {
     $('menu').hidden = true; $('over').hidden = true; $('hud').hidden = false;
   }
   function resetBody() {
-    rollG.rotation.set(0, 0, 0); body.position.set(0, 0, 0); body.rotation.set(0, 0, 0);
+    riderMat.rotation = 0;
   }
 
   function crash(reason) {
@@ -710,8 +670,6 @@ body {
       P.y = groundAt(P.d, P.x);
       if (state === 'crash') {
         crashT += dt;
-        rollG.rotation.z = lerp(rollG.rotation.z, 1.45, Math.min(1, dt * 6));
-        body.rotation.x += dt * 4 * Math.max(0, 1 - crashT);
         if (crashT > 1.3) gameOver();
       }
     } else {
@@ -757,12 +715,7 @@ body {
       topSpeed = Math.max(topSpeed, speed);
       for (const e of ents) {
         if (e.deco) continue;
-        let along = P.x - e.x, across = P.d - e.d;
-        if (e.type === 'log') {
-          const ry = e.mesh.rotation.y, wz = -(P.d - e.d);
-          along = (P.x - e.x) * Math.cos(ry) - wz * Math.sin(ry);
-          across = (P.x - e.x) * Math.sin(ry) + wz * Math.cos(ry);
-        }
+        const along = P.x - e.x, across = P.d - e.d;
         if (Math.abs(across) < e.hd + 0.4 && Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h) { crash(OB[e.type].reason); break; }
       }
       for (const c of coins) {
@@ -773,8 +726,9 @@ body {
 
     // coins spin / fly away
     for (const c of coins) {
-      c.mesh.rotation.y = clock * 3 + c.d;
-      if (c.taken) { c.tt += dt; c.mesh.position.y = c.y + c.tt * 4; c.mesh.scale.setScalar(Math.max(0.01, 1 - c.tt * 2.5)); }
+      const k = c.taken ? Math.max(0.01, 1 - c.tt * 2.5) : 1;
+      c.mesh.scale.set(0.9 * k * Math.max(0.12, Math.abs(Math.cos(clock * 3 + c.d))), 0.9 * k, 1);
+      if (c.taken) { c.tt += dt; c.mesh.position.y = c.y + c.tt * 4; }
     }
 
     // particles
@@ -809,19 +763,20 @@ body {
   // ---------- Render ----------
   function render(dt) {
     // rider pose
-    rider.position.set(P.x, P.y, -P.d);
-    const s = P.air ? clamp(P.vy / Math.max(P.v, 1), -0.8, 0.6) : slopeAt(P.d, P.x);
-    pitchG.rotation.x = lerp(pitchG.rotation.x, Math.atan(s), Math.min(1, dt * (P.air ? 3 : 12)));
+    rider.position.set(P.x, P.y, -P.d + 0.2);
     const vx = (P.x - P.lastX) / Math.max(dt, 0.001);
     P.carve = lerp(P.carve, P.air ? 0 : -vx * 0.035, Math.min(1, dt * 8));
-    P.lean = lerp(P.lean, P.air ? 0 : -vx * 0.03, Math.min(1, dt * 8));
-    yawG.rotation.y = P.yaw + P.carve;
-    if (!P.crashed) {
-      rollG.rotation.z = clamp(P.lean, -0.5, 0.5);
-      const crouch = P.air ? 0.12 : 0.04 + Math.min(0.08, P.v * 0.002);
-      body.position.y = -crouch; body.scale.y = 1 - crouch * 0.6;
-    }
-    scarf.rotation.y = Math.sin(clock * 16) * 0.25;
+    let pose = 'rider-straight', flip = 1, rh = 1.95;
+    if (P.crashed) { pose = 'rider-crash'; rh = 1.4; }
+    else if (P.air) { pose = 'rider-air'; rh = 1.85; }
+    else if (vx < -2.5) pose = 'rider-left';
+    else if (vx > 2.5) { pose = 'rider-left'; flip = -1; }
+    if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
+    // spinning in the air: squash the sprite to fake the rotation
+    const spinScale = P.air ? Math.cos(P.yaw) : 1;
+    const sx = Math.sign(spinScale || 1) * Math.max(0.25, Math.abs(spinScale));
+    rider.scale.set(rh * ASPECT[pose] * flip * sx, rh, 1);
+    riderMat.rotation = P.crashed ? 0 : clamp(-vx * 0.012, -0.25, 0.25) + (P.air ? Math.sin(clock * 3) * 0.04 : 0);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
@@ -851,10 +806,10 @@ body {
     const fov = (portrait ? 70 : 58) + 14 * clamp((P.v - 12) / 20, 0, 1);
     if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = lerp(camera.fov, fov, Math.min(1, dt * 2)); camera.updateProjectionMatrix(); }
 
-    mountains.position.set(P.x * 0.9, P.y, -P.d);
     sun.position.set(P.x - 40, P.y + 60, -P.d + 30);
     sun.target.position.set(P.x, P.y, -P.d);
 
+    placeSky();
     renderer.render(scene, camera);
   }
 
