@@ -21,10 +21,10 @@ Fünf Spuren, ein Wischer = eine Spur.
 
 | Eingabe | Aktion |
 | --- | --- |
-| Wischen links/rechts · ← → | Eine Spur wechseln |
+| Wischen links/rechts · ← → | Eine Spur wechseln, auch im Sprung |
 | Wischen hoch · Tippen · Leertaste · ↑ | Springen |
 | Wischen runter · ↓ | Ducken (unter Bannern durch); in der Luft: schnell runter |
-| In der Luft seitlich wischen · ← → | 360°-Drehung |
+| In der Luft hoch wischen · Tippen · ↑ | 360°-Drehung |
 
 ## Inhalt
 
