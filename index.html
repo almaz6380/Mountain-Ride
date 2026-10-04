@@ -206,6 +206,9 @@ body {
   for (const n of ['tree-tall', 'tree-round', 'rock', 'log', 'snowman', 'coin', 'flag']) SM[n] = spriteMat(n);
   const riderTex = {};
   for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash']) riderTex[n] = tex(n + '.png');
+  // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
+  const SPIN_META = [[0.7857, 1.95, 0.544], [0.8441, 1.928, 0.567], [0.4248, 1.95, 0.633], [0.7623, 1.943, 0.414], [0.7321, 1.943, 0.376], [0.7208, 1.943, 0.554], [0.4549, 1.95, 0.541], [0.8441, 1.928, 0.428]];
+  const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
   const RIDER_CX = { 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
   const RIDER_H = { 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
@@ -999,22 +1002,25 @@ body {
     // rider pose
     rider.position.set(P.x, P.y, -P.d + 0.2);
     P.carve = -P.leanS * 0.3;
-    const pose = P.pose, rh = RIDER_H[pose];
-    if (riderMat.map !== riderTex[pose]) riderMat.map = riderTex[pose];
-    // spinning in the air: narrow the sprite to fake the rotation (it flips at the half-turn)
-    const sx = 1;
     const sq = clamp(P.sq, -0.25, 0.25);
     // a little bob with the terrain and speed while riding
     const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.012 * Math.min(1, P.v / 20);
-    rider.scale.set(rh * ASPECT[pose] * sx * (1 - sq * 0.5), rh * (1 + sq + bob), 1);
-    rider.center.x = sx > 0 ? RIDER_CX[pose] : 1 - RIDER_CX[pose];
-    if (P.air && !P.crashed) {
-      riderMat.rotation = P.yaw + clamp(P.vy * 0.012, -0.1, 0.1);   // spins show as a full rotation of the figure
+    const spinning = P.air && !P.crashed && (Math.abs(P.spinTarget - P.yaw) > 0.05 || Math.abs(angDiff(P.yaw)) > 0.2);
+    let tex, rh, ar, cx;
+    if (spinning) {
+      // real turn around the body axis: pick the painted view for the current angle (8 views, 45° apart)
+      const a = ((-P.yaw % TAU) + TAU) % TAU;
+      const f = SPIN_VIEWS[Math.round(a / (TAU / 8)) % 8];
+      tex = f.tex; ar = f.ar; rh = f.h; cx = f.cx;
     } else {
-      riderMat.rotation = angDiff(riderMat.rotation);
-      const tilt = P.crashed ? 0 : -P.leanS * 0.16;
-      riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
+      const pose = P.pose;
+      tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
+    if (riderMat.map !== tex) riderMat.map = tex;
+    rider.scale.set(rh * ar * (1 - sq * 0.5), rh * (1 + sq + bob), 1);
+    rider.center.x = cx;
+    const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
+    riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
