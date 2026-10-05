@@ -838,7 +838,7 @@ body {
     }
   }
 
-  function difficulty() { return clamp((P.d - startD) / 1800, 0, 1); }   // full difficulty after 1.8 km
+  function difficulty() { return clamp(0.3 + (P.d - startD) / 1000, 0, 1); }   // starts at 30 %, full after 700 m
 
   function pickLanes(k) {
     const a = [0, 1, 2, 3, 4];
@@ -851,7 +851,7 @@ body {
     const free = freeLanes(used);
     if (!free.length) return;
     addPower(d, laneX(free[Math.floor(Math.random() * free.length)]));
-    nextPowerD = d + rand(300, 500);
+    nextPowerD = d + rand(400, 650);
   }
   // a second tree row right behind the first: its open lane is next to one of the first row's open lanes
   function followRow(d, used1) {
@@ -867,8 +867,8 @@ body {
   function spawnRow(d) {
     const diff = difficulty();
     const roll = Math.random();
-    const blocked = () => 2 + Math.floor(Math.random() * (1 + diff * 2.2));   // 2 to 4 lanes
-    if (roll >= 0.38 && roll < 0.56 && diff > 0.02) {   // the newer obstacles
+    const blocked = () => (diff > 0.6 ? 3 : 2) + Math.floor(Math.random() * (1 + diff * 1.6));   // 2 to 4 lanes, later 3 to 4
+    if (roll >= 0.38 && roll < 0.6) {   // the newer obstacles
       const kind = Math.random();
       if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
         const n = 2 + Math.floor(Math.random() * (diff > 0.2 ? 4 : 3));
@@ -896,7 +896,7 @@ body {
       if (diff > 0.4 && Math.random() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rand(3.5, 5 + diff * 3) });
       return lerp(20, 13, diff);
     }
-    if (roll >= 0.56 && roll < 0.72 && diff > 0.12) {   // no free lane: trees, plus one lane to jump and one to duck
+    if (roll >= 0.6 && roll < 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
       const order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
       addEnt('log', d, laneX(order[0]));
       addEnt('gate', d, laneX(order[1]));
@@ -940,7 +940,7 @@ body {
       const type = types[Math.floor(Math.random() * types.length)];
       addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
     }
-    if (diff > 0.3 && Math.random() < 0.25 + diff * 0.3) {   // quick follow-up row: two lane changes in a row
+    if (Math.random() < 0.3 + diff * 0.45) {   // quick follow-up row: two lane changes in a row
       const gap = lerp(13, 10, diff) * Math.max(1, P.v / 22);
       followRow(d + gap, used);
       return gap + lerp(12, 8, diff);
@@ -1536,7 +1536,7 @@ body {
     runLanes = 0;
     clearWorld();
     resetRider(P.d);
-    P.v = 19;
+    P.v = 22;
     startD = P.d; nextD = P.d + 45; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
@@ -1790,7 +1790,7 @@ body {
     } else {
       const here = sectionAt(P.d);
       const secSpeed = here ? lerp(1, here.def.speed, here.w) : 1;
-      const target = (playing ? (tut.active ? 15 : (19 + Math.min(30, dist * 0.015)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
+      const target = (playing ? (tut.active ? 15 : (22 + Math.min(32, dist * 0.02)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
@@ -1862,7 +1862,7 @@ body {
         let hit = false;
         if (e.type === 'gate') hit = Math.abs(along) < e.hw - 0.2 && !P.ducking && P.y - baseH(e.d, e.x) < e.h;
         else if (e.type === 'crevasse') hit = Math.abs(along) < e.hw - 0.3 && !P.air;
-        else hit = Math.abs(along) < e.hw + 0.3 && P.y - baseH(e.d, e.x) < e.h;
+        else hit = Math.abs(along) < e.hw + 0.55 && P.y - baseH(e.d, e.x) < e.h;   // generous hitbox: a half-finished lane change still clips
         if (hit && hitObstacle(e, OB[e.type].reason)) break;
       }
       for (const c of coins) {
