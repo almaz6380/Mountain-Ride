@@ -171,6 +171,7 @@ body {
   position: fixed; left: 16px; right: 16px; top: calc(env(safe-area-inset-top, 0px) + 110px);
   display: grid; justify-items: center; gap: 8px; text-align: center; pointer-events: none;
 }
+.tut .tut-tag { font-weight: 800; font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); background: var(--jacket); padding: 3px 10px; border-radius: 99px; }
 .tut .gesture { font: 800 54px/1 system-ui, "Segoe UI Symbol", sans-serif; color: var(--jacket); text-shadow: 0 2px 6px rgba(20, 35, 58, 0.5); animation: nudge 1s ease-in-out infinite; }
 .tut p { margin: 0; max-width: 22em; font-weight: 800; font-size: clamp(19px, 5vw, 24px); background: var(--card); padding: 8px 14px; border-radius: 12px; text-wrap: balance; }
 @keyframes nudge { 50% { transform: translateY(-6px); } }
@@ -318,6 +319,7 @@ body {
 </div>
 
 <div class="tut" id="tut" hidden aria-live="polite">
+  <span class="tut-tag">Tutorial</span>
   <span class="gesture" id="tutKey"></span>
   <p id="tutText"></p>
 </div>
@@ -334,7 +336,7 @@ body {
   // ---------- Tuning (units are metres) ----------
   const GRAV = 25;
   const JUMP = 9.5;
-  const SPIN_RATE = 13;        // rad/s while steering in the air
+  const SPIN_RATE = 13;        // top spin speed in rad/s; spins ease out at the end
   const LANE_W = 3.2;          // five lanes, one swipe = one lane
   const laneX = l => (l - 2) * LANE_W;
   const TRACK = 8.5;           // piste edge (poles, forest beyond)
@@ -353,7 +355,7 @@ body {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 600);
-  scene.fog = new THREE.Fog(0xcfe3f2, 70, 210);
+  scene.fog = new THREE.Fog(0xcfe3f2, 80, 205);
   const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x8aa2c4, 0.95);
   const sun = new THREE.DirectionalLight(0xffffff, 0.75);
   sun.position.set(-40, 60, 30);
@@ -433,7 +435,7 @@ body {
   }
 
   // ground mesh: a grid that slides along with the rider and is re-sampled on a fixed lattice
-  const GX = 41, GL = 121, SX = 3, SD = 2, BEHIND = 24;
+  const GX = 41, GL = 132, SX = 3, SD = 2, BEHIND = 24;   // ground reaches ~240 m ahead, past the fog
   const gPos = new Float32Array(GX * GL * 3), gCol = new Float32Array(GX * GL * 3), gIdx = [];
   const offF = new Float32Array(GX);
   for (let j = 0; j < GL; j++) for (let i = 0; i < GX; i++) {
@@ -531,6 +533,24 @@ body {
   duckSprite.renderOrder = 11;
   duckSprite.center.set(RIDER_CX['rider-duck'], 0.04);
   scene.add(duckSprite);
+  // protective glow while a shield or turbo is active
+  const auraTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const x = c.getContext('2d'), gr = x.createRadialGradient(64, 64, 20, 64, 64, 62);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.9, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const auraMat = new THREE.SpriteMaterial({ map: auraTex, transparent: true, depthTest: false, depthWrite: false, opacity: 0 });
+  const aura = new THREE.Sprite(auraMat);
+  aura.renderOrder = 13;
+  scene.add(aura);
+  // second sprite that fades in the next painted view during a spin
+  const spinMatB = new THREE.SpriteMaterial({ map: riderTex['rider-air'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false, opacity: 0 });
+  spriteMats.push(spinMatB);
+  const spinB = new THREE.Sprite(spinMatB);
+  spinB.renderOrder = 12;
+  scene.add(spinB);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x3a5478, transparent: true, opacity: 0.3, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2;
@@ -610,7 +630,7 @@ body {
   // keep the painted horizon lined up with the far end of the slope
   const horizonV = new THREE.Vector3();
   function placeSky() {
-    horizonV.set(P.x, baseH(P.d + 190, P.x), -(P.d + 190)).project(camera);
+    horizonV.set(P.x, baseH(P.d + 230, P.x), -(P.d + 230)).project(camera);
     const h = 2 * SKY_D * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), w = h * camera.aspect;
     const ndcY = clamp(horizonV.y, -0.6, 0.9);
     const yH = ndcY * h / 2;
@@ -724,7 +744,10 @@ body {
     const spec = OB[type], s = opts.s || 1;
     if (type === 'fence' || type === 'snowball' || type === 'crevasse') {
       let mesh, hw = spec.hw;
-      if (type === 'fence') { mesh = fenceMesh(opts.lanes); hw = opts.lanes * LANE_W / 2 - 0.15; mesh.position.set(x, baseH(d, x), -d); }
+      if (type === 'fence') {
+        mesh = fenceMesh(opts.lanes); hw = opts.lanes * LANE_W / 2 - 0.15; mesh.position.set(x, baseH(d, x), -d);
+        if (d - P.d < 170) { mesh.userData.riseH = 2; mesh.userData.baseY = mesh.position.y; mesh.userData.rise = 0; }
+      }
       else if (type === 'snowball') {
         const mat = OBS_SPRITE.snowball.mat.clone();   // own material so each ball can spin
         spriteMats.push(mat);
@@ -739,7 +762,9 @@ body {
     }
     if (type === 'gate') {
       const mesh = obstacleSprite('gate', LANE_W - 0.2);   // banner bottom sits about 1.55 m above the snow
+      if (d - P.d < 170) { mesh.userData.riseH = 3; mesh.userData.rise = 0; }
       mesh.position.set(x, baseH(d, x), -d);
+      if (mesh.userData.riseH) mesh.userData.baseY = mesh.position.y;
       scene.add(mesh);
       const e = { type, d, x, hw: spec.hw, hd: spec.hd, h: spec.h, deco: false, mesh };
       ents.push(e);
@@ -752,6 +777,7 @@ body {
     mesh.scale.set(hgt * ASPECT[look] * (Math.random() < 0.5 ? -1 : 1), hgt, 1);
     mesh.position.set(x, baseH(d, x) - 0.08, -d);
     scene.add(mesh);
+    if (!opts.deco && d - P.d < 170) { mesh.userData.riseH = hgt; mesh.userData.baseY = mesh.position.y; mesh.userData.rise = 0; }
     const e = { type, d, x, hw: spec.hw * s, hd: spec.hd, h: spec.h * s, deco: !!opts.deco, mesh };
     ents.push(e);
     return e;
@@ -761,7 +787,7 @@ body {
     m.scale.set(0.9, 0.9, 1);
     m.position.set(x, y, -d);
     scene.add(m);
-    coins.push({ d, x, y, mesh: m, taken: false, tt: 0 });
+    coins.push({ d, x, y, mesh: m, taken: false, tt: 0, grow: d - P.d < 170 ? 0 : 1 });
   }
   function addRamp(d, x) {
     const r = { d0: d, d1: d + rand(6, 8), x, w: LANE_W - 0.3, h: rand(1.4, 2.1) };
@@ -789,7 +815,7 @@ body {
     spring: { name: 'Super-Sprung', color: '#22a866', time: 12 },
   };
   const powerMats = {};
-  for (const t of Object.keys(POWERS)) powerMats[t] = new THREE.SpriteMaterial({ map: tex('power-' + t + '.png'), transparent: true, depthWrite: false, fog: false });
+  for (const t of Object.keys(POWERS)) powerMats[t] = new THREE.SpriteMaterial({ map: tex('power-' + t + '.png'), transparent: true, depthWrite: false });
   let pups = [], nextPowerD = 0;
   const PW = { magnet: 0, turbo: 0, double: 0, spring: 0, shield: 0, invuln: 0 };
   function addPower(d, x) {
@@ -800,7 +826,7 @@ body {
     const y = baseH(d, x) + 1.1;
     m.position.set(x, y, -d);
     scene.add(m);
-    pups.push({ d, x, y, type, mesh: m, taken: false });
+    pups.push({ d, x, y, type, mesh: m, taken: false, grow: d - P.d < 170 ? 0 : 1 });
   }
   function collectPower(type) {
     if (type === 'shield') PW.shield = 1; else PW[type] = powerTime(type);
@@ -809,10 +835,11 @@ body {
     Sound.power();
   }
   // returns true if the rider is out of the run
+  let lastTurboMsg = -9;
   function hitObstacle(e, reason) {
-    if (tut.active) { smash(e); tut.failed = true; popup('Fast!', 'Gleich nochmal'); return false; }
-    if (PW.turbo > 0 || PW.invuln > 0) { smash(e); return false; }
-    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild verbraucht', ''); Sound.shieldBreak(); return false; }
+    if (tut.active) { smash(e); tut.failed = true; shake = reduceMotion ? 0 : 0.3; Sound.shieldBreak(); popup('Getroffen!', 'Im Tutorial darfst du es nochmal versuchen'); return false; }
+    if (PW.turbo > 0 || PW.invuln > 0) { smash(e); if (PW.turbo > 0 && clock - lastTurboMsg > 1.5) { lastTurboMsg = clock; popup('Turbo!', 'Du bist gerade unverwundbar'); } return false; }
+    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild hat dich gerettet!', 'Jetzt ist es weg'); Sound.shieldBreak(); return false; }
     crash(reason); return true;
   }
   function smash(e) {
@@ -970,7 +997,7 @@ body {
   }
 
   function generate() {
-    const ahead = P.d + 190;
+    const ahead = P.d + 228;   // new things appear inside the fog, never in plain sight
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
     // gaps between rows grow with speed so there is always about the same reaction time
     if (state === 'play' && !tut.active) {
@@ -1453,7 +1480,7 @@ body {
   function tutShow(key, text) { $('tut').hidden = false; $('tutKey').textContent = key; $('tutText').textContent = text; }
   function tutSpawn() {
     const s = TUT_STEPS[tut.step];
-    tut.rowD = s.spawn(P.d + Math.max(45, P.v * 2.6));
+    tut.rowD = s.spawn(P.d + Math.max(95, P.v * 5));
     tut.failed = false;
     tutShow(s.key, s.text);
   }
@@ -1467,7 +1494,7 @@ body {
     store.set('tutorialDone', true);
     $('tut').hidden = true;
     popup('Tutorial geschafft!', "Jetzt geht's richtig los");
-    nextD = P.d + 50; nextSectionD = P.d + 400; nextPowerD = P.d + 120;
+    nextD = P.d + 120; nextSectionD = P.d + 400; nextPowerD = P.d + 160;
   }
 
   // ---------- Track sections: deep snow, ice, tunnel, steep ----------
@@ -1537,7 +1564,7 @@ body {
     clearWorld();
     resetRider(P.d);
     P.v = 22;
-    startD = P.d; nextD = P.d + 45; nextDeco = P.d - 20;
+    startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
     nextPowerD = P.d + rand(120, 200);
@@ -1648,7 +1675,7 @@ body {
   function startSpin(dir) {
     if (!P.air || state !== 'play') return;
     const left = Math.abs(P.spinTarget - P.yaw) + TAU;
-    if (left / SPIN_RATE > timeToLand() - 0.04) return;
+    if (left / SPIN_RATE + 0.15 > timeToLand()) return;
     P.spinTarget -= dir * TAU;
   }
   function changeLane(dir) {
@@ -1710,14 +1737,18 @@ body {
     const g = input.drag;
     if (!g || g.id !== e.pointerId || state !== 'play') return;
     const dx = e.clientX - g.x0, dy = g.y0 - e.clientY;
-    const TH = Math.max(18, Math.min(W, H) * SENS[settings.sens]);
-    let acted = true;
-    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) changeLane(Math.sign(dx));
-    else if (dy > TH && dy > Math.abs(dx)) jump();
-    else if (-dy > TH && -dy > Math.abs(dx)) duck();
-    else acted = false;
-    // one finger can chain moves: e.g. swipe up to jump, then straight on sideways to switch lane mid-air
-    if (acted) { g.jumped = true; g.x0 = e.clientX; g.y0 = e.clientY; }
+    const TH = Math.max(28, Math.min(W, H) * SENS[settings.sens]);
+    let act = null;
+    if (Math.abs(dx) > TH && Math.abs(dx) > Math.abs(dy)) act = dx > 0 ? 'right' : 'left';
+    else if (dy > TH && dy > Math.abs(dx)) act = 'up';
+    else if (-dy > TH && -dy > Math.abs(dx)) act = 'down';
+    if (!act) return;
+    // a swipe does each move once: one lane per sideways swipe, however long the finger travels.
+    // A different direction in the same swipe still counts (swipe up to jump, then sideways to change lane mid-air).
+    g.x0 = e.clientX; g.y0 = e.clientY;
+    if (act === g.last) return;
+    g.last = act; g.jumped = true;
+    if (act === 'left') changeLane(-1); else if (act === 'right') changeLane(1); else if (act === 'up') jump(); else duck();
   });
   function endDrag(e) {
     const g = input.drag;
@@ -1821,7 +1852,8 @@ body {
         const steer = steerAxis();
         // holding an arrow chains another spin once the current one is done
         if (steer && steer === P.spinChain && Math.abs(P.spinTarget - P.yaw) < 0.3) startSpin(steer);
-        P.yaw += clamp(P.spinTarget - P.yaw, -SPIN_RATE * dt, SPIN_RATE * dt);
+        const left = P.spinTarget - P.yaw;   // fast through the turn, easing into the landing angle
+        P.yaw += clamp(left * 8 * dt, -SPIN_RATE * dt, SPIN_RATE * dt) + Math.sign(left) * Math.min(Math.abs(left), 0.6 * dt);
         const gy = groundAt(P.d, P.x);
         if (P.y <= gy) land(gy);
       }
@@ -1888,6 +1920,14 @@ body {
       if (PW.turbo > 0 && Math.random() < 0.8) emit(P.x, P.y + 0.3, -P.d + 0.5, 3, 1.2, 0, 1.5, 3);
     }
 
+    // things that had to appear close by grow out of the snow
+    for (const e of ents) {
+      const u = e.mesh.userData;
+      if (u.rise === undefined || u.rise >= 1) continue;
+      u.rise = Math.min(1, u.rise + dt * 2.2);
+      const k = 1 - Math.pow(1 - u.rise, 3);
+      e.mesh.position.y = u.baseY - (1 - k) * u.riseH;
+    }
     // moving obstacles and floating power-ups
     for (const e of ents) {
       if (e.type !== 'snowball' || e.dead) continue;
@@ -1898,12 +1938,14 @@ body {
     }
     for (const u of pups) {
       u.mesh.position.y = u.y + Math.sin(clock * 3 + u.d) * 0.15;
-      const s = 1.2 + Math.sin(clock * 5 + u.d) * 0.06;
+      u.grow = Math.min(1, u.grow + dt * 2.5);
+      const s = (1.2 + Math.sin(clock * 5 + u.d) * 0.06) * u.grow;
       u.mesh.scale.set(s, s, 1);
     }
     // coins spin / fly away
     for (const c of coins) {
-      const k = c.taken ? Math.max(0.01, 1 - c.tt * 2.5) : 1;
+      c.grow = Math.min(1, c.grow + dt * 3);
+      const k = (c.taken ? Math.max(0.01, 1 - c.tt * 2.5) : 1) * Math.max(0.01, c.grow);
       c.mesh.scale.set(0.9 * k * Math.max(0.12, Math.abs(Math.cos(clock * 3 + c.d))), 0.9 * k, 1);
       if (c.taken) { c.tt += dt; c.mesh.position.y = c.y + c.tt * 4; }
     }
@@ -1950,17 +1992,27 @@ body {
     let tex, rh, ar, cx;
     if (spinning) {
       // real turn around the body axis: pick the painted view for the current angle (8 views, 45° apart)
-      const a = ((-P.yaw % TAU) + TAU) % TAU;
-      const f = SPIN_VIEWS[Math.round(a / (TAU / 8)) % 8];
+      const a = ((-P.yaw % TAU) + TAU) % TAU, pos = a / (TAU / 8);
+      const i0 = Math.floor(pos) % 8, i1 = (i0 + 1) % 8, w = pos - Math.floor(pos);
+      const f = SPIN_VIEWS[i0], f1 = SPIN_VIEWS[i1];
       tex = f.tex; ar = f.ar; rh = f.h; cx = f.cx;
+      // blend towards the next view so the turn reads as one movement instead of 8 jumps
+      spinMatB.map = f1.tex; spinMatB.opacity = w * w * (3 - 2 * w);
+      spinB.visible = true;
+      spinB.position.set(P.x, P.y, -P.d + 0.2);
+      spinB.center.x = f1.cx;
+      spinB.scale.set(f1.h * f1.ar, f1.h, 1);
     } else {
       const pose = P.pose;
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
+    if (!spinning) spinB.visible = false;
     if (riderMat.map !== tex) riderMat.map = tex;
     // ducking: the riding pose sinks a little while the duck pose fades in on top of it
     const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
-    rider.scale.set(rh * ar * (1 - sq * 0.5), rh * (1 + sq + bob) * (1 - 0.18 * dk), 1);
+    // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
+    const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * (1 + sq + bob + airK) * (1 - 0.18 * dk), 1);
     rider.center.x = cx;
     const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
     riderMat.opacity = blink * (1 - dk);
@@ -1969,9 +2021,17 @@ body {
     duckSprite.position.copy(rider.position);
     const dh = RIDER_H['rider-duck'] * (1 + 0.12 * (1 - dk));
     duckSprite.scale.set(dh * ASPECT['rider-duck'], dh, 1);
-    const tilt = P.crashed ? 0 : P.air ? clamp(P.vy * 0.012, -0.1, 0.1) : -P.leanS * 0.16;
+    const tilt = P.crashed ? 0 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) + Math.sin(P.airT * 5) * 0.03 : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
     duckMat.rotation = riderMat.rotation;
+    spinMatB.rotation = riderMat.rotation;
+    // shield / turbo glow
+    const prot = P.crashed ? 0 : PW.turbo > 0 ? 1 : PW.shield ? 0.8 : PW.invuln > 0 ? 0.4 : 0;
+    auraMat.opacity += (prot * (0.75 + 0.25 * Math.sin(clock * 6)) - auraMat.opacity) * Math.min(1, dt * 8);
+    auraMat.color.set(PW.turbo > 0 ? 0xffa040 : 0x7cc8ff);
+    aura.visible = auraMat.opacity > 0.02;
+    aura.position.set(P.x, P.y + 0.95, -P.d + 0.1);
+    aura.scale.setScalar(2.9 + Math.sin(clock * 4) * 0.08);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
@@ -2031,7 +2091,7 @@ body {
   resetRider(0);
   nextDeco = -30;
   const STEP_DT = 1 / 120;
-  let acc = 0;
+  let acc = 0, prevX = 0, prevY = 0, prevD = 0;
   let last = performance.now();
   function frame(now) {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
@@ -2039,9 +2099,13 @@ body {
     acc += dt;
     let steps = 0;
     if (state === 'paused') acc = 0;
-    while (acc >= STEP_DT && steps < 8) { update(STEP_DT); acc -= STEP_DT; steps++; }
+    while (acc >= STEP_DT && steps < 8) { prevX = P.x; prevY = P.y; prevD = P.d; update(STEP_DT); acc -= STEP_DT; steps++; }
     if (steps === 8) acc = 0;
+    // draw the rider between the last two physics steps, so motion is even at any refresh rate
+    const cx = P.x, cy = P.y, cd = P.d, a = clamp(acc / STEP_DT, 0, 1);
+    if (Math.abs(cd - prevD) < 3) { P.x = lerp(prevX, cx, a); P.y = lerp(prevY, cy, a); P.d = lerp(prevD, cd, a); }
     render(Math.max(dt, 0.001));
+    P.x = cx; P.y = cy; P.d = cd;
     updateHud();
     requestAnimationFrame(frame);
   }
