@@ -279,6 +279,34 @@ body {
       <input type="range" id="setSfx" min="0" max="100" step="5">
     </div>
     <div class="setting">
+      <span class="lbl" id="soundLabel">Ton</span>
+      <div class="seg" role="group" aria-labelledby="soundLabel">
+        <button type="button" data-opt="sound" data-val="1">An</button>
+        <button type="button" data-opt="sound" data-val="0">Aus</button>
+      </div>
+    </div>
+    <div class="setting">
+      <span class="lbl" id="vibLabel">Vibration bei Sturz</span>
+      <div class="seg" role="group" aria-labelledby="vibLabel">
+        <button type="button" data-opt="vibrate" data-val="1">An</button>
+        <button type="button" data-opt="vibrate" data-val="0">Aus</button>
+      </div>
+    </div>
+    <div class="setting">
+      <span class="lbl" id="snowLabel">Schneefall</span>
+      <div class="seg" role="group" aria-labelledby="snowLabel">
+        <button type="button" data-opt="snow" data-val="1">An</button>
+        <button type="button" data-opt="snow" data-val="0">Aus</button>
+      </div>
+    </div>
+    <div class="setting">
+      <span class="lbl" id="shakeLabel">Kamera wackelt bei Treffern</span>
+      <div class="seg" role="group" aria-labelledby="shakeLabel">
+        <button type="button" data-opt="shake" data-val="1">An</button>
+        <button type="button" data-opt="shake" data-val="0">Aus</button>
+      </div>
+    </div>
+    <div class="setting">
       <span class="lbl" id="sensLabel">Wisch-Empfindlichkeit</span>
       <div class="seg" role="group" aria-labelledby="sensLabel">
         <button type="button" data-sens="niedrig">Niedrig</button>
@@ -388,7 +416,7 @@ body {
   const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
   const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
-  const RIDER_H = { 'rider-duck': 1.3, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
+  const RIDER_H = { 'rider-duck': 1.85, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
@@ -829,7 +857,7 @@ body {
   function hitObstacle(e, reason) {
     if (tut.active) { smash(e); tut.failed = true; shake = reduceMotion ? 0 : 0.3; Sound.shieldBreak(); popup('Getroffen!', 'Im Tutorial darfst du es nochmal versuchen'); return false; }
     if (PW.turbo > 0 || PW.invuln > 0) { smash(e); if (PW.turbo > 0 && clock - lastTurboMsg > 1.5) { lastTurboMsg = clock; popup('Turbo!', 'Du bist gerade unverwundbar'); } return false; }
-    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild hat dich gerettet!', 'Jetzt ist es weg'); Sound.shieldBreak(); return false; }
+    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild hat dich gerettet!', 'Jetzt ist es weg'); Sound.shieldBreak(); buzz(60); return false; }
     crash(reason); return true;
   }
   function smash(e) {
@@ -855,7 +883,7 @@ body {
     }
   }
 
-  function difficulty() { return clamp(0.3 + (P.d - startD) / 1000, 0, 1); }   // starts at 30 %, full after 700 m
+  function difficulty() { return clamp(0.1 + (P.d - startD) / 2500, 0, 1); }   // rises evenly, full after about 2.2 km
 
   function pickLanes(k) {
     const a = [0, 1, 2, 3, 4];
@@ -884,7 +912,8 @@ body {
   function spawnRow(d) {
     const diff = difficulty();
     const roll = Math.random();
-    const blocked = () => (diff > 0.6 ? 3 : 2) + Math.floor(Math.random() * (1 + diff * 1.6));   // 2 to 4 lanes, later 3 to 4
+    // 2 blocked lanes early, a third and fourth become steadily more likely
+    const blocked = () => 2 + (Math.random() < diff * 0.85 ? 1 : 0) + (Math.random() < diff - 0.55 ? 1 : 0);
     if (roll >= 0.38 && roll < 0.6) {   // the newer obstacles
       const kind = Math.random();
       if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
@@ -913,7 +942,7 @@ body {
       if (diff > 0.4 && Math.random() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rand(3.5, 5 + diff * 3) });
       return lerp(20, 13, diff);
     }
-    if (roll >= 0.6 && roll < 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
+    if (roll >= 0.6 && roll < 0.8 && Math.random() < 0.2 + diff * 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
       const order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
       addEnt('log', d, laneX(order[0]));
       addEnt('gate', d, laneX(order[1]));
@@ -957,7 +986,7 @@ body {
       const type = types[Math.floor(Math.random() * types.length)];
       addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
     }
-    if (Math.random() < 0.3 + diff * 0.45) {   // quick follow-up row: two lane changes in a row
+    if (Math.random() < 0.06 + diff * 0.55) {   // quick follow-up row: two lane changes in a row
       const gap = lerp(13, 10, diff) * Math.max(1, P.v / 22);
       followRow(d + gap, used);
       return gap + lerp(12, 8, diff);
@@ -1199,7 +1228,7 @@ body {
     soundBtn.setAttribute('aria-label', m ? 'Ton einschalten' : 'Ton ausschalten');
     soundBtn.querySelector('.on').toggleAttribute('hidden', m); soundBtn.querySelector('.off').toggleAttribute('hidden', !m);
   }
-  soundBtn.addEventListener('click', e => { e.stopPropagation(); Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); });
+  soundBtn.addEventListener('click', e => { e.stopPropagation(); Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); if (typeof syncSettings === 'function' && openPanel === 'settings') syncSettings(); });
   soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
   syncSoundBtn();
 
@@ -1209,7 +1238,8 @@ body {
     set(k, v) { try { localStorage.setItem('mountain-ride-' + k, JSON.stringify(v)); } catch (e) {} },
   };
   const SENS = { niedrig: 0.075, mittel: 0.05, hoch: 0.032 };   // swipe distance as a share of the screen
-  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel' }, store.get('settings', {}));
+  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel', vibrate: 1, snow: 1, shake: 1 }, store.get('settings', {}));
+  flakes.visible = !!settings.snow;
   Sound.setVolumes(settings.music, settings.sfx);
   let wallet = store.get('wallet', 0);
   const upgrades = Object.assign({ magnet: 0, turbo: 0, double: 0, spring: 0 }, store.get('upgrades', {}));
@@ -1395,7 +1425,18 @@ body {
     $('setMusic').value = Math.round(settings.music * 100); $('setMusicVal').textContent = Math.round(settings.music * 100) + ' %';
     $('setSfx').value = Math.round(settings.sfx * 100); $('setSfxVal').textContent = Math.round(settings.sfx * 100) + ' %';
     document.querySelectorAll('[data-sens]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sens === settings.sens)));
+    const cur = { sound: Sound.isMuted() ? 0 : 1, vibrate: settings.vibrate, snow: settings.snow, shake: settings.shake };
+    document.querySelectorAll('[data-opt]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.val) === Number(cur[b.dataset.opt]))));
   }
+  document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => {
+    const v = Number(b.dataset.val), k = b.dataset.opt;
+    if (k === 'sound') { Sound.setMuted(!v); syncSoundBtn(); }
+    else settings[k] = v;
+    flakes.visible = !!settings.snow;
+    if (k === 'vibrate' && v) buzz(40);
+    saveSettings();
+  }));
+  function buzz(ms) { if (settings.vibrate && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
   function saveSettings() { store.set('settings', settings); Sound.setVolumes(settings.music, settings.sfx); syncSettings(); }
   $('setMusic').addEventListener('input', e => { settings.music = e.target.value / 100; saveSettings(); });
   $('setSfx').addEventListener('input', e => { settings.sfx = e.target.value / 100; saveSettings(); });
@@ -1553,7 +1594,7 @@ body {
     runLanes = 0;
     clearWorld();
     resetRider(P.d);
-    P.v = 22;
+    P.v = 21;
     startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
@@ -1597,6 +1638,7 @@ body {
     shake = reduceMotion ? 0 : 0.5;
     emit(P.x, P.y + 0.6, -P.d, 40, 3, 0, 3, -P.v * 0.2);
     Sound.crash();
+    buzz(180);
   }
 
   function gameOver() {
@@ -1678,6 +1720,7 @@ body {
   function duck() {
     if (state !== 'play') return;
     if (P.air) P.vy = Math.min(P.vy, P.v * slopeAt(P.d, P.x) - 14);   // dive back to the snow
+    if (!P.ducking && !P.air) { P.sq = Math.min(P.sq, 0); P.sqv = -3.2; }
     P.duckT = 0.75;
   }
   function jump() {
@@ -1811,7 +1854,7 @@ body {
     } else {
       const here = sectionAt(P.d);
       const secSpeed = here ? lerp(1, here.def.speed, here.w) : 1;
-      const target = (playing ? (tut.active ? 15 : (22 + Math.min(32, dist * 0.02)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
+      const target = (playing ? (tut.active ? 15 : (21 + Math.min(32, dist * 0.011)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
@@ -1850,8 +1893,10 @@ body {
     }
 
     P.duckT -= dt;
+    const wasDucking = P.ducking;
     P.ducking = P.duckT > 0 && !P.air && !P.crashed;
-    P.duckS += ((P.ducking ? 1 : 0) - P.duckS) * Math.min(1, dt * 18);
+    if (wasDucking && !P.ducking && !P.air) P.sqv = 2.6;   // spring back up
+    P.duckS += ((P.ducking ? 1 : 0) - P.duckS) * Math.min(1, dt * 22);
     // body language: smoothed lean, pose with hysteresis, squash & stretch spring
     const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 10, -1, 1);
     P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
@@ -1884,7 +1929,7 @@ body {
         let hit = false;
         if (e.type === 'gate') hit = Math.abs(along) < e.hw - 0.2 && !P.ducking && P.y - baseH(e.d, e.x) < e.h;
         else if (e.type === 'crevasse') hit = Math.abs(along) < e.hw - 0.3 && !P.air;
-        else hit = Math.abs(along) < e.hw + 0.55 && P.y - baseH(e.d, e.x) < e.h;   // generous hitbox: a half-finished lane change still clips
+        else hit = Math.abs(along) < e.hw + 0.3 + 0.25 * difficulty() && P.y - baseH(e.d, e.x) < e.h;   // hitbox grows with difficulty
         if (hit && hitObstacle(e, OB[e.type].reason)) break;
       }
       for (const c of coins) {
@@ -1993,24 +2038,19 @@ body {
       spinB.center.x = f1.cx;
       spinB.scale.set(f1.h * f1.ar, f1.h, 1);
     } else {
-      const pose = P.pose;
+      const pose = P.duckS > 0.5 ? 'rider-duck' : P.pose;
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
     }
     if (!spinning) spinB.visible = false;
     if (riderMat.map !== tex) riderMat.map = tex;
     // ducking: the riding pose sinks a little while the duck pose fades in on top of it
-    const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
     // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
     const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * (1 + sq + bob + airK) * (1 - 0.18 * dk), 1);
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * (1 + sq + bob + airK), 1);
     rider.center.x = cx;
     const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
-    riderMat.opacity = blink * (1 - dk);
-    duckMat.opacity = blink * dk;
-    duckSprite.visible = dk > 0.01;
-    duckSprite.position.copy(rider.position);
-    const dh = RIDER_H['rider-duck'] * (1 + 0.12 * (1 - dk));
-    duckSprite.scale.set(dh * ASPECT['rider-duck'], dh, 1);
+    riderMat.opacity = blink;
+    duckSprite.visible = false;
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) + Math.sin(P.airT * 5) * 0.03 : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
     duckMat.rotation = riderMat.rotation;
@@ -2049,6 +2089,7 @@ body {
     camLook.y = camLook.y ? camLook.y + (lookY - camLook.y) * (1 - Math.exp(-dt * 6)) : lookY;
     camLook.z = -lookD;
     camera.position.copy(camPos);
+    if (!settings.shake) shake = 0;
     if (shake > 0.01) { camera.position.x += rand(-shake, shake); camera.position.y += rand(-shake, shake); shake *= Math.pow(0.02, dt); }
     camera.lookAt(camLook);
     P.camRoll += (-P.leanS * 0.035 - P.camRoll) * (1 - Math.exp(-dt * 4));
