@@ -103,6 +103,28 @@ body {
   color: var(--snow); background: var(--card); cursor: pointer;
 }
 .sound-btn:focus-visible { outline: 3px solid var(--jacket); outline-offset: 2px; }
+.card { max-height: 100%; overflow-y: auto; grid-template-columns: minmax(0, 1fr); }
+.card > * { min-width: 0; }
+.btn.ghost { background: transparent; color: var(--snow); box-shadow: inset 0 0 0 2px rgba(244, 248, 252, 0.35); font-size: 18px; padding: 12px 16px; }
+.btn.ghost:active { box-shadow: inset 0 0 0 2px rgba(244, 248, 252, 0.6); }
+.btn.small { font-size: 18px; padding: 10px 14px; }
+.list-title { margin: 0; font-weight: 800; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; text-align: left; }
+.scores { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; max-height: 12.5em; overflow-y: auto; text-align: left; font-variant-numeric: tabular-nums; }
+.scores li { display: grid; grid-template-columns: 1.8em minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline; padding: 6px 10px; border-radius: 8px; background: rgba(244, 248, 252, 0.06); font-size: 17px; }
+.scores li.me { background: var(--jacket); color: var(--ink); }
+.scores .rank { font-weight: 800; opacity: 0.7; }
+.scores .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scores .pts { font-weight: 800; }
+.scores .dist { font-size: 14px; opacity: 0.7; }
+.scores li.empty { grid-template-columns: 1fr; text-align: center; opacity: 0.75; }
+.name-form { display: grid; gap: 8px; text-align: left; }
+.name-form label { font-size: 16px; font-weight: 600; }
+.name-row { display: flex; gap: 8px; }
+.name-row input {
+  flex: 1; min-width: 0; width: 100%; font: 600 20px var(--ui); color: var(--snow);
+  padding: 10px 12px; border-radius: 10px; border: 2px solid rgba(244, 248, 252, 0.25); background: rgba(244, 248, 252, 0.1);
+}
+.name-row input:focus-visible { outline: 3px solid var(--jacket); outline-offset: 1px; }
 .best-line { margin: 0; font-size: 16px; opacity: 0.8; font-variant-numeric: tabular-nums; }
 </style>
 
@@ -136,6 +158,7 @@ body {
       <li><span class="key">In der Luft</span><span>Seitlich: Spur wechseln · Hoch wischen oder Tippen: 360°-Drehung</span></li>
     </ul>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
+    <button class="btn ghost" id="boardBtn" type="button">Bestenliste</button>
     <p class="best-line" id="menuBest"></p>
   </div>
 </div>
@@ -151,8 +174,25 @@ body {
       <div><dt>Top-Speed</dt><dd id="stSpeed">0 km/h</dd></div>
       <div><dt>Münzen</dt><dd id="stCoins">0</dd></div>
     </dl>
+    <form class="name-form" id="nameForm" hidden>
+      <label for="nameInput" id="nameLabel">Du kommst in die Bestenliste! Dein Name:</label>
+      <div class="name-row">
+        <input id="nameInput" name="player" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name">
+        <button class="btn small" type="submit">Eintragen</button>
+      </div>
+    </form>
+    <p class="list-title">Bestenliste</p>
+    <ol class="scores" id="overScores"></ol>
     <button class="btn" id="againBtn" type="button">Nochmal</button>
     <p class="best-line" id="overBest"></p>
+  </div>
+</div>
+
+<div class="overlay" id="board" hidden>
+  <div class="card">
+    <h2 class="title">Besten<span>liste</span></h2>
+    <ol class="scores" id="boardScores"></ol>
+    <button class="btn" id="boardBack" type="button">Zurück</button>
   </div>
 </div>
 
@@ -448,6 +488,40 @@ body {
   let best = 0;
   try { best = Number(localStorage.getItem(BEST_KEY)) || 0; } catch (e) {}
   function saveBest() { try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {} }
+
+  // ---------- High score list (top 10, stored on this device) ----------
+  const SCORES_KEY = 'mountain-ride-scores', NAME_KEY = 'mountain-ride-name', MAX_SCORES = 10;
+  let scores = [];
+  try { scores = JSON.parse(localStorage.getItem(SCORES_KEY) || '[]').filter(s => s && typeof s.score === 'number'); } catch (e) { scores = []; }
+  let lastName = '';
+  try { lastName = localStorage.getItem(NAME_KEY) || ''; } catch (e) {}
+  function saveScores() { try { localStorage.setItem(SCORES_KEY, JSON.stringify(scores)); } catch (e) {} }
+  function qualifies(score) { return score > 0 && (scores.length < MAX_SCORES || score > scores[scores.length - 1].score); }
+  function addScore(entry) {
+    scores.push(entry);
+    scores.sort((a, b) => b.score - a.score);
+    scores = scores.slice(0, MAX_SCORES);
+    saveScores();
+    return scores.indexOf(entry);
+  }
+  function renderScores(listEl, highlight = -1) {
+    listEl.replaceChildren();
+    if (!scores.length) {
+      const li = document.createElement('li'); li.className = 'empty';
+      li.textContent = 'Noch keine Einträge. Fahr los!';
+      listEl.appendChild(li); return;
+    }
+    scores.forEach((s, i) => {
+      const li = document.createElement('li');
+      if (i === highlight) li.className = 'me';
+      for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', s.score.toLocaleString('de-DE')], ['dist', s.dist.toLocaleString('de-DE') + ' m']]) {
+        const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.appendChild(sp);
+      }
+      listEl.appendChild(li);
+    });
+    const me = listEl.querySelector('.me');
+    if (me) me.scrollIntoView({ block: 'nearest' });
+  }
 
   // ---------- World state ----------
   let state = 'menu';
@@ -970,10 +1044,35 @@ body {
     $('stCoins').textContent = coinCount;
     $('overBest').textContent = 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte';
     $('hud').hidden = true; $('over').hidden = false;
+    pendingEntry = qualifies(total) ? { name: '', score: total, dist: Math.floor(P.d - startD), date: Date.now() } : null;
+    $('nameForm').hidden = !pendingEntry;
+    if (pendingEntry) {
+      const rank = scores.filter(s => s.score >= total).length + 1;
+      $('nameLabel').textContent = `Platz ${rank} in der Bestenliste! Dein Name:`;
+      $('nameInput').value = lastName;
+    }
+    renderScores($('overScores'));
     const btn = $('againBtn');
     btn.disabled = true;
-    setTimeout(() => { btn.disabled = false; btn.focus({ preventScroll: true }); }, 600);
+    setTimeout(() => {
+      btn.disabled = false;
+      if (pendingEntry) $('nameInput').focus({ preventScroll: true }); else btn.focus({ preventScroll: true });
+    }, 600);
   }
+  let pendingEntry = null;
+  function submitName() {
+    if (!pendingEntry) return;
+    const name = $('nameInput').value.trim().slice(0, 14) || 'Fahrer';
+    lastName = name;
+    try { localStorage.setItem(NAME_KEY, name); } catch (e) {}
+    pendingEntry.name = name;
+    const idx = addScore(pendingEntry);
+    pendingEntry = null;
+    $('nameForm').hidden = true;
+    $('nameInput').blur();
+    renderScores($('overScores'), idx);
+  }
+  $('nameForm').addEventListener('submit', e => { e.preventDefault(); submitName(); $('againBtn').focus({ preventScroll: true }); });
 
   function takeOff(vy) {
     P.airDrag = 0; P.spinTarget = 0; P.yaw = 0; P.spinChain = 0;
@@ -1072,6 +1171,8 @@ body {
 
   const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
   addEventListener('keydown', e => {
+    if (e.target instanceof HTMLInputElement) return;
+    if (!$('board').hidden) return;
     if (KEYS[e.code]) {
       input[KEYS[e.code]] = true; e.preventDefault();
       if (!e.repeat) changeLane(KEYS[e.code] === 'right' ? 1 : -1);
@@ -1084,12 +1185,14 @@ body {
     if (e.repeat) return;
     if (state === 'play') jump();
     else if (state === 'menu') start();
-    else if (state === 'over' && !$('againBtn').disabled) start();
+    else if (state === 'over' && !$('againBtn').disabled) { submitName(); start(); }
   });
   addEventListener('keyup', e => { if (KEYS[e.code]) input[KEYS[e.code]] = false; });
   addEventListener('blur', () => { input.left = input.right = false; input.drag = null; });
   $('startBtn').addEventListener('click', start);
-  $('againBtn').addEventListener('click', start);
+  $('boardBtn').addEventListener('click', () => { renderScores($('boardScores')); $('menu').hidden = true; $('board').hidden = false; $('boardBack').focus({ preventScroll: true }); });
+  $('boardBack').addEventListener('click', () => { $('board').hidden = true; $('menu').hidden = false; });
+  $('againBtn').addEventListener('click', () => { submitName(); start(); });
   $('menuBest').textContent = best ? 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte' : 'Sammle Münzen und Power-ups: Magnet, Schild, Turbo, ×2 und Super-Sprung.';
 
   // ---------- Update ----------
