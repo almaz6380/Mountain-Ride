@@ -36,4 +36,9 @@ Fünf Spuren, ein Wischer = eine Spur.
 - Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
 - Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
 - Soundeffekte (Carven, Wind, Sprung, Landung, Münzen, Tricks, Sturz) und Musik, alles live per Web Audio erzeugt; die Musik wird mit dem Tempo dichter. Ton-Knopf unten rechts oder Taste M
-- Bestwert wird lokal gespeichert
+- Bestenliste (Top 10 auf dem Gerät), optional weltweit über Supabase, siehe [docs/online-bestenliste.md](docs/online-bestenliste.md)
+- Shop: Münzen sammeln und Power-ups verbessern, Start-Schild und Turbo-Start kaufen, Farbe der Schneespur wählen
+- Missionen: immer drei Aufgaben mit Münz-Belohnung, erledigte werden durch neue ersetzt
+- Pause (Knopf oben oder P/Esc) und Einstellungen für Musik, Effekte und Wisch-Empfindlichkeit
+- Tutorial beim ersten Start, jederzeit über die Einstellungen wiederholbar
+- Streckenabschnitte: Tiefschnee (langsamer), Eisplatte (schneller, rutschig), Schneetunnel, Steilhang (Vollgas)
