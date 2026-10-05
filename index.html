@@ -828,7 +828,7 @@ body {
     }
   }
 
-  function difficulty() { return clamp((P.d - startD) / 3000, 0, 1); }
+  function difficulty() { return clamp((P.d - startD) / 1800, 0, 1); }   // full difficulty after 1.8 km
 
   function pickLanes(k) {
     const a = [0, 1, 2, 3, 4];
@@ -841,72 +841,101 @@ body {
     const free = freeLanes(used);
     if (!free.length) return;
     addPower(d, laneX(free[Math.floor(Math.random() * free.length)]));
-    nextPowerD = d + rand(220, 380);
+    nextPowerD = d + rand(300, 500);
+  }
+  // a second tree row right behind the first: its open lane is next to one of the first row's open lanes
+  function followRow(d, used1) {
+    const free1 = freeLanes(used1);
+    const base = free1[Math.floor(Math.random() * free1.length)];
+    const open = clamp(base + (Math.random() < 0.5 ? -1 : 1), 0, 4);
+    const keepBase = Math.random() < 0.5;
+    for (let l = 0; l < 5; l++) {
+      if (l === open || (l === base && keepBase)) continue;
+      addEnt(Math.random() < 0.6 ? 'tree' : 'rock', d + rand(-0.5, 0.5), laneX(l), { s: 0.75 });
+    }
   }
   function spawnRow(d) {
     const diff = difficulty();
     const roll = Math.random();
-    if (roll >= 0.48 && roll < 0.66 && diff > 0.04) {   // the newer obstacles
+    const blocked = () => 2 + Math.floor(Math.random() * (1 + diff * 2.2));   // 2 to 4 lanes
+    if (roll >= 0.38 && roll < 0.56 && diff > 0.02) {   // the newer obstacles
       const kind = Math.random();
       if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
-        const n = 2 + Math.floor(Math.random() * (diff > 0.3 ? 4 : 3));
+        const n = 2 + Math.floor(Math.random() * (diff > 0.2 ? 4 : 3));
         const l0 = Math.floor(Math.random() * (6 - n)), used = [];
         for (let l = l0; l < l0 + n; l++) { used.push(l); addCoin(d, laneX(l), baseH(d, laneX(l)) + 1.6); }
         addEnt('crevasse', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { half: (n * LANE_W) / 2 - 0.1 });
+        // trees in the lanes beside the crack, so walking around it is not free
+        for (const l of freeLanes(used)) if (Math.random() < 0.3 + diff * 0.5 && used.length < 4) { addEnt('tree', d + rand(-1, 1), laneX(l), { s: 0.75 }); used.push(l); }
         maybePower(d - 6, used);
-        return lerp(20, 14, diff);
+        return lerp(17, 11, diff);
       }
       if (kind < 0.68) {   // fence over one or two lanes: change lane
-        const n = Math.random() < 0.5 ? 1 : 2, l0 = Math.floor(Math.random() * (6 - n)), used = [];
+        const n = Math.random() < 0.4 ? 1 : 2, l0 = Math.floor(Math.random() * (6 - n)), used = [];
         for (let l = l0; l < l0 + n; l++) used.push(l);
         addEnt('fence', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { lanes: n });
-        const extra = pickLanes(1 + Math.floor(diff * 2)).filter(l => !used.includes(l)).slice(0, diff > 0.4 ? 2 : 1);
+        const extra = pickLanes(2 + Math.floor(diff * 2)).filter(l => !used.includes(l)).slice(0, diff > 0.3 ? 2 : 1);
         for (const l of extra) { addEnt(Math.random() < 0.5 ? 'rock' : 'tree', d + rand(-1, 1), laneX(l), { s: 0.8 }); used.push(l); }
         if (used.length >= 5) used.pop();
         maybePower(d, used);
-        return lerp(16, 10, diff);
+        return lerp(14, 8.5, diff);
       }
-      // snowball rolling across the lanes: jump it or time your lane change
+      // snowballs rolling across the lanes: jump them or time your lane change
       const dir = Math.random() < 0.5 ? -1 : 1;
-      addEnt('snowball', d + 8, laneX(dir < 0 ? 4 : 0), { vx: dir * rand(2.5, 3.5 + diff * 2) });
-      return lerp(22, 15, diff);
+      addEnt('snowball', d + 8, laneX(dir < 0 ? 4 : 0), { vx: dir * rand(3.5, 5 + diff * 3) });
+      if (diff > 0.4 && Math.random() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rand(3.5, 5 + diff * 3) });
+      return lerp(20, 13, diff);
     }
-    if (roll < 0.12) {
+    if (roll >= 0.56 && roll < 0.72 && diff > 0.12) {   // no free lane: trees, plus one lane to jump and one to duck
+      const order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
+      addEnt('log', d, laneX(order[0]));
+      addEnt('gate', d, laneX(order[1]));
+      addCoin(d, laneX(order[0]), baseH(d, laneX(order[0])) + 2.4);
+      for (const l of order.slice(2)) addEnt(Math.random() < 0.7 ? 'tree' : 'snowman', d + rand(-0.5, 0.5), laneX(l), { s: 0.75 });
+      return lerp(15, 9, diff);
+    }
+    if (roll < 0.08) {
       const r = addRamp(d, laneX(Math.floor(Math.random() * 5)));
-      return r.d1 - d + 22;
+      return r.d1 - d + lerp(20, 14, diff);
     }
-    if (roll < 0.24) {   // logs: jump over or switch lane
-      const used = pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2.5)));
+    if (roll < 0.2) {   // logs: jump over or switch lane
+      const used = pickLanes(blocked());
       for (const l of used) {
         addEnt('log', d, laneX(l));
         addCoin(d, laneX(l), baseH(d, laneX(l)) + 2.4);
       }
       maybePower(d, used);
-      return lerp(18, 12, diff);
+      return lerp(15, 9, diff);
     }
-    if (roll < 0.36) {   // banner gates: duck under or switch lane
-      const used = pickLanes(1 + Math.floor(Math.random() * (1.5 + diff * 2)));
+    if (roll < 0.32) {   // banner gates: duck under or switch lane
+      const used = pickLanes(blocked());
       for (const l of used) {
         addEnt('gate', d, laneX(l));
         addCoin(d, laneX(l), baseH(d, laneX(l)) + 0.7);
       }
       maybePower(d, used);
-      return lerp(18, 12, diff);
+      return lerp(15, 9, diff);
     }
-    if (roll < 0.48) {   // coin line in one lane
+    if (roll < 0.38) {   // coin line in one lane, later ending in a rock you have to jump
       const lane = Math.floor(Math.random() * 5), x = laneX(lane);
       for (let i = 0; i < 7; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
+      if (diff > 0.25) addEnt('rock', d + 22, x);
       maybePower(d + 10, [lane]);
       return 24;
     }
-    const types = diff < 0.1 ? ['tree', 'rock'] : ['tree', 'tree', 'rock', 'snowman'];
-    const used = pickLanes(1 + Math.floor(Math.random() * (2 + diff * 2.5)));
+    const types = diff < 0.08 ? ['tree', 'rock'] : ['tree', 'tree', 'rock', 'snowman'];
+    const used = pickLanes(blocked());
     maybePower(d, used);
     for (const l of used) {
       const type = types[Math.floor(Math.random() * types.length)];
       addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
     }
-    return lerp(15, 9, diff) + rand(0, 4);
+    if (diff > 0.3 && Math.random() < 0.25 + diff * 0.3) {   // quick follow-up row: two lane changes in a row
+      const gap = lerp(13, 10, diff) * Math.max(1, P.v / 22);
+      followRow(d + gap, used);
+      return gap + lerp(12, 8, diff);
+    }
+    return lerp(12, 8.5, diff) + rand(0, 3);
   }
 
   function spawnDeco(d) {
@@ -935,7 +964,7 @@ body {
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
     // gaps between rows grow with speed so there is always about the same reaction time
     if (state === 'play' && !tut.active) {
-      while (nextD < ahead) nextD += spawnRow(nextD) * Math.max(1, P.v / 20);
+      while (nextD < ahead) nextD += spawnRow(nextD) * Math.max(1, P.v / 22);
       while (nextSectionD < ahead) nextSectionD = addSection(nextSectionD) + rand(450, 650);
     }
     sections = sections.filter(s => s.d1 > P.d - 40);
@@ -1497,7 +1526,7 @@ body {
     runLanes = 0;
     clearWorld();
     resetRider(P.d);
-    P.v = 17;
+    P.v = 19;
     startD = P.d; nextD = P.d + 45; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
@@ -1751,7 +1780,7 @@ body {
     } else {
       const here = sectionAt(P.d);
       const secSpeed = here ? lerp(1, here.def.speed, here.w) : 1;
-      const target = (playing ? (tut.active ? 15 : (17 + Math.min(26, dist * 0.012)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
+      const target = (playing ? (tut.active ? 15 : (19 + Math.min(30, dist * 0.015)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
