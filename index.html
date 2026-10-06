@@ -170,6 +170,10 @@ body {
 .duel-result .row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .duel-vs { font-size: 20px; margin: 0; }
 .duel-vs b { color: var(--jacket); }
+.room-code { margin: 0; font-weight: 800; font-size: 54px; letter-spacing: 0.18em; color: var(--jacket); line-height: 1; }
+.live-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.live-players li { background: rgba(244, 248, 252, 0.08); border-radius: 10px; padding: 8px 12px; font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; }
+.live-players li span { opacity: 0.7; font-weight: 600; }
 .share-link { width: 100%; font: inherit; font-size: 14px; padding: 10px; border-radius: 10px; border: 0; background: rgba(244, 248, 252, 0.12); color: var(--snow); }
 .pause-btn {
   position: absolute; left: 50%; top: 0; transform: translateX(-50%); pointer-events: auto;
@@ -218,6 +222,7 @@ body {
     <p class="sub">Brett anschnallen und runter. Je weiter du kommst, desto schneller wird der Hang.</p>
     <p class="wallet"><i class="coin-dot"></i><span id="menuWallet">0</span> Münzen</p>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
+    <button class="btn ghost" id="liveBtn" type="button" hidden>Live gegen Freund</button>
     <div class="menu-grid">
       <button class="btn ghost" id="shopBtn" type="button">Shop</button>
       <button class="btn ghost" id="missionsBtn" type="button">Missionen<span class="badge" id="missionBadge" hidden></span></button>
@@ -270,6 +275,37 @@ body {
     <p class="note">Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.</p>
     <button class="btn" id="duelGoBtn" type="button">Duell starten</button>
     <button class="btn ghost" id="duelCancelBtn" type="button">Abbrechen</button>
+  </div>
+</div>
+
+<div class="overlay" id="live" hidden>
+  <div class="card">
+    <h2 class="title">Live-<span>Duell</span></h2>
+    <div id="liveJoin">
+      <p class="note">Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.</p>
+      <form class="name-form" id="liveNameForm">
+        <label for="liveName">Dein Spielername:</label>
+        <div class="name-row"><input id="liveName" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name"></div>
+      </form>
+      <button class="btn" id="liveCreateBtn" type="button">Raum erstellen</button>
+      <form class="name-form" id="liveCodeForm">
+        <label for="liveCode">Oder Raum-Code eingeben:</label>
+        <div class="name-row">
+          <input id="liveCode" maxlength="4" autocomplete="off" autocapitalize="characters" enterkeyhint="go" placeholder="CODE">
+          <button class="btn small" type="submit">Beitreten</button>
+        </div>
+      </form>
+    </div>
+    <div id="liveRoom" hidden>
+      <p class="list-title">Raum-Code</p>
+      <p class="room-code" id="liveRoomCode">----</p>
+      <button class="btn ghost" id="liveShareBtn" type="button">Einladung teilen</button>
+      <ul class="live-players" id="livePlayers"></ul>
+      <p class="note" id="liveStatus">Warte auf deinen Gegner …</p>
+      <button class="btn" id="liveStartBtn" type="button" disabled>Rennen starten</button>
+    </div>
+    <p class="note" id="liveErr" hidden></p>
+    <button class="btn ghost" id="liveLeaveBtn" type="button">Zurück</button>
   </div>
 </div>
 
@@ -1411,7 +1447,7 @@ body {
   fillMissions();
 
   // ---------- Panels (shop, missions, settings, high scores, pause) ----------
-  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge'];
+  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge', 'live'];
   let panelReturn = 'menu', openPanel = 'menu';
   function showPanel(id) {
     for (const p of PANELS) $(p).hidden = p !== id;
@@ -1524,13 +1560,15 @@ body {
   // Worldwide list: fill in a Supabase project URL and its public anon key (see docs/online-bestenliste.md)
   const ONLINE = { url: '', key: '' };
   const onlineReady = !!(ONLINE.url && ONLINE.key) && !/claude\.ai$/.test(location.hostname);
+  // legacy anon keys are JWTs and go in Authorization too; new publishable keys (sb_publishable_…) only as apikey
+  const authHeaders = () => ONLINE.key.startsWith('sb_') ? { apikey: ONLINE.key } : { apikey: ONLINE.key, Authorization: 'Bearer ' + ONLINE.key };
   let boardTab = 'local';
   async function postOnline(e) {
     if (!onlineReady) return;
     try {
       await fetch(ONLINE.url + '/rest/v1/scores', {
         method: 'POST',
-        headers: { apikey: ONLINE.key, Authorization: 'Bearer ' + ONLINE.key, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ name: e.name, score: e.score, dist: e.dist }),
       });
     } catch (err) {}
@@ -1552,7 +1590,7 @@ body {
     }
     note.hidden = false; note.textContent = 'Wird geladen …';
     try {
-      const res = await fetch(ONLINE.url + '/rest/v1/scores?select=name,score,dist&order=score.desc&limit=25', { headers: { apikey: ONLINE.key, Authorization: 'Bearer ' + ONLINE.key } });
+      const res = await fetch(ONLINE.url + '/rest/v1/scores?select=name,score,dist&order=score.desc&limit=25', { headers: authHeaders() });
       if (!res.ok) throw new Error(res.status);
       const rows = await res.json();
       if (boardTab !== 'online') return;
@@ -1674,9 +1712,10 @@ body {
     runLanes = 0;
     clearWorld();
     // every run is built from a seed: a duel replays the challenger's seed from the same spot on the mountain
-    runSeed = duel ? duel.seed : (Math.random() * 4294967296) >>> 0;
+    const fixed = duel || live.next;
+    runSeed = fixed ? fixed.seed : (Math.random() * 4294967296) >>> 0;
     rowRnd = seededRng(runSeed); secRnd = seededRng(runSeed ^ 0x9e3779b9); lastSectionType = '';
-    resetRider(duel ? duel.sd : Math.round(P.d));
+    resetRider(fixed ? fixed.sd : Math.round(P.d));
     P.v = 21;
     rec = { bytes: [], lastD: P.d, t: 0, tut: false }; ghostT = 0; duelPassed = false;
     startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
@@ -1687,7 +1726,7 @@ body {
     resetBody();
     applyTrail();
     // tutorial on the very first run, or when asked for in the settings
-    tut.active = !duel && (tutForce || !store.get('tutorialDone', false));
+    tut.active = !fixed && (tutForce || !store.get('tutorialDone', false));
     tutForce = false;
     $('tut').hidden = true;
     if (tut.active) { tut.step = 0; tut.wait = 1.2; tut.rowD = 0; tutShow('', 'Willkommen! Kurze Einführung …'); }
@@ -1700,12 +1739,13 @@ body {
     input.drag = null;
     showPanel(null);
     $('hud').hidden = false;
-    $('duelHud').hidden = !duel;
+    $('duelHud').hidden = !duel && !live.next;
   }
   let runLanes = 0;
   function toMenu() {
     submitName();
     duel = null;
+    liveLeave();
     fillMissions();
     clearWorld();
     resetRider(P.d);
@@ -1751,6 +1791,7 @@ body {
     pendingEntry = qualifies(total) ? { name: '', score: total, dist: Math.floor(P.d - startD), date: Date.now() } : null;
     lastRun = { seed: runSeed, sd: startD, dm: Math.floor(P.d - startD), sc: total, bytes: Uint8Array.from(rec.bytes) };
     showDuelResult(lastRun);
+    if (live.next) liveFinished(lastRun.dm);
     $('nameForm').hidden = !pendingEntry;
     if (pendingEntry) {
       const rank = scores.filter(s => s.score >= total).length + 1;
@@ -1911,7 +1952,7 @@ body {
   $('missionsBtn').addEventListener('click', () => openSub('missions', 'menu'));
   $('settingsBtn').addEventListener('click', () => openSub('settings', 'menu'));
   $('toMenuBtn').addEventListener('click', toMenu);
-  $('againBtn').addEventListener('click', () => { submitName(); start(); });
+  $('againBtn').addEventListener('click', () => { submitName(); if (live.next) liveRematch(); else start(); });
   refreshMenu();
 
   // ---------- Duel by link: same seed, the challenger rides along as a ghost ----------
@@ -1986,10 +2027,11 @@ body {
     return { d: lerp(g.d[i], g.d[j], w), x: lerp(g.x[i], g.x[j], w), h: lerp(g.h[i], g.h[j], w), f: g.f[i], done: t >= g.n - 1 };
   }
   function renderGhost() {
-    const on = !!duel && duel.g.n > 1 && (state === 'play' || state === 'crash' || state === 'paused');
+    const racing = state === 'play' || state === 'crash' || state === 'paused' || state === 'countdown';
+    const on = (!!duel && duel.g.n > 1 && racing) || (!!live.next && !!live.snap && (racing || state === 'over'));
     ghost.visible = tag.visible = false;
     if (!on) return;
-    const s = ghostAt();
+    const s = duel ? ghostAt() : liveAt();
     if (s.d < P.d - 7 || s.d > P.d + 160) return;
     const pose = s.f & 4 ? 'rider-crash' : s.f & 1 ? 'rider-duck' : s.f & 2 ? 'rider-air' : s.f & 8 ? 'rider-left' : s.f & 16 ? 'rider-right' : 'rider-straight';
     let h = RIDER_H[pose] * RIDER_SCALE, wk = 1;
@@ -2083,6 +2125,231 @@ body {
   addEventListener('hashchange', checkDuelLink);
   checkDuelLink();
 
+  // ---------- Live duel: both ride at the same time, linked through Supabase Realtime ----------
+  // ?livetest uses a BroadcastChannel between two tabs of one browser instead (for testing without a server)
+  const liveTest = /[?&]livetest\b/.test(location.search) && 'BroadcastChannel' in window;
+  const liveAvailable = onlineReady || liveTest;
+  const live = { link: null, room: '', id: Math.random().toString(36).slice(2, 10), name: '', peers: {}, next: null, snap: null, prev: null,
+    oppDone: false, oppDist: 0, myDone: false, myDist: 0, sendT: 0, countT: 0, lastCount: 0, wantRematch: false };
+  $('liveBtn').hidden = !liveAvailable;
+  const ROOM_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const opp = () => Object.entries(live.peers).find(([id]) => id !== live.id);
+  function loadScript(src) {
+    return new Promise((ok, fail) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = fail; document.head.appendChild(el); });
+  }
+  async function liveConnect(room) {
+    if (!onlineReady) {   // test transport
+      const bc = new BroadcastChannel('mr-live-' + room);
+      const me = () => ({ k: 'hello', id: live.id, name: live.name });
+      bc.onmessage = ({ data }) => {
+        if (data.k === 'hello' || data.k === 'hi') { const fresh = !live.peers[data.id]; live.peers[data.id] = { name: data.name }; if (data.k === 'hello') bc.postMessage({ ...me(), k: 'hi' }); if (fresh) livePresence(); }
+        else if (data.k === 'bye') { delete live.peers[data.id]; livePresence(); }
+        else if (data.k === 'm') liveMsg(data.p);
+      };
+      live.peers[live.id] = { name: live.name };
+      bc.postMessage(me());
+      addEventListener('pagehide', () => bc.postMessage({ k: 'bye', id: live.id }));
+      livePresence();
+      return { send: p => bc.postMessage({ k: 'm', p }), close: () => { bc.postMessage({ k: 'bye', id: live.id }); bc.close(); } };
+    }
+    if (!window.supabase) await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js');
+    if (!live.sb) live.sb = window.supabase.createClient(ONLINE.url, ONLINE.key);
+    const ch = live.sb.channel('mr-live-' + room, { config: { broadcast: { self: false }, presence: { key: live.id } } });
+    ch.on('broadcast', { event: 'm' }, ({ payload }) => liveMsg(payload));
+    ch.on('presence', { event: 'sync' }, () => {
+      const st = ch.presenceState();
+      live.peers = {};
+      for (const [id, metas] of Object.entries(st)) live.peers[id] = { name: (metas[0] && metas[0].name) || 'Fahrer' };
+      livePresence();
+    });
+    await new Promise((ok, fail) => {
+      const t = setTimeout(() => fail(new Error('timeout')), 10000);
+      ch.subscribe(async status => {
+        if (status === 'SUBSCRIBED') { clearTimeout(t); await ch.track({ name: live.name }); ok(); }
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') { clearTimeout(t); fail(new Error(status)); }
+      });
+    });
+    return { send: p => ch.send({ type: 'broadcast', event: 'm', payload: p }), close: () => { ch.untrack(); live.sb.removeChannel(ch); } };
+  }
+  function liveErr(text) { const e = $('liveErr'); e.hidden = !text; e.textContent = text || ''; }
+  function liveShowJoin() {
+    $('liveJoin').hidden = false; $('liveRoom').hidden = true; liveErr('');
+    $('liveName').value = lastName;
+  }
+  function liveSetName() {
+    const n = $('liveName').value.trim().slice(0, 14);
+    if (!n) { liveErr('Gib zuerst deinen Spielernamen ein.'); $('liveName').focus(); return false; }
+    live.name = lastName = n;
+    try { localStorage.setItem(NAME_KEY, n); } catch (e) {}
+    return true;
+  }
+  async function liveJoin(room) {
+    if (!liveSetName()) return;
+    room = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+    if (room.length !== 4) { liveErr('Der Raum-Code hat 4 Zeichen.'); return; }
+    liveErr('Verbinde …');
+    try {
+      if (live.link) live.link.close();
+      live.peers = {}; live.room = room;
+      live.link = await liveConnect(room);
+    } catch (e) { live.link = null; liveErr('Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.'); return; }
+    liveErr('');
+    $('liveJoin').hidden = true; $('liveRoom').hidden = false;
+    $('liveRoomCode').textContent = room;
+    livePresence();
+  }
+  function liveLeave() {
+    if (live.link) { try { live.link.close(); } catch (e) {} }
+    live.link = null; live.room = ''; live.peers = {}; live.next = null; live.snap = live.prev = null;
+  }
+  function livePresence() {
+    const ul = $('livePlayers');
+    ul.replaceChildren();
+    for (const [id, p] of Object.entries(live.peers)) {
+      const li = document.createElement('li');
+      li.textContent = p.name;
+      const tag2 = document.createElement('span'); tag2.textContent = id === live.id ? 'du' : 'Gegner';
+      li.append(tag2); ul.append(li);
+    }
+    const o = opp(), n = Object.keys(live.peers).length;
+    $('liveStartBtn').disabled = !o || n > 2;
+    $('liveStatus').textContent = n > 2 ? 'Der Raum ist voll (nur 2 Fahrer).' : o ? `${o[1].name} ist da. Bereit?` : 'Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.';
+    if (o) drawTag(o[1].name);
+    // the opponent left in the middle of a race: they are out, their last distance counts
+    if (live.next && !o && !live.oppDone) { live.oppDone = true; popup(`${live.oppName || 'Gegner'} ist raus`, 'Verbindung getrennt'); refreshLiveResult(); }
+  }
+  // the first start message wins; if both press at once, both pick the smaller seed and end up in the same race
+  function liveBegin(seed, sd) {
+    if (live.next && state === 'countdown' && live.next.seed <= seed) return;
+    const o = opp();
+    live.oppName = o ? o[1].name : 'Gegner';
+    live.next = { seed, sd };
+    live.snap = live.prev = null; live.oppDone = false; live.oppDist = 0; live.myDone = false; live.wantRematch = false;
+    duel = null;
+    start();
+    state = 'countdown'; live.countT = 3.2; live.lastCount = 0;
+    $('duelHud').hidden = false; $('duelHud').textContent = `gegen ${live.oppName}`; $('duelHud').className = 'duel-chip';
+  }
+  function liveCountdown(dt) {
+    live.countT -= dt;
+    const n = Math.ceil(live.countT - 0.2);
+    if (n !== live.lastCount && n > 0) { live.lastCount = n; popup(String(n), 'gegen ' + live.oppName); Sound.coin(); }
+    if (live.countT <= 0) { state = 'play'; popup('Los!', ''); Sound.power(); }
+  }
+  function liveMsg(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'start' && typeof m.seed === 'number') {
+      if (state === 'play' || state === 'crash') return;   // never yank someone out of a running race
+      showPanel(null);
+      liveBegin(m.seed >>> 0, +m.sd || 0);
+    } else if (m.t === 's' && live.next) {
+      live.prev = live.snap;
+      live.snap = { d: +m.d, x: +m.x, h: +m.h, f: m.f | 0, at: performance.now() };
+      live.oppDist = Math.max(live.oppDist, m.dist | 0);
+    } else if (m.t === 'over' && live.next) {
+      live.oppDone = true; live.oppDist = m.dist | 0;
+      if (state === 'play') popup(`${live.oppName} gestürzt`, live.oppDist.toLocaleString('de-DE') + ' m – fahr weiter!');
+      refreshLiveResult();
+    } else if (m.t === 'again' && live.next) {
+      live.oppWants = true;
+      if (state === 'over') { $('againBtn').textContent = live.wantRematch ? 'Startet …' : `${live.oppName} will Revanche!`; }
+      liveTryRematch();
+    }
+  }
+  function liveSendState(dt) {
+    if (!live.link || !live.next || (state !== 'play' && state !== 'crash')) return;
+    live.sendT += dt;
+    if (live.sendT < 0.1) return;
+    live.sendT = 0;
+    const f = (P.ducking ? 1 : 0) | (P.air ? 2 : 0) | (P.crashed ? 4 : 0) | (P.pose === 'rider-left' ? 8 : 0) | (P.pose === 'rider-right' ? 16 : 0);
+    live.link.send({ t: 's', d: Math.round(P.d * 100) / 100, x: Math.round(P.x * 100) / 100, h: Math.round((P.y - groundAt(P.d, P.x)) * 100) / 100, f, dist: Math.floor(P.d - startD) });
+  }
+  // the opponent between network updates: carry on at their last speed for a moment
+  function liveAt() {
+    const a = live.snap, b = live.prev;
+    let d = a.d;
+    if (b && a.at > b.at && !(a.f & 4)) d += Math.min(0.25, (performance.now() - a.at) / 1000) * (a.d - b.d) / ((a.at - b.at) / 1000);
+    return { d, x: a.x, h: a.h, f: a.f, done: live.oppDone };
+  }
+  function updateLiveHud(myDist) {
+    const el = $('duelHud');
+    if (!live.snap) { el.textContent = `${live.oppName} …`; el.className = 'duel-chip'; return; }
+    if (live.oppDone && myDist > live.oppDist) { el.textContent = `${live.oppName} geschlagen!`; el.className = 'duel-chip ahead'; return; }
+    const gap = Math.round(P.d - liveAt().d);
+    el.textContent = gap >= 0 ? `${live.oppName}: ${gap} m hinter dir` : `${live.oppName}: ${-gap} m vor dir`;
+    el.className = 'duel-chip ' + (gap >= 0 ? 'ahead' : 'behind');
+  }
+  function liveFinished(dist) {
+    live.myDone = true; live.myDist = dist;
+    if (live.link) live.link.send({ t: 'over', dist });
+    $('challengeBtn').hidden = true;
+    refreshLiveResult();
+  }
+  function refreshLiveResult() {
+    if (!live.next || !live.myDone) return;
+    const box = $('duelResult');
+    box.hidden = false; box.replaceChildren();
+    const t = document.createElement('div'); t.className = 'win';
+    t.textContent = !live.oppDone ? `${live.oppName} fährt noch …` : live.myDist > live.oppDist ? 'Du gewinnst!' : live.myDist < live.oppDist ? `${live.oppName} gewinnt` : 'Unentschieden';
+    box.append(t);
+    for (const [n, dm] of [[live.name || 'Du', live.myDist], [live.oppName, live.oppDist]]) {
+      const row = document.createElement('div'); row.className = 'row';
+      const b = document.createElement('b'); b.textContent = n;
+      const v = document.createElement('span'); v.textContent = dm.toLocaleString('de-DE') + ' m';
+      row.append(b, v); box.append(row);
+    }
+    $('againBtn').textContent = live.wantRematch ? 'Warte auf ' + live.oppName + ' …' : live.oppWants ? `${live.oppName} will Revanche!` : 'Revanche';
+    if (live.oppDone && live.myDist > live.oppDist && !live.wonSound) { live.wonSound = true; Sound.power(); }
+  }
+  // rematch: both press it, then the one who pressed last starts the new race for both
+  function liveRematch() {
+    if (!live.link || !opp()) { popup('Gegner ist weg', 'Zurück ins Menü'); toMenu(); return; }
+    live.wantRematch = true;
+    live.link.send({ t: 'again' });
+    refreshLiveResult();
+    liveTryRematch();
+  }
+  function liveTryRematch() {
+    if (!live.wantRematch || !live.oppWants) return;
+    live.oppWants = false; live.wantRematch = false; live.wonSound = false;
+    const seed = (Math.random() * 4294967296) >>> 0, sd = Math.round(P.d) + 40;
+    live.link.send({ t: 'start', seed, sd });
+    showPanel(null);
+    liveBegin(seed, sd);
+  }
+  $('liveBtn').addEventListener('click', () => { liveShowJoin(); showPanel('live'); });
+  $('liveCreateBtn').addEventListener('click', () => {
+    let c = ''; for (let i = 0; i < 4; i++) c += ROOM_CHARS[Math.floor(Math.random() * ROOM_CHARS.length)];
+    liveJoin(c);
+  });
+  $('liveCodeForm').addEventListener('submit', e => { e.preventDefault(); liveJoin($('liveCode').value); });
+  $('liveNameForm').addEventListener('submit', e => { e.preventDefault(); $('liveName').blur(); });
+  $('liveStartBtn').addEventListener('click', () => {
+    if (!live.link || !opp()) return;
+    const seed = (Math.random() * 4294967296) >>> 0, sd = Math.round(P.d);
+    live.link.send({ t: 'start', seed, sd });
+    showPanel(null);
+    liveBegin(seed, sd);
+  });
+  $('liveShareBtn').addEventListener('click', async () => {
+    const url = SHARE_BASE + '#live=' + live.room, text = `Fahr live gegen mich bei Mountain Ride! Raum-Code: ${live.room}`;
+    if (navigator.share) { try { await navigator.share({ title: 'Mountain Ride Live-Duell', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text + ' ' + url); $('liveStatus').textContent = 'Einladung kopiert! Schick sie deinem Gegner.'; } catch (e) { $('liveStatus').textContent = 'Schick deinem Gegner den Code ' + live.room; }
+  });
+  $('liveLeaveBtn').addEventListener('click', () => { liveLeave(); refreshMenu(); showPanel('menu'); });
+  // an invitation link opens the live screen with the code filled in
+  function checkLiveLink() {
+    const m = location.hash.match(/^#live=([A-Za-z0-9]{4})$/);
+    if (!m) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    if (!liveAvailable || state !== 'menu') return;
+    liveShowJoin(); showPanel('live');
+    $('liveCode').value = m[1].toUpperCase();
+    if (lastName) liveJoin(m[1]); else { liveErr('Gib deinen Namen ein und tipp auf „Beitreten“.'); $('liveName').focus(); }
+  }
+  addEventListener('hashchange', checkLiveLink);
+  checkLiveLink();
+
   // ---------- Update ----------
   let lastDt = 0.016;
   // critically damped spring towards the target lane: eases in and out of every lane change
@@ -2096,7 +2363,8 @@ body {
   }
   function update(dt) {
     clock += dt; lastDt = dt;
-    if (state === 'play' || state === 'crash') { recordGhost(dt); ghostT += dt; }
+    if (state === 'countdown') { liveCountdown(dt); return; }
+    if (state === 'play' || state === 'crash') { recordGhost(dt); ghostT += dt; liveSendState(dt); }
     const playing = state === 'play';
     const dist = P.d - startD;
     P.lastX = P.x;
@@ -2395,7 +2663,7 @@ body {
     if (s !== hud.speed) { hud.speed = s; $('hudSpeed').textContent = s + ' km/h'; }
     if (coinCount !== hud.coins) { hud.coins = coinCount; $('hudCoins').textContent = coinCount; }
     if (sc !== hud.score) { hud.score = sc; $('hudScore').textContent = sc.toLocaleString('de-DE'); }
-    if (duel) updateDuelHud(d);
+    if (duel) updateDuelHud(d); else if (live.next) updateLiveHud(d);
   }
 
   // ---------- Loop ----------
