@@ -366,6 +366,14 @@ body {
       </div>
     </div>
     <div class="setting">
+      <span class="lbl" id="gfxLabel">Grafik</span>
+      <div class="seg" role="group" aria-labelledby="gfxLabel">
+        <button type="button" data-opt="gfx" data-val="2">Hoch</button>
+        <button type="button" data-opt="gfx" data-val="1">Auto</button>
+        <button type="button" data-opt="gfx" data-val="0">Schnell</button>
+      </div>
+    </div>
+    <div class="setting">
       <span class="lbl" id="vibLabel">Vibration bei Sturz</span>
       <div class="seg" role="group" aria-labelledby="vibLabel">
         <button type="button" data-opt="vibrate" data-val="1">An</button>
@@ -465,12 +473,19 @@ body {
   const sun = new THREE.DirectionalLight(0xffffff, 0.75);
   sun.position.set(-40, 60, 30);
   scene.add(hemi, sun, sun.target);
+  // real shadows from the sun in a 52 m box that travels with the rider
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 170 });
+  sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.04;
+  let pxCap = 3, pxBudget = 3.2e6;   // graphics quality (see settings): resolution limits
 
   let W = 1, H = 1;
   function resize() {
     W = innerWidth; H = innerHeight;
     // full device resolution on phones (crisp sprites), capped at about 3.2 million pixels for big screens
-    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(3.2e6 / (W * H)))));
+    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, pxCap, Math.sqrt(pxBudget / (W * H)))));
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
@@ -496,8 +511,6 @@ body {
     spriteMats.push(m);
     return m;
   }
-  const SM = {};
-  for (const n of ['tree-tall', 'tree-round', 'rock', 'log', 'snowman', 'coin', 'flag']) SM[n] = spriteMat(n);
   const riderTex = {};
   for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash', 'rider-duck']) riderTex[n] = tex(n + '.png');
   // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
@@ -569,6 +582,7 @@ body {
   const snowTex = tex('snow.jpg', { repeat: true, aniso: true });
   const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: snowTex, vertexColors: true, side: THREE.DoubleSide }));
   ground.frustumCulled = false;
+  ground.receiveShadow = true;
   scene.add(ground);
   let groundBase = null;
   function updateGround(d) {
@@ -705,18 +719,90 @@ body {
   flakes.frustumCulled = false;
   scene.add(flakes);
 
+  // ---------- Board tracks left in the snow ----------
+  const TRAIL_N = 150, TRAIL_STEP = 0.4;   // about 60 m of track behind the rider
+  const trailPos = new Float32Array(TRAIL_N * 6), trailCol = new Float32Array(TRAIL_N * 8);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 4));
+  { const idx = []; for (let i = 0; i < TRAIL_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } trailGeo.setIndex(idx); }
+  const trail = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
+  trail.frustumCulled = false; trail.renderOrder = 2;
+  scene.add(trail);
+  let trailPts = [];
+  function updateTrail() {
+    const on = !P.air && !P.crashed;
+    const last = trailPts[trailPts.length - 1];
+    if (!last || P.d - last.d >= TRAIL_STEP || P.d < last.d) {
+      if (last && P.d < last.d) trailPts = [];
+      trailPts.push({ d: P.d, x: P.x, on });
+      if (trailPts.length > TRAIL_N) trailPts.shift();
+    }
+    const n = trailPts.length;
+    for (let i = 0; i < TRAIL_N; i++) {
+      const pt = trailPts[Math.max(0, n - TRAIL_N + i)] || { d: P.d, x: P.x, on: false };
+      const j = i - (TRAIL_N - n);   // index from the oldest real point
+      const head = i === TRAIL_N - 1 ? { d: P.d, x: P.x } : pt;
+      const y = groundAt(head.d, head.x) + 0.04, hw = 0.13;
+      trailPos.set([head.x - hw, y, -head.d, head.x + hw, y, -head.d], i * 6);
+      const age = (TRAIL_N - 1 - i) / TRAIL_N;
+      const a = j < 0 || !pt.on ? 0 : 0.26 * Math.min(1, (1 - age) * 3) * Math.min(1, (TRAIL_N - 1 - i) / 3 + 0.2);
+      for (let k = 0; k < 2; k++) trailCol.set([0.62, 0.72, 0.86, a], i * 8 + k * 4);
+    }
+    trailGeo.attributes.position.needsUpdate = true;
+    trailGeo.attributes.color.needsUpdate = true;
+  }
+
+  // ---------- Speed streaks at high speed: thin bright quads flying past the edges of the view ----------
+  const STREAKS = 36;
+  const streakPos = new Float32Array(STREAKS * 12), streakCol = new Float32Array(STREAKS * 16);
+  const streakZ = new Float32Array(STREAKS), streakA = new Float32Array(STREAKS), streakR = new Float32Array(STREAKS);
+  const streakGeo = new THREE.BufferGeometry();
+  streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPos, 3));
+  streakGeo.setAttribute('color', new THREE.BufferAttribute(streakCol, 4));
+  { const idx = []; for (let i = 0; i < STREAKS; i++) { const o = i * 4; idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2); } streakGeo.setIndex(idx); }
+  const streakMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide });
+  const streaks = new THREE.Mesh(streakGeo, streakMat);
+  streaks.frustumCulled = false; streaks.renderOrder = 15;
+  camera.add(streaks);
+  // each streak starts far ahead, part-way out from the centre, and sweeps outwards as it flies past
+  function spawnStreak(i, z) { streakZ[i] = z; streakA[i] = rand(0, TAU); streakR[i] = -z * rand(0.42, 0.8); }
+  for (let i = 0; i < STREAKS; i++) spawnStreak(i, -rand(6, 60));
+  // pale blue reads against both snow and sky; solid head, fading tail
+  for (let i = 0; i < STREAKS; i++) streakCol.set([0.5, 0.66, 0.88, 1, 0.5, 0.66, 0.88, 1, 0.5, 0.66, 0.88, 0, 0.5, 0.66, 0.88, 0], i * 16);
+  function updateStreaks(dt) {
+    const k = state === 'play' && !reduceMotion ? clamp((P.v - 30) / 18, 0, 1) * 0.7 + (PW.turbo > 0 ? 0.65 : 0) : 0;
+    streakMat.opacity += (k - streakMat.opacity) * Math.min(1, dt * 4);
+    streaks.visible = streakMat.opacity > 0.02;
+    if (!streaks.visible) return;
+    const len = 1.5 + P.v * 0.09, tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    for (let i = 0; i < STREAKS; i++) {
+      streakZ[i] += P.v * 1.4 * dt;
+      if (streakZ[i] > -3) spawnStreak(i, -rand(45, 60));
+      // around the edges of the view: streakR is the share of the way from the centre to the screen border
+      const ca = Math.cos(streakA[i]) * tanH * camera.aspect, sa = Math.sin(streakA[i]) * tanH, z1 = streakZ[i], z2 = z1 - len;
+      // fixed distance from the view axis: perspective turns the flight towards the camera into a streak sweeping outwards
+      const r1 = streakR[i], r2 = r1, w1 = 0.09, w2 = 0.09;
+      // the quad is widened sideways to the direction it travels on screen
+      const nl = Math.hypot(ca, sa) || 1, px = -sa / nl, py = ca / nl;
+      streakPos.set([ca * r1 + px * w1, sa * r1 + py * w1, z1, ca * r1 - px * w1, sa * r1 - py * w1, z1,
+                     ca * r2 + px * w2, sa * r2 + py * w2, z2, ca * r2 - px * w2, sa * r2 - py * w2, z2], i * 12);
+    }
+    streakGeo.attributes.position.needsUpdate = true;
+  }
+
   // ---------- Day cycle ----------
   const PAL = {
-    day:    { sky: 'day',    fog: '#e7e8e3', hemi: 0.75, sun: '#ffffff', sunI: 0.6,  tint: '#ffffff' },
-    sunset: { sky: 'sunset', fog: '#e5b9ba', hemi: 0.65, sun: '#ffb27a', sunI: 0.65, tint: '#ffe2d6' },
-    night:  { sky: 'night',  fog: '#2a426a', hemi: 0.42, sun: '#9db4ff', sunI: 0.3,  tint: '#8796bd' },
-    dawn:   { sky: 'dawn',   fog: '#cccbd8', hemi: 0.65, sun: '#ffd2a8', sunI: 0.6,  tint: '#f1e9f2' },
+    day:    { sky: 'day',    fog: '#e7e8e3', hemi: 0.66, sun: '#fffaf0', sunI: 0.78, tint: '#ffffff' },
+    sunset: { sky: 'sunset', fog: '#e5b9ba', hemi: 0.58, sun: '#ffb27a', sunI: 0.8,  tint: '#ffe2d6' },
+    night:  { sky: 'night',  fog: '#2a426a', hemi: 0.4,  sun: '#9db4ff', sunI: 0.36, tint: '#8796bd' },
+    dawn:   { sky: 'dawn',   fog: '#cccbd8', hemi: 0.58, sun: '#ffd2a8', sunI: 0.74, tint: '#f1e9f2' },
   };
   const CYCLE = [PAL.day, PAL.sunset, PAL.night, PAL.dawn, PAL.day];
   const cA = new THREE.Color(), cB = new THREE.Color();
   const mixC = (a, b, t) => cA.set(a).lerp(cB.set(b), t).clone();
   let lastSky = -1;
-  let palHemi = 0.75, palSun = 0.6;
+  let palHemi = 0.66, palSun = 0.78;
   function applyPalette(meters) {
     const p = (Math.max(0, meters) / 1500) % 4, i = Math.floor(p), raw = p - i;
     const t = raw < 0.6 ? 0 : (raw - 0.6) / 0.4;
@@ -815,24 +901,144 @@ body {
     crevasse:{ hw: 1.6, hd: 0.8, h: 0.6, reason: 'In eine Gletscherspalte gestürzt. Spring drüber!' },
   };
   // painted obstacle sprites (gate, fence, snowball) and the crevasse ground texture
-  const OBS_SPRITE = { gate: { ar: 346 / 320, cx: 0.497 }, fence: { ar: 488 / 320, cx: 0.498 }, snowball: { ar: 319 / 320, cx: 0.5 } };
-  for (const n of Object.keys(OBS_SPRITE)) OBS_SPRITE[n].mat = spriteMat(n);
   const crevTex = tex('crevasse.png', { repeat: true, aniso: true });
   const crevMat = new THREE.MeshBasicMaterial({ map: crevTex, transparent: true, depthWrite: false });
   const CREV_TILE = 12.9, CREV_HD = 2.3;   // texture repeats every 12.9 m across; the drawn strip is 4.6 m deep
-  function obstacleSprite(name, width, mat, height) {
-    const s = new THREE.Sprite(mat || OBS_SPRITE[name].mat);
-    s.center.set(OBS_SPRITE[name].cx, 0.02);
-    s.scale.set(width, height || width / OBS_SPRITE[name].ar, 1);
-    return s;
+  // ---------- Low-poly 3D models, built in code: every object is one merged mesh with vertex colours ----------
+  const modelMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), EU = new THREE.Euler(), V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), TC = new THREE.Color();
+  // one coloured part: geometry moved into place (position, rotation, scale)
+  function part(geo, color, px = 0, py = 0, pz = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
+    const g = geo.index ? geo.toNonIndexed() : geo;
+    g.applyMatrix4(M4.compose(V1.set(px, py, pz), Q.setFromEuler(EU.set(rx, ry, rz)), V2.set(sx, sy, sz)));
+    const n = g.attributes.position.count, c = new Float32Array(n * 3);
+    TC.set(color);
+    for (let i = 0; i < n; i++) { c[i * 3] = TC.r; c[i * 3 + 1] = TC.g; c[i * 3 + 2] = TC.b; }
+    return { pos: g.attributes.position.array, col: c };
+  }
+  function merge(parts, recolor) {
+    let n = 0; for (const p of parts) n += p.pos.length;
+    const pos = new Float32Array(n), col = new Float32Array(n);
+    let o = 0; for (const p of parts) { pos.set(p.pos, o); col.set(p.col, o); o += p.pos.length; }
+    if (recolor) recolor(pos, col);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.computeVertexNormals();   // separate triangles: flat, faceted shading
+    g.computeBoundingSphere();
+    return g;
+  }
+  // paint faces that look up white: snow lying on top
+  function snowOn(minUp, snow = 0xf6f9fd) {
+    const sc = new THREE.Color(snow), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    return (pos, col) => {
+      for (let i = 0; i < pos.length; i += 9) {
+        a.fromArray(pos, i); b.fromArray(pos, i + 3); c.fromArray(pos, i + 6);
+        b.sub(a); c.sub(a); b.cross(c).normalize();
+        if (b.y > minUp) for (let k = 0; k < 3; k++) { col[i + k * 3] = sc.r; col[i + k * 3 + 1] = sc.g; col[i + k * 3 + 2] = sc.b; }
+      }
+    };
+  }
+  // the same corner always moves the same way, so jittered shapes stay closed
+  function jitter(geo, amt, seed) {
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const h = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719 + seed) * 43758.5453;
+      const k = 1 + ((h - Math.floor(h)) - 0.5) * amt;
+      p.setXYZ(i, x * k, y * k, z * k);
+    }
+    return geo;
+  }
+  const GREENS = [0x2c5a45, 0x335f3f, 0x284f45];
+  function fir(tall, v) {
+    const parts = [part(new THREE.CylinderGeometry(0.16, 0.24, 1.1, 6), 0x5b3f2c, 0, 0.55, 0)];
+    const tiers = tall ? [[1.7, 0.9, 2.2], [1.4, 2.2, 2.0], [1.05, 3.4, 1.8], [0.65, 4.6, 1.6]] : [[2.0, 0.8, 1.9], [1.6, 1.9, 1.7], [1.1, 2.9, 1.5]];
+    tiers.forEach(([rad, y, h], i) => {
+      const rot = i * 0.45 + v;
+      parts.push(part(new THREE.ConeGeometry(rad, h, 7), GREENS[v % 3], 0, y + h / 2, 0, 0, rot));
+      // snow cap: the upper part of each tier
+      parts.push(part(new THREE.ConeGeometry(rad * 0.62, h * 0.6, 7), 0xf3f7fc, 0, y + h * 0.7 + 0.02, 0, 0, rot));
+    });
+    const g = merge(parts);
+    g.scale(1, (tall ? 6.5 : 4.9) / (tall ? 6.2 : 4.4), 1);
+    return g;
+  }
+  const FIR = [0, 1, 2].map(v => fir(true, v)), FIR_ROUND = [0, 1, 2].map(v => fir(false, v));
+  const ROCKS = [1, 2, 3].map(v => merge([part(jitter(new THREE.IcosahedronGeometry(0.85, 1), 0.35, v), 0x7d8796, 0, 0.45, 0, 0, v, 0, 1.05, 0.72, 0.95)], snowOn(0.62)));
+  const LOG = merge([
+    part(new THREE.CylinderGeometry(0.36, 0.38, 2.75, 9), 0x6e4a32, 0, 0.36, 0, 0, 0, Math.PI / 2),
+    part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 9), 0xd9b48a, -1.385, 0.36, 0, 0, 0, Math.PI / 2),
+    part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 9), 0xd9b48a, 1.385, 0.36, 0, 0, 0, Math.PI / 2),
+    part(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 5), 0x5b3f2c, 0.5, 0.75, 0.05, 0, 0, -0.5),
+  ], snowOn(0.8));
+  const SNOWMAN = merge([
+    part(new THREE.IcosahedronGeometry(0.78, 1), 0xf4f7fb, 0, 0.62, 0),
+    part(new THREE.IcosahedronGeometry(0.58, 1), 0xf4f7fb, 0, 1.55, 0),
+    part(new THREE.IcosahedronGeometry(0.42, 1), 0xf4f7fb, 0, 2.25, 0),
+    part(new THREE.TorusGeometry(0.38, 0.09, 5, 10), 0xe5396f, 0, 1.92, 0, Math.PI / 2),
+    part(new THREE.ConeGeometry(0.07, 0.42, 6), 0xff8a1f, 0, 2.25, 0.55, Math.PI / 2),
+    part(new THREE.IcosahedronGeometry(0.055, 0), 0x1d2633, -0.15, 2.38, 0.37),
+    part(new THREE.IcosahedronGeometry(0.055, 0), 0x1d2633, 0.15, 2.38, 0.37),
+    part(new THREE.IcosahedronGeometry(0.06, 0), 0x1d2633, 0, 1.7, 0.56),
+    part(new THREE.IcosahedronGeometry(0.06, 0), 0x1d2633, 0, 1.45, 0.58),
+    part(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 10), 0x1d2633, 0, 2.6, 0),
+    part(new THREE.CylinderGeometry(0.27, 0.29, 0.42, 10), 0x1d2633, 0, 2.82, 0),
+    part(new THREE.CylinderGeometry(0.03, 0.04, 0.95, 5), 0x5b3f2c, -0.85, 1.75, 0, 0, 0, 0.9),
+    part(new THREE.CylinderGeometry(0.03, 0.04, 0.95, 5), 0x5b3f2c, 0.85, 1.75, 0, 0, 0, -0.9),
+  ]);
+  const SNOWBALL = merge([part(jitter(new THREE.IcosahedronGeometry(0.75, 1), 0.12, 7), 0xeef4fb, 0, 0, 0)], (pos, col) => {
+    for (let i = 0; i < pos.length; i += 3) if (pos[i] > 0.3) { col[i] = 0.82; col[i + 1] = 0.88; col[i + 2] = 0.96; }   // a few grey-blue patches so the roll is visible
+  });
+  const POLE = merge([
+    part(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 6), 0xff8a1f, 0, 1.05, 0),
+    part(new THREE.CylinderGeometry(0.052, 0.052, 0.3, 6), 0xffffff, 0, 1.3, 0),
+    part(new THREE.CylinderGeometry(0.052, 0.052, 0.3, 6), 0xffffff, 0, 0.7, 0),
+    part(new THREE.BoxGeometry(0.62, 0.42, 0.03), 0xff6a1f, 0.33, 1.85, 0),
+  ]);
+  // coins: a gold disc facing the camera, spun around its upright axis
+  const COIN = merge([
+    part(new THREE.CylinderGeometry(0.42, 0.42, 0.09, 16), 0xf3b51c, 0, 0, 0, Math.PI / 2),
+    part(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16), 0xffd85a, 0, 0, 0, Math.PI / 2),
+    part(new THREE.ConeGeometry(0.17, 0.2, 3), 0xd9930f, 0, 0.0, 0.055, 0, 0, 0, 1, 1, 0.15),
+  ]);
+  const coinMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x5a3c00 });
+  // stripes for the banner and orange safety netting for fences, drawn once on canvases
+  function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.anisotropy = maxAniso; return t; }
+  const bannerTex = canvasTex(256, 64, (x, w, h) => {
+    x.fillStyle = '#e5396f'; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#ffffff'; x.fillRect(0, h * 0.38, w, h * 0.24);
+    x.fillStyle = 'rgba(0,0,0,0.12)'; x.fillRect(0, h - 5, w, 5);
+  });
+  const netTex = canvasTex(128, 128, (x, w, h) => {
+    x.strokeStyle = '#ff7a1a'; x.lineWidth = 7;
+    for (let i = -w; i < w * 2; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.stroke(); x.beginPath(); x.moveTo(i, h); x.lineTo(i + h, 0); x.stroke(); }
+  });
+  netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
+  const bannerMat = new THREE.MeshLambertMaterial({ map: bannerTex, side: THREE.DoubleSide });
+  const netMat = new THREE.MeshLambertMaterial({ map: netTex, side: THREE.DoubleSide, alphaTest: 0.5, transparent: false });
+  const postGeo = merge([part(new THREE.CylinderGeometry(0.09, 0.1, 3.0, 7), 0x253a5e, 0, 1.5, 0), part(new THREE.IcosahedronGeometry(0.13, 0), 0xffc531, 0, 3.02, 0)]);
+  const shortPostGeo = merge([part(new THREE.CylinderGeometry(0.07, 0.08, 2.1, 6), 0x253a5e, 0, 1.05, 0)]);
+  // banner between two posts, hanging slightly: bottom edge about 1.95 m above the snow
+  const BANNER_W = LANE_W - 0.35;
+  const bannerGeo = (() => {
+    const g = new THREE.PlaneGeometry(BANNER_W, 0.8, 12, 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const u = p.getX(i) / (BANNER_W / 2); p.setY(i, p.getY(i) - 0.08 * (1 - u * u)); p.setZ(i, 0.05 * Math.sin(u * 3)); }
+    g.computeVertexNormals();
+    return g;
+  })();
+  const netGeo = (() => { const g = new THREE.PlaneGeometry(LANE_W - 0.15, 1.75); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 3.2, uv.getY(i) * 1.8); return g; })();
+  function shadowed(m, cast = true) { m.castShadow = cast; m.receiveShadow = true; return m; }
+  function gateMesh() {
+    const grp = new THREE.Group();
+    for (const sx of [-1, 1]) { const p = shadowed(new THREE.Mesh(postGeo, modelMat)); p.position.x = sx * (BANNER_W / 2 + 0.05); grp.add(p); }
+    const b = shadowed(new THREE.Mesh(bannerGeo, bannerMat)); b.position.y = 2.38; grp.add(b);
+    return grp;
   }
   function fenceMesh(lanes) {
     const grp = new THREE.Group();
-    for (let i = 0; i < lanes; i++) {
-      const s = obstacleSprite('fence', LANE_W - 0.15);
-      s.position.x = (i - (lanes - 1) / 2) * LANE_W;
-      grp.add(s);
-    }
+    for (let i = 0; i <= lanes; i++) { const p = shadowed(new THREE.Mesh(shortPostGeo, modelMat)); p.position.x = (i - lanes / 2) * LANE_W; grp.add(p); }
+    for (let i = 0; i < lanes; i++) { const n = shadowed(new THREE.Mesh(netGeo, netMat)); n.position.set((i - (lanes - 1) / 2) * LANE_W, 1.0, 0); grp.add(n); }
     return grp;
   }
   function crevasseMesh(d, x0, x1) {
@@ -859,10 +1065,8 @@ body {
         if (d - P.d < 170) { mesh.userData.riseH = 2; mesh.userData.baseY = mesh.position.y; mesh.userData.rise = 0; }
       }
       else if (type === 'snowball') {
-        const mat = OBS_SPRITE.snowball.mat.clone();   // own material so each ball can spin
-        spriteMats.push(mat);
-        mesh = obstacleSprite('snowball', 1.5, mat);
-        mesh.position.set(x, baseH(d, x), -d);
+        mesh = shadowed(new THREE.Mesh(SNOWBALL, modelMat));
+        mesh.position.set(x, baseH(d, x) + 0.72, -d);
       }
       else { hw = opts.half; mesh = crevasseMesh(d, x - hw, x + hw); }
       scene.add(mesh);
@@ -871,7 +1075,7 @@ body {
       return e;
     }
     if (type === 'gate') {
-      const mesh = obstacleSprite('gate', LANE_W - 0.2, null, 3.5);   // banner bottom sits about 1.95 m above the snow: above the ducked rider, at the standing rider's chest
+      const mesh = gateMesh();   // banner bottom sits about 1.95 m above the snow: above the ducked rider, at the standing rider's chest
       if (d - P.d < 170) { mesh.userData.riseH = 3.6; mesh.userData.rise = 0; }
       mesh.position.set(x, baseH(d, x), -d);
       if (mesh.userData.riseH) mesh.userData.baseY = mesh.position.y;
@@ -880,12 +1084,14 @@ body {
       ents.push(e);
       return e;
     }
-    const look = type === 'tree' ? (opts.round ?? Math.random() < 0.45 ? 'tree-round' : 'tree-tall') : type;
-    const hgt = spec.size * s * (look === 'tree-round' ? 0.75 : 1);
-    const mesh = new THREE.Sprite(SM[look]);
-    mesh.center.set(0.5, 0.03);
-    mesh.scale.set(hgt * ASPECT[look] * (Math.random() < 0.5 ? -1 : 1), hgt, 1);
-    mesh.position.set(x, baseH(d, x) - 0.08, -d);
+    const v = Math.floor(Math.random() * 3);
+    const geo = type === 'tree' ? (Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
+    const hgt = type === 'tree' ? spec.size * s : spec.size;
+    const mesh = shadowed(new THREE.Mesh(geo, modelMat), !opts.deco || Math.abs(x) < 30);
+    if (type === 'tree') mesh.scale.setScalar(s * rand(0.92, 1.08));
+    // trees and rocks turn freely; the log lies across its lane and the snowman faces the rider
+    mesh.rotation.y = type === 'tree' || type === 'rock' ? rand(0, TAU) : type === 'snowman' ? rand(-0.35, 0.35) : rand(-0.06, 0.06);
+    mesh.position.set(x, baseH(d, x) - (type === 'rock' ? 0.15 : 0.05), -d);
     scene.add(mesh);
     if (!opts.deco && d - P.d < 170) { mesh.userData.riseH = hgt; mesh.userData.baseY = mesh.position.y; mesh.userData.rise = 0; }
     const e = { type, d, x, hw: spec.hw * s, hd: spec.hd, h: spec.h * s, deco: !!opts.deco, mesh };
@@ -893,14 +1099,14 @@ body {
     return e;
   }
   function addCoin(d, x, y) {
-    const m = new THREE.Sprite(SM.coin);
-    m.scale.set(0.9, 0.9, 1);
+    const m = new THREE.Mesh(COIN, coinMat);
+    m.castShadow = true;
     m.position.set(x, y, -d);
     scene.add(m);
     coins.push({ d, x, y, mesh: m, taken: false, tt: 0, grow: d - P.d < 170 ? 0 : 1 });
   }
   // a collected coin leaves the depth-sorted scene: it pops up in front of the rider and fades, instead of cutting through his body
-  const coinFxMat = new THREE.SpriteMaterial({ map: SM.coin.map, transparent: true, depthTest: false, depthWrite: false });
+  const coinFxMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x5a3c00, transparent: true, depthTest: false, depthWrite: false });
   function takeCoinFx(c) {
     c.mesh.material = coinFxMat.clone();
     c.mesh.renderOrder = 20;
@@ -909,7 +1115,7 @@ body {
   }
   function addRamp(d, x) {
     const r = { d0: d, d1: d + rr(6, 8), x, w: LANE_W - 0.3, h: rr(1.4, 2.1) };
-    r.mesh = buildRampMesh(r);
+    r.mesh = shadowed(buildRampMesh(r));
     scene.add(r.mesh);
     ramps.push(r);
     // coins along the expected flight path
@@ -1107,10 +1313,9 @@ body {
     }
     if (++poleCount % 3 === 0) {
       for (const side of [-1, 1]) {
-        const m = new THREE.Sprite(SM.flag);
         const x = side * (TRACK + 1.4);
-        m.center.set(0.5, 0.02);
-        m.scale.set(2 * ASPECT.flag * -side, 2, 1);
+        const m = shadowed(new THREE.Mesh(POLE, modelMat));
+        m.rotation.y = side < 0 ? 0 : Math.PI;   // flags point towards the piste
         m.position.set(x, baseH(d, x) - 0.05, -d);
         scene.add(m);
         poles.push({ d, mesh: m });
@@ -1137,10 +1342,10 @@ body {
 
   function dropEnt(e) {
     if (e.type === 'crevasse') e.mesh.geometry.dispose();
-    if (e.type === 'snowball') { const i = spriteMats.indexOf(e.mesh.material); if (i >= 0) spriteMats.splice(i, 1); e.mesh.material.dispose(); }
   }
   function clearWorld() {
     for (const e of ents) { scene.remove(e.mesh); dropEnt(e); }
+    trailPts = [];
     for (const c of coins) scene.remove(c.mesh);
     for (const u of pups) scene.remove(u.mesh);
     pups = [];
@@ -1341,8 +1546,24 @@ body {
     set(k, v) { try { localStorage.setItem('mountain-ride-' + k, JSON.stringify(v)); } catch (e) {} },
   };
   const SENS = { niedrig: 0.075, mittel: 0.05, hoch: 0.032 };   // swipe distance as a share of the screen
-  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel', vibrate: 1, snow: 1, shake: 1 }, store.get('settings', {}));
+  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel', vibrate: 1, snow: 1, shake: 1, gfx: 1 }, store.get('settings', {}));
   flakes.visible = !!settings.snow;
+  // graphics: 2 = high (shadows, full resolution), 0 = fast, 1 = auto (high until the phone struggles)
+  let autoLow = !!store.get('autoLow', false), perfT = 0, perfN = 0, perfSum = 0;
+  function applyGfx() {
+    const hq = settings.gfx === 2 || (settings.gfx === 1 && !autoLow);
+    sun.castShadow = hq;
+    pxCap = hq ? 3 : 2; pxBudget = hq ? 3.2e6 : 1.6e6;
+    resize();
+  }
+  applyGfx();
+  function watchPerf(dt) {
+    if (settings.gfx !== 1 || autoLow || state !== 'play') return;
+    perfT += dt; perfSum += dt; perfN++;
+    if (perfT < 5) return;
+    if (perfSum / perfN > 1 / 38) { autoLow = true; store.set('autoLow', true); applyGfx(); }
+    perfT = perfSum = 0; perfN = 0;
+  }
   Sound.setVolumes(settings.music, settings.sfx);
   let wallet = store.get('wallet', 0);
   const upgrades = Object.assign({ magnet: 0, turbo: 0, double: 0, spring: 0 }, store.get('upgrades', {}));
@@ -1528,7 +1749,7 @@ body {
     $('setMusic').value = Math.round(settings.music * 100); $('setMusicVal').textContent = Math.round(settings.music * 100) + ' %';
     $('setSfx').value = Math.round(settings.sfx * 100); $('setSfxVal').textContent = Math.round(settings.sfx * 100) + ' %';
     document.querySelectorAll('[data-sens]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sens === settings.sens)));
-    const cur = { sound: Sound.isMuted() ? 0 : 1, vibrate: settings.vibrate, snow: settings.snow, shake: settings.shake };
+    const cur = { sound: Sound.isMuted() ? 0 : 1, vibrate: settings.vibrate, snow: settings.snow, shake: settings.shake, gfx: settings.gfx };
     document.querySelectorAll('[data-opt]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.val) === Number(cur[b.dataset.opt]))));
   }
   document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => {
@@ -1536,6 +1757,7 @@ body {
     if (k === 'sound') { Sound.setMuted(!v); syncSoundBtn(); }
     else settings[k] = v;
     flakes.visible = !!settings.snow;
+    if (k === 'gfx') { autoLow = false; store.set('autoLow', false); applyGfx(); }
     if (k === 'vibrate' && v) buzz(40);
     saveSettings();
   }));
@@ -1653,7 +1875,7 @@ body {
       // thin, high snow arches with wide gaps: they frame the track without blocking the view,
       // and fade out before the camera passes through them
       for (let d = s.d0; d < s.d1; d += 11) {
-        const m = new THREE.Mesh(archGeo, archMat.clone());
+        const m = shadowed(new THREE.Mesh(archGeo, archMat.clone()));
         m.material.transparent = true;
         m.scale.y = 1.05;
         m.position.set(0, baseH(d, 0) - 0.3, -d);
@@ -2128,7 +2350,7 @@ body {
     return new Promise((ok, fail) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = fail; document.head.appendChild(el); });
   }
   async function liveConnect(room) {
-    if (!onlineReady) {   // test transport
+    if (liveTest) {   // test transport
       const bc = new BroadcastChannel('mr-live-' + room);
       const me = () => ({ k: 'hello', id: live.id, name: live.name });
       bc.onmessage = ({ data }) => {
@@ -2483,8 +2705,8 @@ body {
       if (e.type !== 'snowball' || e.dead) continue;
       e.x += e.vx * dt;
       if (Math.abs(e.x) > 2 * LANE_W) { e.x = clamp(e.x, -2 * LANE_W, 2 * LANE_W); e.vx *= -1; }
-      e.mesh.position.set(e.x, baseH(e.d, e.x), -e.d);
-      e.mesh.material.rotation -= e.vx * dt / 0.75;
+      e.mesh.position.set(e.x, baseH(e.d, e.x) + 0.72, -e.d);
+      e.mesh.rotation.z -= e.vx * dt / 0.75;   // rolls across the slope
     }
     for (const u of pups) {
       u.mesh.position.y = u.y + Math.sin(clock * 3 + u.d) * 0.15;
@@ -2495,8 +2717,9 @@ body {
     // coins spin / fly away
     for (const c of coins) {
       c.grow = Math.min(1, c.grow + dt * 3);
-      const k = (c.taken ? 0.7 + c.tt * 1.2 : 1) * Math.max(0.01, c.grow);
-      c.mesh.scale.set(0.9 * k * Math.max(0.12, Math.abs(Math.cos(clock * 3 + c.d))), 0.9 * k, 1);
+      const k = (c.taken ? 1 + c.tt * 1.4 : 1) * Math.max(0.01, c.grow);
+      c.mesh.scale.setScalar(k);
+      c.mesh.rotation.y = c.taken ? c.tt * 25 : clock * 3 + c.d;
       if (c.taken) {
         c.tt += dt;
         c.d += P.v * dt;   // travels with the rider
@@ -2593,6 +2816,8 @@ body {
     aura.scale.setScalar(3.4 + Math.sin(clock * 4) * 0.08);
 
     renderGhost();
+    updateTrail();
+    updateStreaks(dt);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
@@ -2636,8 +2861,10 @@ body {
 
     const inSec = sectionAt(P.d), dark = inSec && inSec.s.type === 'tunnel' ? inSec.w : 0;
     hemi.intensity = palHemi * (1 - 0.12 * dark); sun.intensity = palSun * (1 - 0.3 * dark);
-    sun.position.set(P.x - 40, P.y + 60, -P.d + 30);
-    sun.target.position.set(P.x, P.y, -P.d);
+    // the shadow box is centred a little ahead of the rider, where the obstacles are
+    const sd = P.d + 14, sy = baseH(sd, 0);
+    sun.target.position.set(P.x * 0.5, sy, -sd);
+    sun.position.set(P.x * 0.5 - 40, sy + 60, -sd + 30);
 
     placeSky();
     renderer.render(scene, camera);
@@ -2675,6 +2902,7 @@ body {
     if (Math.abs(cd - prevD) < 3) { P.x = lerp(prevX, cx, a); P.y = lerp(prevY, cy, a); P.d = lerp(prevD, cd, a); }
     render(Math.max(dt, 0.001));
     P.x = cx; P.y = cy; P.d = cd;
+    watchPerf(dt);
     updateHud();
     requestAnimationFrame(frame);
   }
