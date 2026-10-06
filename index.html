@@ -426,6 +426,7 @@ body {
   const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
   const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
+  const RIDER_SCALE = 1.25;   // standing helmet about 2 m: tall enough to visibly hit a gate banner
   const RIDER_H = { 'rider-duck': 1.85, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
 
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
@@ -548,7 +549,7 @@ body {
 
   // ---------- Rider ----------
   // drawn last and without depth test, so neither the snow nor the shadow can cover the board
-  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false });
+  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false });
   spriteMats.push(riderMat);
   const rider = new THREE.Sprite(riderMat);
   rider.renderOrder = 10;
@@ -574,7 +575,7 @@ body {
   aura.renderOrder = 13;
   scene.add(aura);
   // second sprite that fades in the next painted view during a spin
-  const spinMatB = new THREE.SpriteMaterial({ map: riderTex['rider-air'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false, opacity: 0 });
+  const spinMatB = new THREE.SpriteMaterial({ map: riderTex['rider-air'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
   spriteMats.push(spinMatB);
   const spinB = new THREE.Sprite(spinMatB);
   spinB.renderOrder = 12;
@@ -738,10 +739,10 @@ body {
   const crevTex = tex('crevasse.png', { repeat: true, aniso: true });
   const crevMat = new THREE.MeshBasicMaterial({ map: crevTex, transparent: true, depthWrite: false });
   const CREV_TILE = 12.9, CREV_HD = 2.3;   // texture repeats every 12.9 m across; the drawn strip is 4.6 m deep
-  function obstacleSprite(name, width, mat) {
+  function obstacleSprite(name, width, mat, height) {
     const s = new THREE.Sprite(mat || OBS_SPRITE[name].mat);
     s.center.set(OBS_SPRITE[name].cx, 0.02);
-    s.scale.set(width, width / OBS_SPRITE[name].ar, 1);
+    s.scale.set(width, height || width / OBS_SPRITE[name].ar, 1);
     return s;
   }
   function fenceMesh(lanes) {
@@ -789,8 +790,8 @@ body {
       return e;
     }
     if (type === 'gate') {
-      const mesh = obstacleSprite('gate', LANE_W - 0.2);   // banner bottom sits about 1.55 m above the snow
-      if (d - P.d < 170) { mesh.userData.riseH = 3; mesh.userData.rise = 0; }
+      const mesh = obstacleSprite('gate', LANE_W - 0.2, null, 3.5);   // banner bottom sits about 1.95 m above the snow: above the ducked rider, at the standing rider's chest
+      if (d - P.d < 170) { mesh.userData.riseH = 3.6; mesh.userData.rise = 0; }
       mesh.position.set(x, baseH(d, x), -d);
       if (mesh.userData.riseH) mesh.userData.baseY = mesh.position.y;
       scene.add(mesh);
@@ -2028,7 +2029,7 @@ body {
   // ---------- Render ----------
   function render(dt) {
     // rider pose
-    rider.position.set(P.x, P.y, -P.d + 0.2);
+    rider.position.set(P.x, P.y, -P.d + 0.2);   // depth-tested: a gate between camera and rider covers him, one ahead is covered
     P.carve = -P.leanS * 0.3;
     const sq = clamp(P.sq, -0.25, 0.25);
     // a little bob with the terrain and speed while riding
@@ -2040,23 +2041,25 @@ body {
       const a = ((-P.yaw % TAU) + TAU) % TAU, pos = a / (TAU / 8);
       const i0 = Math.floor(pos) % 8, i1 = (i0 + 1) % 8, w = pos - Math.floor(pos);
       const f = SPIN_VIEWS[i0], f1 = SPIN_VIEWS[i1];
-      tex = f.tex; ar = f.ar; rh = f.h; cx = f.cx;
+      tex = f.tex; ar = f.ar; rh = f.h * RIDER_SCALE; cx = f.cx;
       // blend towards the next view so the turn reads as one movement instead of 8 jumps
       spinMatB.map = f1.tex; spinMatB.opacity = w * w * (3 - 2 * w);
       spinB.visible = true;
       spinB.position.set(P.x, P.y, -P.d + 0.2);
       spinB.center.x = f1.cx;
-      spinB.scale.set(f1.h * f1.ar, f1.h, 1);
+      spinB.scale.set(f1.h * f1.ar * RIDER_SCALE, f1.h * RIDER_SCALE, 1);
     } else {
       const pose = P.duckS > 0.5 ? 'rider-duck' : P.pose;
-      tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose]; cx = RIDER_CX[pose];
+      tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose] * RIDER_SCALE; cx = RIDER_CX[pose];
     }
     if (!spinning) spinB.visible = false;
     if (riderMat.map !== tex) riderMat.map = tex;
     // ducking: the riding pose sinks a little while the duck pose fades in on top of it
     // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
     const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * (1 + sq + bob + airK), 1);
+    // the duck pose is squashed down so the crouched rider clearly sits below a gate banner
+    const duckK = tex === riderTex['rider-duck'] ? 0.74 : 1;
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * duckK * (1 + sq + bob + airK), 1);
     rider.center.x = cx;
     const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
     riderMat.opacity = blink;
@@ -2070,8 +2073,8 @@ body {
     auraMat.opacity += (prot * (0.75 + 0.25 * Math.sin(clock * 6)) - auraMat.opacity) * Math.min(1, dt * 8);
     auraMat.color.set(PW.turbo > 0 ? 0xffa040 : 0x7cc8ff);
     aura.visible = auraMat.opacity > 0.02;
-    aura.position.set(P.x, P.y + 0.95, -P.d + 0.1);
-    aura.scale.setScalar(2.9 + Math.sin(clock * 4) * 0.08);
+    aura.position.set(P.x, P.y + 1.2, -P.d + 0.1);
+    aura.scale.setScalar(3.4 + Math.sin(clock * 4) * 0.08);
 
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
