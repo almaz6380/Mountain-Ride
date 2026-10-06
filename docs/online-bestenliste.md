@@ -1,4 +1,8 @@
-# Weltweite Bestenliste einrichten (Supabase, kostenlos)
+# Online-Funktionen einrichten (Supabase, kostenlos)
+
+Ein Supabase-Projekt schaltet zwei Dinge frei: die **weltweite Bestenliste** und das **Live-Duell**
+(zwei Spieler fahren gleichzeitig dieselbe Strecke). Das Live-Duell braucht keine Tabelle, nur Realtime,
+das bei neuen Projekten schon eingeschaltet ist.
 
 Das Spiel kann Ergebnisse in einer gemeinsamen Online-Liste speichern. Dafür braucht es ein kostenloses
 Supabase-Projekt. Die Liste funktioniert nur in der Web-App (GitHub Pages), nicht im Claude-Artifact-Link,
@@ -29,7 +33,8 @@ create policy "Ergebnis eintragen" on public.scores
 
 ## 2. Zugangsdaten eintragen
 
-Unter **Project Settings → API** stehen die **Project URL** und der **anon public** Key.
+Unter **Project Settings → API** (bzw. **API Keys**) stehen die **Project URL** und der **anon public** Key
+(oder der neue **Publishable key**, beginnt mit `sb_publishable_`; beide funktionieren).
 Beide in `index.html` eintragen:
 
 ```js
