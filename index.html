@@ -151,6 +151,16 @@ body {
 .seg button[aria-pressed="true"] { background: var(--jacket); color: var(--ink); box-shadow: none; }
 .seg button:focus-visible { outline: 3px solid var(--snow); outline-offset: 2px; }
 .note { margin: 0; font-size: 15px; opacity: 0.8; text-align: left; }
+.duel-chip { margin-top: 6px; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; background: rgba(20, 35, 58, 0.45); border-radius: 99px; padding: 3px 10px; display: inline-block; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+.duel-chip.ahead { color: #9ff0b8; }
+.duel-chip.behind { color: #ffb4b4; }
+.duel-result { background: rgba(244, 248, 252, 0.08); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.duel-result .win { font-weight: 800; font-size: 26px; color: var(--jacket); line-height: 1.1; }
+.duel-result .row { display: flex; justify-content: space-between; gap: 12px; font-size: 18px; font-variant-numeric: tabular-nums; }
+.duel-result .row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.duel-vs { font-size: 20px; margin: 0; }
+.duel-vs b { color: var(--jacket); }
+.share-link { width: 100%; font: inherit; font-size: 14px; padding: 10px; border-radius: 10px; border: 0; background: rgba(244, 248, 252, 0.12); color: var(--snow); }
 .pause-btn {
   position: absolute; left: 50%; top: 0; transform: translateX(-50%); pointer-events: auto;
   width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
@@ -180,6 +190,7 @@ body {
     <span class="hud-label">Strecke</span>
     <span class="hud-big" id="hudDist">0<small>m</small></span>
     <div class="hud-row"><span id="hudSpeed">0 km/h</span><span><i class="coin-dot"></i><span id="hudCoins">0</span></span></div>
+    <span class="duel-chip" id="duelHud" hidden></span>
   </div>
   <button class="pause-btn" id="pauseBtn" type="button" aria-label="Pause">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
@@ -212,6 +223,7 @@ body {
     <h2 class="title" id="overTitle">Gestürzt</h2>
     <p class="sub" id="overReason"></p>
     <span class="record" id="overRecord" hidden>Neuer Rekord</span>
+    <div class="duel-result" id="duelResult" hidden></div>
     <dl class="stats">
       <div><dt>Punkte</dt><dd id="stScore">0</dd></div>
       <div><dt>Strecke</dt><dd id="stDist">0 m</dd></div>
@@ -231,8 +243,40 @@ body {
     <p class="list-title">Bestenliste</p>
     <ol class="scores" id="overScores"></ol>
     <button class="btn" id="againBtn" type="button">Nochmal</button>
+    <button class="btn ghost" id="challengeBtn" type="button">Freund herausfordern</button>
     <button class="btn ghost" id="toMenuBtn" type="button">Menü</button>
     <p class="best-line" id="overBest"></p>
+  </div>
+</div>
+
+<div class="overlay" id="duel" hidden>
+  <div class="card">
+    <h2 class="title">Du<span>ell</span></h2>
+    <p class="duel-vs"><b id="duelName">Jemand</b> fordert dich heraus!</p>
+    <dl class="stats">
+      <div><dt>Strecke</dt><dd id="duelDist">0 m</dd></div>
+      <div><dt>Punkte</dt><dd id="duelScore">0</dd></div>
+    </dl>
+    <p class="note">Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.</p>
+    <button class="btn" id="duelGoBtn" type="button">Duell starten</button>
+    <button class="btn ghost" id="duelCancelBtn" type="button">Abbrechen</button>
+  </div>
+</div>
+
+<div class="overlay" id="challenge" hidden>
+  <div class="card">
+    <h2 class="title">Heraus<span>fordern</span></h2>
+    <p class="note" id="chText">Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist.</p>
+    <form class="name-form" id="chForm">
+      <label for="chName">Dein Spielername:</label>
+      <div class="name-row">
+        <input id="chName" maxlength="14" autocomplete="nickname" enterkeyhint="send" placeholder="Name">
+        <button class="btn small" type="submit">Link teilen</button>
+      </div>
+    </form>
+    <input class="share-link" id="chLink" readonly hidden aria-label="Duell-Link">
+    <p class="note" id="chStatus" hidden></p>
+    <button class="btn ghost" data-back type="button">Zurück</button>
   </div>
 </div>
 
@@ -364,6 +408,14 @@ body {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const rand = (a, b) => a + Math.random() * (b - a);
+  // seeded random streams for the course (rows, sections), so a duel link rebuilds exactly the same run
+  function seededRng(seed) {
+    let a = seed >>> 0;
+    return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  let rowRnd = Math.random, secRnd = Math.random;
+  const rr = (a, b) => a + rowRnd() * (b - a);
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rowRnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   const angDiff = a => ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
 
   // ---------- Renderer / scene ----------
@@ -820,7 +872,7 @@ body {
     c.mesh.position.set(c.x, c.y, -c.d);
   }
   function addRamp(d, x) {
-    const r = { d0: d, d1: d + rand(6, 8), x, w: LANE_W - 0.3, h: rand(1.4, 2.1) };
+    const r = { d0: d, d1: d + rr(6, 8), x, w: LANE_W - 0.3, h: rr(1.4, 2.1) };
     r.mesh = buildRampMesh(r);
     scene.add(r.mesh);
     ramps.push(r);
@@ -850,7 +902,7 @@ body {
   const PW = { magnet: 0, turbo: 0, double: 0, spring: 0, shield: 0, invuln: 0 };
   function addPower(d, x) {
     const types = ['magnet', 'shield', 'turbo', 'double', 'spring'];
-    const type = types[Math.floor(Math.random() * types.length)];
+    const type = types[Math.floor(rowRnd() * types.length)];
     const m = new THREE.Sprite(powerMats[type]);
     m.scale.set(1.2, 1.2, 1);
     const y = baseH(d, x) + 1.1;
@@ -896,10 +948,13 @@ body {
   }
 
   function difficulty() { return clamp(0.1 + (P.d - startD) / 2500, 0, 1); }   // rises evenly, full after about 2.2 km
+  // the course is built 228 m ahead: difficulty and expected speed for a spot depend only on where it is,
+  // never on how the rider is doing, so the same seed always gives the same course
+  function diffAt(d) { return clamp(0.1 + Math.max(0, d - 228 - startD) / 2500, 0, 1); }
+  function vAt(d) { return 21 + Math.min(32, Math.max(0, d - 228 - startD) * 0.011); }
 
   function pickLanes(k) {
-    const a = [0, 1, 2, 3, 4];
-    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    const a = shuffle([0, 1, 2, 3, 4]);
     return a.slice(0, Math.min(k, 4));   // always leave at least one lane open
   }
   function freeLanes(used) { return [0, 1, 2, 3, 4].filter(l => !used.includes(l)); }
@@ -907,63 +962,63 @@ body {
     if (state !== 'play' || d < nextPowerD) return;
     const free = freeLanes(used);
     if (!free.length) return;
-    addPower(d, laneX(free[Math.floor(Math.random() * free.length)]));
-    nextPowerD = d + rand(400, 650);
+    addPower(d, laneX(free[Math.floor(rowRnd() * free.length)]));
+    nextPowerD = d + rr(400, 650);
   }
   // a second tree row right behind the first: its open lane is next to one of the first row's open lanes
   function followRow(d, used1) {
     const free1 = freeLanes(used1);
-    const base = free1[Math.floor(Math.random() * free1.length)];
-    const open = clamp(base + (Math.random() < 0.5 ? -1 : 1), 0, 4);
-    const keepBase = Math.random() < 0.5;
+    const base = free1[Math.floor(rowRnd() * free1.length)];
+    const open = clamp(base + (rowRnd() < 0.5 ? -1 : 1), 0, 4);
+    const keepBase = rowRnd() < 0.5;
     for (let l = 0; l < 5; l++) {
       if (l === open || (l === base && keepBase)) continue;
-      addEnt(Math.random() < 0.6 ? 'tree' : 'rock', d + rand(-0.5, 0.5), laneX(l), { s: 0.75 });
+      addEnt(rowRnd() < 0.6 ? 'tree' : 'rock', d + rr(-0.5, 0.5), laneX(l), { s: 0.75 });
     }
   }
   function spawnRow(d) {
-    const diff = difficulty();
-    const roll = Math.random();
+    const diff = diffAt(d);
+    const roll = rowRnd();
     // 2 blocked lanes early, a third and fourth become steadily more likely
-    const blocked = () => 2 + (Math.random() < diff * 0.85 ? 1 : 0) + (Math.random() < diff - 0.55 ? 1 : 0);
+    const blocked = () => 2 + (rowRnd() < diff * 0.85 ? 1 : 0) + (rowRnd() < diff - 0.55 ? 1 : 0);
     if (roll >= 0.38 && roll < 0.6) {   // the newer obstacles
-      const kind = Math.random();
+      const kind = rowRnd();
       if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
-        const n = 2 + Math.floor(Math.random() * (diff > 0.2 ? 4 : 3));
-        const l0 = Math.floor(Math.random() * (6 - n)), used = [];
+        const n = 2 + Math.floor(rowRnd() * (diff > 0.2 ? 4 : 3));
+        const l0 = Math.floor(rowRnd() * (6 - n)), used = [];
         for (let l = l0; l < l0 + n; l++) { used.push(l); addCoin(d, laneX(l), baseH(d, laneX(l)) + 1.6); }
         addEnt('crevasse', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { half: (n * LANE_W) / 2 - 0.1 });
         // trees in the lanes beside the crack, so walking around it is not free
-        for (const l of freeLanes(used)) if (Math.random() < 0.3 + diff * 0.5 && used.length < 4) { addEnt('tree', d + rand(-1, 1), laneX(l), { s: 0.75 }); used.push(l); }
+        for (const l of freeLanes(used)) if (rowRnd() < 0.3 + diff * 0.5 && used.length < 4) { addEnt('tree', d + rr(-1, 1), laneX(l), { s: 0.75 }); used.push(l); }
         maybePower(d - 6, used);
         return lerp(17, 11, diff);
       }
       if (kind < 0.68) {   // fence over one or two lanes: change lane
-        const n = Math.random() < 0.4 ? 1 : 2, l0 = Math.floor(Math.random() * (6 - n)), used = [];
+        const n = rowRnd() < 0.4 ? 1 : 2, l0 = Math.floor(rowRnd() * (6 - n)), used = [];
         for (let l = l0; l < l0 + n; l++) used.push(l);
         addEnt('fence', d, (laneX(l0) + laneX(l0 + n - 1)) / 2, { lanes: n });
         const extra = pickLanes(2 + Math.floor(diff * 2)).filter(l => !used.includes(l)).slice(0, diff > 0.3 ? 2 : 1);
-        for (const l of extra) { addEnt(Math.random() < 0.5 ? 'rock' : 'tree', d + rand(-1, 1), laneX(l), { s: 0.8 }); used.push(l); }
+        for (const l of extra) { addEnt(rowRnd() < 0.5 ? 'rock' : 'tree', d + rr(-1, 1), laneX(l), { s: 0.8 }); used.push(l); }
         if (used.length >= 5) used.pop();
         maybePower(d, used);
         return lerp(14, 8.5, diff);
       }
       // snowballs rolling across the lanes: jump them or time your lane change
-      const dir = Math.random() < 0.5 ? -1 : 1;
-      addEnt('snowball', d + 8, laneX(dir < 0 ? 4 : 0), { vx: dir * rand(3.5, 5 + diff * 3) });
-      if (diff > 0.4 && Math.random() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rand(3.5, 5 + diff * 3) });
+      const dir = rowRnd() < 0.5 ? -1 : 1;
+      addEnt('snowball', d + 8, laneX(dir < 0 ? 4 : 0), { vx: dir * rr(3.5, 5 + diff * 3) });
+      if (diff > 0.4 && rowRnd() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rr(3.5, 5 + diff * 3) });
       return lerp(20, 13, diff);
     }
-    if (roll >= 0.6 && roll < 0.8 && Math.random() < 0.2 + diff * 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
-      const order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
+    if (roll >= 0.6 && roll < 0.8 && rowRnd() < 0.2 + diff * 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
+      const order = shuffle([0, 1, 2, 3, 4]);
       addEnt('log', d, laneX(order[0]));
       addEnt('gate', d, laneX(order[1]));
       addCoin(d, laneX(order[0]), baseH(d, laneX(order[0])) + 2.4);
-      for (const l of order.slice(2)) addEnt(Math.random() < 0.7 ? 'tree' : 'snowman', d + rand(-0.5, 0.5), laneX(l), { s: 0.75 });
+      for (const l of order.slice(2)) addEnt(rowRnd() < 0.7 ? 'tree' : 'snowman', d + rr(-0.5, 0.5), laneX(l), { s: 0.75 });
       return lerp(15, 9, diff);
     }
     if (roll < 0.08) {
-      const r = addRamp(d, laneX(Math.floor(Math.random() * 5)));
+      const r = addRamp(d, laneX(Math.floor(rowRnd() * 5)));
       return r.d1 - d + lerp(20, 14, diff);
     }
     if (roll < 0.2) {   // logs: jump over or switch lane
@@ -985,7 +1040,7 @@ body {
       return lerp(15, 9, diff);
     }
     if (roll < 0.38) {   // coin line in one lane, later ending in a rock you have to jump
-      const lane = Math.floor(Math.random() * 5), x = laneX(lane);
+      const lane = Math.floor(rowRnd() * 5), x = laneX(lane);
       for (let i = 0; i < 7; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
       if (diff > 0.25) addEnt('rock', d + 22, x);
       maybePower(d + 10, [lane]);
@@ -995,15 +1050,15 @@ body {
     const used = pickLanes(blocked());
     maybePower(d, used);
     for (const l of used) {
-      const type = types[Math.floor(Math.random() * types.length)];
-      addEnt(type, d + rand(-1, 1), laneX(l), type === 'tree' ? { s: rand(0.7, 0.85) } : {});
+      const type = types[Math.floor(rowRnd() * types.length)];
+      addEnt(type, d + rr(-1, 1), laneX(l), type === 'tree' ? { s: rr(0.7, 0.85) } : {});
     }
-    if (Math.random() < 0.06 + diff * 0.55) {   // quick follow-up row: two lane changes in a row
-      const gap = lerp(13, 10, diff) * Math.max(1, P.v / 22);
+    if (rowRnd() < 0.06 + diff * 0.55) {   // quick follow-up row: two lane changes in a row
+      const gap = lerp(13, 10, diff) * Math.max(1, vAt(d) / 22);
       followRow(d + gap, used);
       return gap + lerp(12, 8, diff);
     }
-    return lerp(12, 8.5, diff) + rand(0, 3);
+    return lerp(12, 8.5, diff) + rr(0, 3);
   }
 
   function spawnDeco(d) {
@@ -1032,8 +1087,8 @@ body {
     while (nextDeco < ahead) { spawnDeco(nextDeco); nextDeco += 6; }
     // gaps between rows grow with speed so there is always about the same reaction time
     if (state === 'play' && !tut.active) {
-      while (nextD < ahead) nextD += spawnRow(nextD) * Math.max(1, P.v / 22);
-      while (nextSectionD < ahead) nextSectionD = addSection(nextSectionD) + rand(450, 650);
+      while (nextD < ahead) { const d0 = nextD; nextD += spawnRow(d0) * Math.max(1, vAt(d0) / 22); }
+      while (nextSectionD < ahead) nextSectionD = addSection(nextSectionD) + 450 + secRnd() * 200;
     }
     sections = sections.filter(s => s.d1 > P.d - 40);
     const cut = P.d - 20;
@@ -1346,7 +1401,7 @@ body {
   fillMissions();
 
   // ---------- Panels (shop, missions, settings, high scores, pause) ----------
-  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause'];
+  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge'];
   let panelReturn = 'menu', openPanel = 'menu';
   function showPanel(id) {
     for (const p of PANELS) $(p).hidden = p !== id;
@@ -1552,9 +1607,9 @@ body {
   const archMat = new THREE.MeshLambertMaterial({ color: 0xe8f1fb, emissive: 0x4a6b94, emissiveIntensity: 0.35 });
   function addSection(d0) {
     const types = Object.keys(SECTIONS).filter(t => t !== lastSectionType);
-    const type = types[Math.floor(Math.random() * types.length)];
+    const type = types[Math.floor(secRnd() * types.length)];
     lastSectionType = type;
-    const s = { type, d0, d1: d0 + rand(200, 280) };
+    const s = { type, d0, d1: d0 + 200 + secRnd() * 80 };
     sections.push(s);
     if (type === 'tunnel') {
       // thin, high snow arches with wide gaps: they frame the track without blocking the view,
@@ -1608,21 +1663,26 @@ body {
     for (const m of missions) if (MISSION_POOL.find(t => t.type === m.type).run) m.progress = 0;
     runLanes = 0;
     clearWorld();
-    resetRider(P.d);
+    // every run is built from a seed: a duel replays the challenger's seed from the same spot on the mountain
+    runSeed = duel ? duel.seed : (Math.random() * 4294967296) >>> 0;
+    rowRnd = seededRng(runSeed); secRnd = seededRng(runSeed ^ 0x9e3779b9); lastSectionType = '';
+    resetRider(duel ? duel.sd : Math.round(P.d));
     P.v = 21;
+    rec = { bytes: [], lastD: P.d, t: 0, tut: false }; ghostT = 0; duelPassed = false;
     startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
-    nextPowerD = P.d + rand(120, 200);
+    nextPowerD = P.d + rr(120, 200);
     sections = []; curSection = null; nextSectionD = P.d + 400;
     resetBody();
     applyTrail();
     // tutorial on the very first run, or when asked for in the settings
-    tut.active = tutForce || !store.get('tutorialDone', false);
+    tut.active = !duel && (tutForce || !store.get('tutorialDone', false));
     tutForce = false;
     $('tut').hidden = true;
     if (tut.active) { tut.step = 0; tut.wait = 1.2; tut.rowD = 0; tutShow('', 'Willkommen! Kurze Einführung …'); }
     // items bought in the shop
+    rec.tut = tut.active;
     if (!tut.active && stock.shield > 0) { stock.shield--; PW.shield = 1; popup('Start-Schild', 'aktiv'); }
     if (!tut.active && stock.boost > 0) { stock.boost--; PW.turbo = 6; popup('Turbo-Start', '6 Sekunden'); }
     saveMeta();
@@ -1630,10 +1690,12 @@ body {
     input.drag = null;
     showPanel(null);
     $('hud').hidden = false;
+    $('duelHud').hidden = !duel;
   }
   let runLanes = 0;
   function toMenu() {
     submitName();
+    duel = null;
     fillMissions();
     clearWorld();
     resetRider(P.d);
@@ -1677,6 +1739,8 @@ body {
     renderMissions($('overMissions'));
     $('hud').hidden = true; showPanel('over');
     pendingEntry = qualifies(total) ? { name: '', score: total, dist: Math.floor(P.d - startD), date: Date.now() } : null;
+    lastRun = { seed: runSeed, sd: startD, dm: Math.floor(P.d - startD), sc: total, bytes: Uint8Array.from(rec.bytes) };
+    showDuelResult(lastRun);
     $('nameForm').hidden = !pendingEntry;
     if (pendingEntry) {
       const rank = scores.filter(s => s.score >= total).length + 1;
@@ -1840,6 +1904,175 @@ body {
   $('againBtn').addEventListener('click', () => { submitName(); start(); });
   refreshMenu();
 
+  // ---------- Duel by link: same seed, the challenger rides along as a ghost ----------
+  let runSeed = 0, duel = null, lastRun = null, rec = null, ghostT = 0, duelPassed = false;
+  const GHOST_HZ = 10, GHOST_MAX = 6000;   // 10 samples a second, up to 10 minutes
+  const SHARE_BASE = location.hostname.endsWith('github.io') ? location.origin + location.pathname : 'https://almaz6380.github.io/Mountain-Ride/';
+  // 4 bytes per sample: distance step (0.1 m), x (0.1 m), height above the snow (0.1 m), pose flags
+  function recordGhost(dt) {
+    if (!rec) return;
+    rec.t += dt;
+    while (rec.t >= 1 / GHOST_HZ && rec.bytes.length < GHOST_MAX * 4) {
+      rec.t -= 1 / GHOST_HZ;
+      const dd = clamp(Math.round((P.d - rec.lastD) * 10), 0, 255);
+      rec.lastD += dd / 10;
+      const f = (P.ducking ? 1 : 0) | (P.air ? 2 : 0) | (P.crashed ? 4 : 0) | (P.pose === 'rider-left' ? 8 : 0) | (P.pose === 'rider-right' ? 16 : 0);
+      rec.bytes.push(dd, clamp(Math.round(P.x * 10) + 128, 0, 255), clamp(Math.round((P.y - groundAt(P.d, P.x)) * 10), 0, 255), f);
+    }
+  }
+  function unpackGhost(bytes, sd) {
+    const n = Math.floor(bytes.length / 4), d = new Float32Array(n), x = new Float32Array(n), h = new Float32Array(n), f = new Uint8Array(n);
+    let acc = sd;
+    for (let i = 0; i < n; i++) {
+      acc += bytes[i * 4] / 10; d[i] = acc;
+      x[i] = (bytes[i * 4 + 1] - 128) / 10; h[i] = bytes[i * 4 + 2] / 10; f[i] = bytes[i * 4 + 3];
+    }
+    return { n, d, x, h, f };
+  }
+  // link code: [json length (2 bytes)][json header][ghost bytes], deflated when the browser can, base64url
+  const b64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 4096) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 4096)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = str => { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; };
+  async function pipeBytes(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+  async function encodeDuel(run, name) {
+    const head = new TextEncoder().encode(JSON.stringify({ v: 1, n: name, s: run.seed, sd: run.sd, dm: run.dm, sc: run.sc }));
+    const raw = new Uint8Array(2 + head.length + run.bytes.length);
+    raw[0] = head.length >> 8; raw[1] = head.length & 255; raw.set(head, 2); raw.set(run.bytes, 2 + head.length);
+    try { if (window.CompressionStream) return 'z' + b64u(await pipeBytes(raw, new CompressionStream('deflate-raw'))); } catch (e) {}
+    return 'r' + b64u(raw);
+  }
+  async function decodeDuel(code) {
+    let raw = unb64u(code.slice(1));
+    if (code[0] === 'z') raw = await pipeBytes(raw, new DecompressionStream('deflate-raw'));
+    const len = (raw[0] << 8) | raw[1];
+    const h = JSON.parse(new TextDecoder().decode(raw.subarray(2, 2 + len)));
+    if (h.v !== 1 || typeof h.s !== 'number' || typeof h.sd !== 'number') throw new Error('bad duel');
+    const name = String(h.n || 'Fahrer').slice(0, 14);
+    return { name, seed: h.s >>> 0, sd: h.sd, dm: Math.max(0, h.dm | 0), sc: Math.max(0, h.sc | 0), g: unpackGhost(raw.subarray(2 + len), h.sd) };
+  }
+
+  // ghost rider: a pale see-through copy of the rider with a name tag
+  const ghostMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], transparent: true, opacity: 0.5, color: 0xcfe6ff, depthTest: true, depthWrite: false });
+  const ghost = new THREE.Sprite(ghostMat);
+  ghost.center.set(0.5, 0.04); ghost.renderOrder = 9; ghost.visible = false;
+  scene.add(ghost);
+  const tagCv = document.createElement('canvas'); tagCv.width = 256; tagCv.height = 64;
+  const tagTex = new THREE.CanvasTexture(tagCv);
+  const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, transparent: true, depthTest: false, depthWrite: false }));
+  tag.renderOrder = 14; tag.visible = false; tag.scale.set(2.4, 0.6, 1);
+  scene.add(tag);
+  function drawTag(name) {
+    const c = tagCv.getContext('2d');
+    c.clearRect(0, 0, 256, 64);
+    c.font = '700 34px "Barlow Condensed", "Arial Narrow", sans-serif';
+    const w = Math.min(244, c.measureText(name).width + 28);
+    c.fillStyle = 'rgba(20, 35, 58, 0.7)';
+    c.beginPath(); c.roundRect ? c.roundRect(128 - w / 2, 10, w, 46, 23) : c.rect(128 - w / 2, 10, w, 46); c.fill();
+    c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(name, 128, 34, 228);
+    tagTex.needsUpdate = true;
+  }
+  function ghostAt() {
+    const g = duel.g, t = ghostT * GHOST_HZ, i = Math.min(Math.floor(t), g.n - 1), j = Math.min(i + 1, g.n - 1), w = j > i ? t - i : 0;
+    return { d: lerp(g.d[i], g.d[j], w), x: lerp(g.x[i], g.x[j], w), h: lerp(g.h[i], g.h[j], w), f: g.f[i], done: t >= g.n - 1 };
+  }
+  function renderGhost() {
+    const on = !!duel && duel.g.n > 1 && (state === 'play' || state === 'crash' || state === 'paused');
+    ghost.visible = tag.visible = false;
+    if (!on) return;
+    const s = ghostAt();
+    if (s.d < P.d - 7 || s.d > P.d + 160) return;
+    const pose = s.f & 4 ? 'rider-crash' : s.f & 1 ? 'rider-duck' : s.f & 2 ? 'rider-air' : s.f & 8 ? 'rider-left' : s.f & 16 ? 'rider-right' : 'rider-straight';
+    let h = RIDER_H[pose] * RIDER_SCALE, wk = 1;
+    if (pose === 'rider-duck') { h *= 0.74; wk = 1.15; }
+    if (ghostMat.map !== riderTex[pose]) ghostMat.map = riderTex[pose];
+    const y = groundAt(s.d, s.x) + s.h;
+    ghost.position.set(s.x, y, -s.d + 0.2);
+    ghost.center.x = RIDER_CX[pose];
+    ghost.scale.set(h * ASPECT[pose] * wk, h, 1);
+    // fade the ghost when it overlaps the player so neither hides the other
+    const near = Math.abs(s.d - P.d) < 3 && Math.abs(s.x - P.x) < 1.5;
+    ghostMat.opacity = near ? 0.28 : 0.5;
+    ghost.visible = true;
+    tag.position.set(s.x, y + h + 0.45, -s.d + 0.2);
+    tag.visible = true;
+  }
+  function updateDuelHud(myDist) {
+    const s = ghostAt(), gap = Math.round(P.d - s.d);
+    const el = $('duelHud');
+    if (s.done && myDist > duel.dm) {
+      el.textContent = `${duel.name} geschlagen!`; el.className = 'duel-chip ahead';
+      if (!duelPassed) { duelPassed = true; popup(`${duel.name} geschlagen!`, 'Fahr weiter für mehr Punkte'); Sound.power(); }
+      return;
+    }
+    el.textContent = gap >= 0 ? `${duel.name}: ${gap} m hinter dir` : `${duel.name}: ${-gap} m vor dir`;
+    el.className = 'duel-chip ' + (gap >= 0 ? 'ahead' : 'behind');
+  }
+  function showDuelResult(run) {
+    const box = $('duelResult');
+    box.hidden = !duel;
+    $('challengeBtn').textContent = duel ? 'Zurückfordern' : 'Freund herausfordern';
+    $('againBtn').textContent = duel ? 'Revanche' : 'Nochmal';
+    $('challengeBtn').hidden = !run.bytes.length || rec.tut;   // a tutorial run has no real course to share
+    if (!duel) return;
+    const me = lastName || 'Du', win = run.dm > duel.dm ? 'Du gewinnst!' : run.dm < duel.dm ? `${duel.name} gewinnt` : 'Unentschieden';
+    box.replaceChildren();
+    const t = document.createElement('div'); t.className = 'win'; t.textContent = win; box.append(t);
+    for (const [n, dm] of [[me, run.dm], [duel.name, duel.dm]]) {
+      const row = document.createElement('div'); row.className = 'row';
+      const b = document.createElement('b'); b.textContent = n;
+      const v = document.createElement('span'); v.textContent = dm.toLocaleString('de-DE') + ' m';
+      row.append(b, v); box.append(row);
+    }
+    if (run.dm > duel.dm) Sound.power();
+  }
+  function openDuel(d) {
+    duel = d;
+    drawTag(d.name);
+    $('duelName').textContent = d.name;
+    $('duelDist').textContent = d.dm.toLocaleString('de-DE') + ' m';
+    $('duelScore').textContent = d.sc.toLocaleString('de-DE');
+    showPanel('duel');
+  }
+  $('duelGoBtn').addEventListener('click', start);
+  $('duelCancelBtn').addEventListener('click', () => { duel = null; refreshMenu(); showPanel('menu'); });
+  $('challengeBtn').addEventListener('click', () => {
+    submitName();
+    $('chName').value = lastName;
+    $('chLink').hidden = true; $('chStatus').hidden = true;
+    $('chText').textContent = `Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist (${lastRun.dm.toLocaleString('de-DE')} m).`;
+    openSub('challenge', 'over');
+    if (!lastName) $('chName').focus({ preventScroll: true });
+  });
+  $('chForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!lastRun) return;
+    const name = $('chName').value.trim().slice(0, 14) || 'Fahrer';
+    lastName = name;
+    try { localStorage.setItem(NAME_KEY, name); } catch (err) {}
+    $('chName').blur();
+    const url = SHARE_BASE + '#duel=' + await encodeDuel(lastRun, name);
+    const text = `${name} fordert dich bei Mountain Ride heraus: ${lastRun.dm.toLocaleString('de-DE')} m! Schaffst du mehr?`;
+    const status = $('chStatus');
+    status.hidden = false;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Mountain Ride Duell', text, url }); status.textContent = 'Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.'; return; }
+      catch (err) { if (err && err.name === 'AbortError') { status.hidden = true; return; } }
+    }
+    $('chLink').value = url; $('chLink').hidden = false;
+    try { await navigator.clipboard.writeText(text + ' ' + url); status.textContent = 'Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.'; }
+    catch (err) { $('chLink').select(); status.textContent = 'Kopiere diesen Link und schick ihn deinem Freund.'; }
+  });
+  // a duel link opens straight into the challenge screen
+  async function checkDuelLink() {
+    const m = location.hash.match(/^#duel=([zr][A-Za-z0-9_-]+)$/);
+    if (!m) return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    try { const d = await decodeDuel(m[1]); if (state === 'menu') openDuel(d); }
+    catch (e) { popup('Duell-Link kaputt', 'Lass ihn dir nochmal schicken'); }
+  }
+  addEventListener('hashchange', checkDuelLink);
+  checkDuelLink();
+
   // ---------- Update ----------
   let lastDt = 0.016;
   // critically damped spring towards the target lane: eases in and out of every lane change
@@ -1853,6 +2086,7 @@ body {
   }
   function update(dt) {
     clock += dt; lastDt = dt;
+    if (state === 'play' || state === 'crash') { recordGhost(dt); ghostT += dt; }
     const playing = state === 'play';
     const dist = P.d - startD;
     P.lastX = P.x;
@@ -2090,6 +2324,8 @@ body {
     aura.position.set(P.x, P.y + 1.2, -P.d + 0.1);
     aura.scale.setScalar(3.4 + Math.sin(clock * 4) * 0.08);
 
+    renderGhost();
+
     const gy = groundAt(P.d, P.x);
     shadow.position.set(P.x, gy + 0.04, -P.d);
     shadow.rotation.set(-Math.PI / 2 + Math.atan(slopeAt(P.d, P.x)), 0, 0);
@@ -2149,6 +2385,7 @@ body {
     if (s !== hud.speed) { hud.speed = s; $('hudSpeed').textContent = s + ' km/h'; }
     if (coinCount !== hud.coins) { hud.coins = coinCount; $('hudCoins').textContent = coinCount; }
     if (sc !== hud.score) { hud.score = sc; $('hudScore').textContent = sc.toLocaleString('de-DE'); }
+    if (duel) updateDuelHud(d);
   }
 
   // ---------- Loop ----------
