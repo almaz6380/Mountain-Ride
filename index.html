@@ -1548,7 +1548,7 @@ body {
 
   // ---------- High scores: this device / worldwide ----------
   // Worldwide list: fill in a Supabase project URL and its public anon key (see docs/online-bestenliste.md)
-  const ONLINE = { url: '', key: '' };
+  const ONLINE = { url: 'https://xkyzbhtxulnbiimpjaon.supabase.co', key: 'sb_publishable_wJm2EeCIR2hE11_Ge_Ek6Q_JMz-Vp1d' };
   const onlineReady = !!(ONLINE.url && ONLINE.key) && !/claude\.ai$/.test(location.hostname);
   // legacy anon keys are JWTs and go in Authorization too; new publishable keys (sb_publishable_…) only as apikey
   const authHeaders = () => ONLINE.key.startsWith('sb_') ? { apikey: ONLINE.key } : { apikey: ONLINE.key, Authorization: 'Bearer ' + ONLINE.key };
