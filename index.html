@@ -380,7 +380,6 @@ body {
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true }); }
   catch (e) { $('menuBest').textContent = 'Dein Browser unterstützt kein WebGL.'; return; }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 600);
   scene.fog = new THREE.Fog(0xcfe3f2, 80, 205);
@@ -392,6 +391,8 @@ body {
   let W = 1, H = 1;
   function resize() {
     W = innerWidth; H = innerHeight;
+    // full device resolution on phones (crisp sprites), capped at about 3.2 million pixels for big screens
+    renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(3.2e6 / (W * H)))));
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
@@ -424,6 +425,8 @@ body {
   // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
   const SPIN_META = [[0.7857, 1.95, 0.544], [0.8441, 1.928, 0.567], [0.4248, 1.95, 0.633], [0.7623, 1.943, 0.414], [0.7321, 1.943, 0.376], [0.7208, 1.943, 0.554], [0.4549, 1.95, 0.541], [0.8441, 1.928, 0.428]];
   const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
+  // the rider is drawn at roughly its painted size: plain linear filtering keeps it sharp (mipmaps would blur it)
+  for (const t of [...Object.values(riderTex), ...SPIN_VIEWS.map(v => v.tex)]) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; }
   // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
   const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
   const RIDER_SCALE = 1.25;   // standing helmet about 2 m: tall enough to visibly hit a gate banner
@@ -548,7 +551,7 @@ body {
   }
 
   // ---------- Rider ----------
-  // drawn last and without depth test, so neither the snow nor the shadow can cover the board
+  // depth-tested so obstacles in front of the rider cover him; the sprite sits a little towards the camera so the snow never covers the board
   const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false });
   spriteMats.push(riderMat);
   const rider = new THREE.Sprite(riderMat);
@@ -556,7 +559,7 @@ body {
   rider.center.set(0.5, 0.04);
   scene.add(rider);
   // second sprite for the duck pose so it can fade in and out instead of popping
-  const duckMat = new THREE.SpriteMaterial({ map: riderTex['rider-duck'], alphaTest: 0.04, transparent: true, depthTest: false, depthWrite: false, opacity: 0 });
+  const duckMat = new THREE.SpriteMaterial({ map: riderTex['rider-duck'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
   spriteMats.push(duckMat);
   const duckSprite = new THREE.Sprite(duckMat);
   duckSprite.renderOrder = 11;
@@ -818,6 +821,14 @@ body {
     scene.add(m);
     coins.push({ d, x, y, mesh: m, taken: false, tt: 0, grow: d - P.d < 170 ? 0 : 1 });
   }
+  // a collected coin leaves the depth-sorted scene: it pops up in front of the rider and fades, instead of cutting through his body
+  const coinFxMat = new THREE.SpriteMaterial({ map: SM.coin.map, transparent: true, depthTest: false, depthWrite: false });
+  function takeCoinFx(c) {
+    c.mesh.material = coinFxMat.clone();
+    c.mesh.renderOrder = 20;
+    c.d = Math.max(c.d, P.d + 0.3);
+    c.mesh.position.set(c.x, c.y, -c.d);
+  }
   function addRamp(d, x) {
     const r = { d0: d, d1: d + rand(6, 8), x, w: LANE_W - 0.3, h: rand(1.4, 2.1) };
     r.mesh = buildRampMesh(r);
@@ -1037,7 +1048,7 @@ body {
     sections = sections.filter(s => s.d1 > P.d - 40);
     const cut = P.d - 20;
     ents = ents.filter(e => { if (e.d < cut) { scene.remove(e.mesh); dropEnt(e); return false; } return true; });
-    coins = coins.filter(c => { if (c.d < cut || (c.taken && c.tt > 0.35)) { scene.remove(c.mesh); return false; } return true; });
+    coins = coins.filter(c => { if (c.d < cut || (c.taken && c.tt > 0.35)) { scene.remove(c.mesh); if (c.taken) c.mesh.material.dispose(); return false; } return true; });
     pups = pups.filter(u => { if (u.d < cut || u.taken) { scene.remove(u.mesh); return false; } return true; });
     poles = poles.filter(p => { if (p.d < cut) { scene.remove(p.mesh); return false; } return true; });
     ramps = ramps.filter(r => { if (r.d1 < cut) { scene.remove(r.mesh); r.mesh.geometry.dispose(); return false; } return true; });
@@ -1731,7 +1742,6 @@ body {
   function duck() {
     if (state !== 'play') return;
     if (P.air) P.vy = Math.min(P.vy, P.v * slopeAt(P.d, P.x) - 14);   // dive back to the snow
-    if (!P.ducking && !P.air) { P.sq = Math.min(P.sq, 0); P.sqv = -3.2; }
     P.duckT = 0.75;
   }
   function jump() {
@@ -1906,8 +1916,7 @@ body {
     P.duckT -= dt;
     const wasDucking = P.ducking;
     P.ducking = P.duckT > 0 && !P.air && !P.crashed;
-    if (wasDucking && !P.ducking && !P.air) P.sqv = 2.6;   // spring back up
-    P.duckS += ((P.ducking ? 1 : 0) - P.duckS) * Math.min(1, dt * 22);
+    P.duckS += ((P.ducking ? 1 : 0) - P.duckS) * Math.min(1, dt * 16);
     // body language: smoothed lean, pose with hysteresis, squash & stretch spring
     const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 10, -1, 1);
     P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
@@ -1950,7 +1959,7 @@ body {
           c.x += (P.x - c.x) * k; c.y += (P.y + 0.8 - c.y) * k; c.d += (P.d + 0.3 - c.d) * Math.min(1, dt * 6);
           c.mesh.position.set(c.x, c.y, -c.d);
         }
-        if (Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; coinCount++; score += 25 * mult; Sound.coin(); progressMission('runCoins', coinCount, true); progressMission('coins', 1); }
+        if (Math.abs(c.d - P.d) < 1.2 && Math.abs(c.x - P.x) < 1.3 && Math.abs(c.y - (P.y + 0.8)) < 1.4) { c.taken = true; takeCoinFx(c); coinCount++; score += 25 * mult; Sound.coin(); progressMission('runCoins', coinCount, true); progressMission('coins', 1); }
       }
       for (const u of pups) {
         if (!u.taken && Math.abs(u.d - P.d) < 1.3 && Math.abs(u.x - P.x) < 1.4 && Math.abs(u.y - (P.y + 0.8)) < 1.6) { u.taken = true; collectPower(u.type); }
@@ -1991,9 +2000,14 @@ body {
     // coins spin / fly away
     for (const c of coins) {
       c.grow = Math.min(1, c.grow + dt * 3);
-      const k = (c.taken ? Math.max(0.01, 1 - c.tt * 2.5) : 1) * Math.max(0.01, c.grow);
+      const k = (c.taken ? 0.7 + c.tt * 1.2 : 1) * Math.max(0.01, c.grow);
       c.mesh.scale.set(0.9 * k * Math.max(0.12, Math.abs(Math.cos(clock * 3 + c.d))), 0.9 * k, 1);
-      if (c.taken) { c.tt += dt; c.mesh.position.y = c.y + c.tt * 4; }
+      if (c.taken) {
+        c.tt += dt;
+        c.d += P.v * dt;   // travels with the rider
+        c.mesh.position.set(c.x, c.y + c.tt * 3.5, -c.d);
+        c.mesh.material.opacity = Math.max(0, 1 - c.tt * 2.8);
+      }
     }
 
     // particles
@@ -2049,7 +2063,7 @@ body {
       spinB.center.x = f1.cx;
       spinB.scale.set(f1.h * f1.ar * RIDER_SCALE, f1.h * RIDER_SCALE, 1);
     } else {
-      const pose = P.duckS > 0.5 ? 'rider-duck' : P.pose;
+      const pose = P.pose;
       tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose] * RIDER_SCALE; cx = RIDER_CX[pose];
     }
     if (!spinning) spinB.visible = false;
@@ -2057,13 +2071,20 @@ body {
     // ducking: the riding pose sinks a little while the duck pose fades in on top of it
     // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
     const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
-    // the duck pose is squashed down so the crouched rider clearly sits below a gate banner
-    const duckK = tex === riderTex['rider-duck'] ? 0.74 : 1;
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4), rh * duckK * (1 + sq + bob + airK), 1);
+    // ducking: the riding pose sinks while the crouched pose fades in over it, both end at the same height,
+    // so the rider goes down in one smooth movement and stays below a gate banner
+    const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4) * (1 + dk * 0.04), rh * (1 + sq + bob + airK) * (1 - dk * 0.24), 1);
     rider.center.x = cx;
     const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
-    riderMat.opacity = blink;
-    duckSprite.visible = false;
+    riderMat.opacity = blink * (1 - clamp((dk - 0.45) / 0.25, 0, 1));
+    duckSprite.visible = dk > 0.01;
+    if (duckSprite.visible) {
+      const dh = RIDER_H['rider-duck'] * RIDER_SCALE * 0.74 * (1 + (1 - dk) * 0.3);
+      duckSprite.position.copy(rider.position);
+      duckSprite.scale.set(dh * ASPECT['rider-duck'] * 1.15, dh, 1);
+      duckMat.opacity = blink * clamp((dk - 0.3) / 0.25, 0, 1);
+    }
     const tilt = P.crashed ? 0 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) + Math.sin(P.airT * 5) * 0.03 : -P.leanS * 0.16;
     riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
     duckMat.rotation = riderMat.rotation;
