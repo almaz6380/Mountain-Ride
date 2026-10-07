@@ -48,3 +48,25 @@ Lesen und neue Einträge, kein Ändern oder Löschen.
 
 Die Liste hat keinen Schutz gegen Schummeln: Wer sich auskennt, kann erfundene Punktzahlen eintragen.
 Für ein privates Spiel unter Freunden reicht das in der Regel.
+
+## Tagesrennen (Tages-Bestenliste)
+
+Für das Tagesrennen braucht es eine zweite Tabelle. Im **SQL Editor** einfügen und **Run** drücken:
+
+```sql
+create table public.daily (
+  id bigint generated always as identity primary key,
+  day date not null,
+  name text not null check (char_length(name) between 1 and 14),
+  dist integer not null check (dist between 0 and 1000000),
+  score integer not null check (score between 0 and 100000000),
+  created_at timestamptz not null default now()
+);
+alter table public.daily enable row level security;
+create policy "Tagesrennen lesen" on public.daily for select to anon using (true);
+create policy "Tagesrennen eintragen" on public.daily for insert to anon
+  with check (day between current_date - 1 and current_date + 1);
+grant select, insert on public.daily to anon;
+```
+
+Die Strecke des Tages wird aus dem Datum berechnet: alle Spieler fahren am selben Tag dieselbe Strecke am selben Ort.
