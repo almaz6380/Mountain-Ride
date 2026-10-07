@@ -479,6 +479,7 @@ body {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -705,6 +706,140 @@ body {
   duckSprite.renderOrder = 11;
   duckSprite.center.set(RIDER_CX['rider-duck'], 0.04);
   scene.add(duckSprite);
+  // ---------- 3D rider model: the static T-pose mesh gets a skeleton and skin weights at load time ----------
+  // joints measured on the model (metres, model faces +z, its left hand at +x)
+  const RIG = {
+    hips: [0, 0.86, -0.03], spine: [0, 1.0, -0.03], chest: [0, 1.18, -0.03], head: [0, 1.42, -0.03],
+    shoulder: [0.17, 1.28, -0.03], elbow: [0.47, 1.28, -0.03], wrist: [0.74, 1.28, -0.03],
+    hip: [0.11, 0.86, -0.03], knee: [0.11, 0.48, -0.03], ankle: [0.11, 0.12, -0.03],
+  };
+  function buildRig(src, mat) {
+    const geo = src.geometry;
+    const V = (a, s = 1) => new THREE.Vector3(a[0] * s, a[1], a[2]);
+    // bones: index order is the skin index
+    const B = {}, mk = (name, parent, pos) => { const b = new THREE.Bone(); b.name = name; b.position.copy(pos); if (parent) parent.add(b); B[name] = b; return b; };
+    const at = (child, parent) => V(child).sub(V(parent));
+    const hips = mk('hips', null, V(RIG.hips));
+    mk('spine', hips, at(RIG.spine, RIG.hips)); mk('chest', B.spine, at(RIG.chest, RIG.spine)); mk('head', B.chest, at(RIG.head, RIG.chest));
+    for (const [side, s] of [['L', 1], ['R', -1]]) {
+      mk('arm' + side, B.chest, V(RIG.shoulder, s).sub(V(RIG.chest)));
+      mk('fore' + side, B['arm' + side], V(RIG.elbow, s).sub(V(RIG.shoulder, s)));
+      mk('hand' + side, B['fore' + side], V(RIG.wrist, s).sub(V(RIG.elbow, s)));
+      mk('thigh' + side, hips, V(RIG.hip, s).sub(V(RIG.hips)));
+      mk('shin' + side, B['thigh' + side], V(RIG.knee, s).sub(V(RIG.hip, s)));
+      mk('foot' + side, B['shin' + side], V(RIG.ankle, s).sub(V(RIG.knee, s)));
+    }
+    const order = ['hips', 'spine', 'chest', 'head', 'armL', 'foreL', 'armR', 'foreR', 'thighL', 'shinL', 'thighR', 'shinR'];
+    const bones = order.map(n => B[n]).concat(['handL', 'handR', 'footL', 'footR'].map(n => B[n]));
+    // segments each deforming bone covers (rest pose, model space)
+    const seg = {
+      hips: [[0, 0.78, -0.03], RIG.spine], spine: [RIG.spine, RIG.chest], chest: [RIG.chest, RIG.head], head: [RIG.head, [0, 1.8, -0.03]],
+      armL: [RIG.shoulder, RIG.elbow], foreL: [RIG.elbow, [0.8, 1.28, -0.03]],
+      armR: [[-0.17, 1.28, -0.03], [-0.47, 1.28, -0.03]], foreR: [[-0.47, 1.28, -0.03], [-0.8, 1.28, -0.03]],
+      thighL: [RIG.hip, RIG.knee], shinL: [RIG.knee, [0.11, 0, -0.03]], thighR: [[-0.11, 0.86, -0.03], [-0.11, 0.48, -0.03]], shinR: [[-0.11, 0.48, -0.03], [-0.11, 0, -0.03]],
+    };
+    const segV = order.map(n => [V(seg[n][0]), V(seg[n][1])]);
+    const pos = geo.attributes.position, n = pos.count;
+    const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    const p = new THREE.Vector3(), ab = new THREE.Vector3(), ap = new THREE.Vector3();
+    const dist = (k) => { const [a, b] = segV[k]; ab.subVectors(b, a); ap.subVectors(p, a); const t = clamp(ap.dot(ab) / ab.lengthSq(), 0, 1); return ap.addScaledVector(ab, -t).length(); };
+    for (let i = 0; i < n; i++) {
+      p.fromBufferAttribute(pos, i);
+      const ax = Math.abs(p.x), side = p.x >= 0 ? 'L' : 'R';
+      // which bones may move this vertex: arms beyond the shoulders, legs below the crotch, the trunk otherwise
+      let cand;
+      if (ax > 0.21 && p.y > 1.12) cand = ['arm' + side, 'fore' + side, ...(ax < 0.3 ? ['chest'] : [])];
+      else if (p.y < 0.8) cand = ['thigh' + side, 'shin' + side, ...(p.y > 0.7 ? ['hips'] : [])];
+      else cand = ['hips', 'spine', 'chest', 'head', ...(p.y < 0.92 ? ['thigh' + side] : [])];
+      const w = cand.map(c => { const k = order.indexOf(c); return [k, 1 / Math.pow(dist(k) + 0.02, 4)]; }).sort((a, b) => b[1] - a[1]).slice(0, 4);
+      const tot = w.reduce((s, x) => s + x[1], 0);
+      w.forEach(([k, v], j) => { si[i * 4 + j] = k; sw[i * 4 + j] = v / tot; });
+    }
+    const g = geo.clone();
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    const mesh = new THREE.SkinnedMesh(g, mat);
+    mesh.add(hips);
+    mesh.bind(new THREE.Skeleton(bones));
+    mesh.frustumCulled = false;
+    return { mesh, B };
+  }
+  // pose: crouch 0..1, lean forward, arms 0 (down) .. 1 (spread up), grab, twist of the upper body
+  function poseRig(rig, st) {
+    const B = rig.B, bend = st.crouch;   // knee bend in radians
+    const spread = 0.2;
+    for (const [s, sgn] of [['L', 1], ['R', -1]]) {
+      B['thigh' + s].rotation.set(-bend, 0, sgn * spread, 'ZXY');
+      B['shin' + s].rotation.set(bend * 1.9, 0, 0);
+      B['foot' + s].rotation.set(-bend * 0.9, 0, -sgn * spread);
+      const down = lerp(1.15, 0.25, st.arms);
+      B['arm' + s].rotation.set(0, sgn * (0.35 + st.lean * 0.3), -sgn * down, 'YZX');
+      B['fore' + s].rotation.set(0, sgn * 0.35, -sgn * 0.15);
+    }
+    if (st.grab > 0) { B.armL.rotation.z = lerp(B.armL.rotation.z, -1.45, st.grab); B.armL.rotation.y = lerp(B.armL.rotation.y, 0.9, st.grab); B.foreL.rotation.y = lerp(0.35, 0.1, st.grab); }
+    B.spine.rotation.set(st.lean * 0.55, st.twist * 0.45, 0);
+    B.chest.rotation.set(st.lean * 0.45, st.twist * 0.45, 0);
+    B.head.rotation.set(-st.lean * 0.6, st.twist * 0.4, 0);
+    // keep the boots on the board: drop the hips by what the bent legs lose in height
+    const legH = (0.38 * Math.cos(bend) + 0.36 * Math.cos(bend * 0.9)) * Math.cos(spread) + 0.12;
+    B.hips.position.y = legH;
+    B.hips.position.z = -0.03 - (0.38 * Math.sin(bend) - 0.36 * Math.sin(bend * 0.9));
+  }
+
+  // the 3D rider replaces the painted sprites once the model has loaded (the sprites stay as a fallback)
+  const R3_SCALE = 1.25;   // riding helmet at about 2.1 m: a gate banner at 1.95 m hits him, ducked he is about 1.7 m
+  let rider3d = null, ghost3d = null;
+  function makeRider3d(src, ghost) {
+    const map = src.material.map;
+    if (map) map.encoding = THREE.LinearEncoding;   // the other textures in the game are linear too
+    const mat = new THREE.MeshLambertMaterial({ map, skinning: true });
+    const boardMat = new THREE.MeshLambertMaterial({ color: 0xe5396f }), topMat = new THREE.MeshLambertMaterial({ color: 0x2b2f3a });
+    if (ghost) for (const m of [mat, boardMat, topMat]) { m.transparent = true; m.opacity = 0.42; m.depthWrite = false; m.color.lerp(new THREE.Color(0xcfe6ff), 0.3); }
+    const rig = buildRig(src, mat);
+    rig.mesh.castShadow = !ghost;
+    const root = new THREE.Group(), pivot = new THREE.Group(), inner = new THREE.Group(), body = new THREE.Group();
+    pivot.position.y = 1.1; pivot.rotation.order = 'YXZ'; inner.position.y = -1.1;
+    root.add(pivot); pivot.add(inner); inner.add(body);
+    body.rotation.y = Math.PI / 2;   // sideways stance: left foot down the slope, facing the toe edge
+    body.scale.setScalar(R3_SCALE);
+    body.add(rig.mesh);
+    // the board lies along the stance, nose and tail kicked up
+    const board = new THREE.Group();
+    const part = (w, h, d, m, x, y, rz) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, 0); b.rotation.z = rz || 0; b.castShadow = !ghost; board.add(b); };
+    part(1.2, 0.035, 0.29, boardMat, 0, 0.02); part(0.22, 0.035, 0.29, boardMat, 0.69, 0.055, 0.42); part(0.22, 0.035, 0.29, boardMat, -0.69, 0.055, -0.42);
+    part(1.0, 0.012, 0.22, topMat, 0, 0.042);
+    body.add(board);
+    scene.add(root);
+    return { root, pivot, rig, boardMat, topMat, st: { crouch: 0.5, lean: 0.3, arms: 0.25, grab: 0, twist: 0.9 } };
+  }
+  if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/rider.glb', g => {
+    let src = null; g.scene.traverse(o => { if (o.isMesh && !src) src = o; });
+    if (!src) return;
+    rider3d = makeRider3d(src, false);
+    ghost3d = makeRider3d(src, true); ghost3d.root.visible = false;
+    applyGear();
+  }, undefined, () => {});
+  function poseRider3d(dt) {
+    const r3 = rider3d, st = r3.st, e = k => Math.min(1, dt * k);
+    const sq = clamp(P.sq, -0.25, 0.25), dk = P.duckS * P.duckS * (3 - 2 * P.duckS), gk = P.grabS || 0;
+    const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.03 * Math.min(1, P.v / 20);
+    const tCrouch = P.crashed ? 0.9 : P.air ? lerp(0.85, 1.2, gk) : lerp(0.5 - sq * 1.6 + bob, 1.2, dk);
+    st.crouch += (tCrouch - st.crouch) * e(P.air ? 10 : 16);
+    st.lean += ((P.crashed ? 0.3 : P.air ? lerp(0.35, 0.7, gk) : lerp(0.3, 0.9, dk)) - st.lean) * e(12);
+    st.arms += ((P.crashed ? 0.95 : P.air ? (1 - gk) * (0.8 + Math.sin(P.airT * 4) * 0.08) : 0.25 - dk * 0.15) - st.arms) * e(10);
+    st.grab += (gk - st.grab) * e(16);
+    st.twist = 0.9 - P.leanS * 0.25;
+    poseRig(r3.rig, st);
+    const R = r3.root;
+    R.position.set(P.x, P.y + 0.01, -P.d);
+    // carve: lean into the turn around the board; a crash throws him onto his side
+    const tRoll = P.crashed ? 1.3 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) : -P.leanS * 0.3;
+    R.rotation.z += (tRoll - R.rotation.z) * e(P.crashed ? 6 : 12);
+    R.rotation.y = P.air ? 0 : -P.vx * 0.025;
+    r3.pivot.rotation.y = P.yaw;
+    r3.pivot.rotation.x = P.pitch || 0;
+    R.visible = !(PW.invuln > 0 && Math.sin(clock * 30) < -0.2);
+  }
   // protective glow while a shield or turbo is active
   const auraTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -1698,7 +1833,11 @@ body {
     carbon: { name: 'Carbon',  cost: 700,  board: '#2b2f3a', boardTop: '#ffc531' },
     gold:   { name: 'Gold',    cost: 1200, board: '#ffd34d', boardTop: '#7a5a00' },
   };
-  function applyGear() {}   // outfits come back with a proper 3D rider model
+  function applyGear() {
+    if (!rider3d) return;
+    const b = BOARDS[gear.board] || BOARDS.pink;
+    rider3d.boardMat.color.set(b.board); rider3d.topMat.color.set(b.boardTop);
+  }
   function applyTrail() { if (trails.active !== 'regenbogen') sprayMat.color.set(TRAILS[trails.active].color); }
 
   // ---------- Missions ----------
@@ -1877,6 +2016,7 @@ body {
       row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
       list.appendChild(row);
     }
+    swatchGroup(list, 'Snowboard', BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
     const h3 = document.createElement('h3'); h3.textContent = 'Schneespur'; list.appendChild(h3);
     const sw = document.createElement('div'); sw.className = 'swatches';
     for (const k of Object.keys(TRAILS)) {
@@ -2468,6 +2608,7 @@ body {
     const racing = state === 'play' || state === 'crash' || state === 'paused' || state === 'countdown';
     const on = (!!duel && duel.g.n > 1 && racing) || (!!live.next && !!live.snap && (racing || state === 'over'));
     ghost.visible = tag.visible = false;
+    if (ghost3d) ghost3d.root.visible = false;
     if (!on) return;
     const s = duel ? ghostAt() : liveAt();
     if (s.d < P.d - 7 || s.d > P.d + 160) return;
@@ -2476,6 +2617,22 @@ body {
     if (pose === 'rider-duck') { h *= 0.74; wk = 1.15; }
     if (ghostMat.map !== riderTex[pose]) ghostMat.map = riderTex[pose];
     const y = groundAt(s.d, s.x) + s.h;
+    if (ghost3d) {
+      // the ghost uses a see-through copy of the 3D rider, posed from the recorded flags
+      const gs = ghost3d.st, k = Math.min(1, lastDt * 12), duck = s.f & 1 ? 1 : 0, air = s.f & 2 ? 1 : 0, down = s.f & 4 ? 1 : 0, lean = s.f & 8 ? -0.6 : s.f & 16 ? 0.6 : 0;
+      gs.crouch += ((down ? 0.9 : air ? 0.85 : duck ? 1.2 : 0.5) - gs.crouch) * k;
+      gs.lean += ((duck ? 0.9 : 0.3) - gs.lean) * k;
+      gs.arms += ((down ? 0.95 : air ? 0.8 : 0.25) - gs.arms) * k;
+      gs.twist = 0.9 - lean * 0.25;
+      poseRig(ghost3d.rig, gs);
+      const G = ghost3d.root;
+      G.position.set(s.x, y + 0.01, -s.d);
+      G.rotation.z += ((down ? 1.3 : air ? 0 : -lean * 0.3) - G.rotation.z) * k;
+      G.visible = true;
+      tag.position.set(s.x, y + 2.7, -s.d);
+      tag.visible = true;
+      return;
+    }
     ghost.position.set(s.x, y, -s.d + 0.2);
     ghost.center.x = RIDER_CX[pose];
     ghost.scale.set(h * ASPECT[pose] * wk, h, 1);
@@ -3099,6 +3256,7 @@ body {
     else if (flipping) riderMat.rotation = tilt;
     duckMat.rotation = riderMat.rotation;
     spinMatB.rotation = riderMat.rotation;
+    if (rider3d) { rider.visible = false; duckSprite.visible = false; spinB.visible = false; poseRider3d(dt); }
     // shield / turbo glow
     const prot = P.crashed ? 0 : PW.turbo > 0 ? 1 : PW.shield ? 0.8 : PW.invuln > 0 ? 0.4 : 0;
     auraMat.opacity += (prot * (0.75 + 0.25 * Math.sin(clock * 6)) - auraMat.opacity) * Math.min(1, dt * 8);
