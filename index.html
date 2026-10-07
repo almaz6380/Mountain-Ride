@@ -539,7 +539,27 @@ body {
     if (opts.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
     return t;
   }
-  const spriteMats = [];   // sprite materials tinted with the time of day (power-up icons)
+  // aspect ratios (w / h) of the cut-out sprites
+  const ASPECT = { 'rider-duck': 0.5222, 'rider-straight': 173 / 266, 'rider-left': 231 / 324, 'rider-right': 231 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
+    'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
+  const spriteMats = [];
+  function spriteMat(name) {
+    const m = new THREE.SpriteMaterial({ map: tex(name + '.png'), alphaTest: 0.5, transparent: false });
+    spriteMats.push(m);
+    return m;
+  }
+  const riderTex = {};
+  for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash', 'rider-duck']) riderTex[n] = tex(n + '.png');
+  // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
+  const SPIN_META = [[0.7857, 1.95, 0.544], [0.8441, 1.928, 0.567], [0.4248, 1.95, 0.633], [0.7623, 1.943, 0.414], [0.7321, 1.943, 0.376], [0.7208, 1.943, 0.554], [0.4549, 1.95, 0.541], [0.8441, 1.928, 0.428]];
+  const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
+  // the rider is drawn at roughly its painted size: plain linear filtering keeps it sharp (mipmaps would blur it)
+  for (const t of [...Object.values(riderTex), ...SPIN_VIEWS.map(v => v.tex)]) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; }
+  // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
+  const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
+  const RIDER_SCALE = 1.25;   // standing helmet about 2 m: tall enough to visibly hit a gate banner
+  const RIDER_H = { 'rider-duck': 1.85, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
+
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
   const SKY_HORIZON = 0.8;   // fraction from the image top where the valley mist sits
@@ -660,111 +680,21 @@ body {
     return new THREE.Mesh(g, vcMatDouble);
   }
 
-  // ---------- Rider: a low-poly 3D snowboarder; knees and elbows are placed by two-bone IK every frame ----------
-  const RS = 1.3;   // overall size: riding helmet at about 2.1 m (a gate banner at 1.95 m hits him), ducked about 1.6 m
-  const OUTFIT_BASE = { jacket: '#f2b632', pants: '#283a5c', helmet: '#1d2633', goggles: '#2ec4b6', scarf: '#e5396f', board: '#e5396f', boardTop: '#2b2f3a' };
-  const boneGeo = new THREE.CylinderGeometry(1, 1, 1, 7);
-  const ballGeo = new THREE.IcosahedronGeometry(1, 1);
-  const UPV = new THREE.Vector3(0, 1, 0), TV1 = new THREE.Vector3(), TV2 = new THREE.Vector3(), TV3 = new THREE.Vector3(), TV4 = new THREE.Vector3();
-  function placeBone(m, a, b, rad) {
-    TV1.subVectors(b, a); const len = TV1.length() || 0.001;
-    m.position.addVectors(a, b).multiplyScalar(0.5);
-    m.quaternion.setFromUnitVectors(UPV, TV1.multiplyScalar(1 / len));
-    m.scale.set(rad, len, rad);
-  }
-  // two-bone IK: the middle joint for a limb from a to b, bending towards pole
-  function ikJoint(out, a, b, l1, l2, pole) {
-    TV2.subVectors(b, a);
-    const d = Math.min(TV2.length(), l1 + l2 - 0.001), dir = TV2.normalize();
-    const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
-    TV3.copy(pole).addScaledVector(dir, -pole.dot(dir)).normalize();   // pole direction without its part along the limb
-    return out.copy(a).addScaledVector(dir, along).addScaledVector(TV3, h);
-  }
-  function makeRider(ghost) {
-    const mats = {};
-    const mat = (key, col) => {
-      const m = new THREE.MeshLambertMaterial({ color: col || 0x1d2633 });
-      if (ghost) { m.transparent = true; m.opacity = 0.42; m.depthWrite = false; m.color.lerp(new THREE.Color(0xcfe6ff), 0.35); }
-      return (mats[key] = m);
-    };
-    for (const k of Object.keys(OUTFIT_BASE)) mat(k, OUTFIT_BASE[k]);
-    mat('dark', 0x1d2633); mat('binding', 0x3b4252);
-    const mesh = (geo, m, parent) => { const o = new THREE.Mesh(geo, m); o.castShadow = !ghost; parent.add(o); return o; };
-    const root = new THREE.Group();          // board contact point; carving roll
-    const pivot = new THREE.Group();         // centre of the body: spins (yaw) and flips (pitch)
-    pivot.position.y = 0.9 * RS; pivot.rotation.order = 'YXZ';
-    const inner = new THREE.Group();
-    inner.position.y = -0.9 * RS; inner.scale.setScalar(RS);
-    root.add(pivot); pivot.add(inner);
-    // board along z (down the slope), nose and tail kicked up
-    const board = new THREE.Group(); inner.add(board);
-    mesh(new THREE.BoxGeometry(0.3, 0.035, 1.2), mats.board, board).position.y = 0.04;
-    for (const sz of [-1, 1]) { const k = mesh(new THREE.BoxGeometry(0.3, 0.035, 0.24), mats.board, board); k.position.set(0, 0.075, sz * 0.7); k.rotation.x = sz * 0.42; }
-    mesh(new THREE.BoxGeometry(0.24, 0.012, 1.0), mats.boardTop, board).position.y = 0.062;
-    for (const fz of [-0.27, 0.27]) { const bd = mesh(new THREE.BoxGeometry(0.26, 0.06, 0.16), mats.binding, board); bd.position.set(0, 0.09, fz); }
-    const boots = [-0.27, 0.27].map(fz => { const b = mesh(new THREE.BoxGeometry(0.28, 0.13, 0.14), mats.dark, inner); b.position.set(0.02, 0.15, fz); return b; });
-    const bones = {}, bone = (k, m) => (bones[k] = mesh(boneGeo, m, inner));
-    bone('thighF', mats.pants); bone('shinF', mats.pants); bone('thighB', mats.pants); bone('shinB', mats.pants);
-    bone('upperF', mats.jacket); bone('foreF', mats.jacket); bone('upperB', mats.jacket); bone('foreB', mats.jacket);
-    const hands = [mesh(ballGeo, mats.dark, inner), mesh(ballGeo, mats.dark, inner)];
-    hands.forEach(h => h.scale.setScalar(0.08));
-    // upper body: built facing +x and turned towards the valley
-    const torso = new THREE.Group(); inner.add(torso);
-    const pelvis = mesh(new THREE.CylinderGeometry(0.16, 0.15, 0.2, 8), mats.pants, torso); pelvis.position.y = 0.05; pelvis.scale.set(1, 1, 1.35);
-    const chest = mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.56, 12), mats.jacket, torso); chest.position.y = 0.38; chest.scale.set(0.95, 1, 1.3);
-    const hem = mesh(new THREE.TorusGeometry(0.2, 0.05, 6, 12), mats.jacket, torso); hem.position.y = 0.12; hem.rotation.x = Math.PI / 2; hem.scale.set(0.95, 1.3, 1);
-    const collar = mesh(new THREE.TorusGeometry(0.11, 0.05, 5, 10), mats.scarf, torso); collar.position.y = 0.68; collar.rotation.x = Math.PI / 2;
-    const head = new THREE.Group(); head.position.y = 0.84; torso.add(head);
-    mesh(ballGeo, mats.helmet, head).scale.set(0.17, 0.175, 0.17);
-    const gog = mesh(new THREE.BoxGeometry(0.07, 0.08, 0.27), mats.goggles, head); gog.position.set(0.13, 0.0, 0);
-    const strap = mesh(new THREE.TorusGeometry(0.165, 0.025, 4, 14), mats.goggles, head); strap.rotation.x = Math.PI / 2;
-    const shoulders = [new THREE.Object3D(), new THREE.Object3D()];
-    shoulders[0].position.set(0.02, 0.6, -0.21); shoulders[1].position.set(0.02, 0.6, 0.21);
-    shoulders.forEach(o => torso.add(o));
-    const r = { root, pivot, inner, torso, head, bones, hands, boots, mats, ghost, shoulders,
-      st: { hip: 0.78, lean: 0.25, roll: 0, twist: 0.95, arms: 0, grab: 0, crash: 0, duck: 0 } };
-    scene.add(root);
-    return r;
-  }
-  function setOutfit(r, o) {
-    for (const k of Object.keys(OUTFIT_BASE)) { r.mats[k].color.set(o[k] || OUTFIT_BASE[k]); if (r.ghost) r.mats[k].color.lerp(new THREE.Color(0xcfe6ff), 0.35); }
-  }
-  const HIP = new THREE.Vector3(), HF = new THREE.Vector3(), HB = new THREE.Vector3(), KF = new THREE.Vector3(), FT = new THREE.Vector3();
-  const SH = new THREE.Vector3(), EL = new THREE.Vector3(), HAND = new THREE.Vector3(), POLE_K = new THREE.Vector3(1, 0, -0.25), POLE_E = new THREE.Vector3();
-  // pose targets: hip height, forward lean, arm spread, grab, crash (all smoothed by the caller)
-  function poseRider(r, t) {
-    const st = r.st;
-    const hipY = st.hip, hipX = -0.05 + st.lean * 0.12;
-    HIP.set(hipX, hipY, 0);
-    const tor = r.torso;
-    tor.position.copy(HIP);
-    tor.rotation.set(0, st.twist, 0);
-    tor.rotateZ(-st.lean);   // lean over the toes (+x)
-    tor.rotateX(st.roll * 0.4);
-    r.head.rotation.set(0, -st.twist * 0.35, st.lean * 0.6);
-    tor.updateMatrix();
-    // legs: hips over the bindings, knees forward over the toes
-    for (const [i, fz, th, sh] of [[0, -0.27, 'thighF', 'shinF'], [1, 0.27, 'thighB', 'shinB']]) {
-      HF.set(hipX, hipY, fz * 0.42);
-      FT.set(0.02, 0.17, fz);
-      ikJoint(KF, HF, FT, 0.46, 0.46, POLE_K);
-      placeBone(r.bones[th], HF, KF, 0.085); placeBone(r.bones[sh], KF, FT, 0.075);
-    }
-    // arms: hands out for balance, up in the air, one on the board for a grab, flailing in a crash
-    for (let i = 0; i < 2; i++) {
-      SH.copy(r.shoulders[i].position).applyMatrix4(tor.matrix);
-      const side = i === 0 ? -1 : 1;   // 0 = front (valley side), 1 = back
-      // front hand reaches down the slope and out over the toes, back hand trails behind: visible from the camera
-      HAND.set(hipX + (side < 0 ? 0.42 : -0.18) + st.lean * 0.2, hipY + 0.3 + st.arms * 0.5, side * (0.5 + st.arms * 0.2));
-      if (st.crash > 0) HAND.set(hipX + 0.1, hipY + 0.9, side * 0.5);
-      if (i === 0 && st.grab > 0) { FT.set(0.2, 0.12, -0.05); HAND.lerp(FT, st.grab); }
-      POLE_E.set(-0.4, -1, side * 0.6);
-      ikJoint(EL, SH, HAND, 0.3, 0.3, POLE_E);
-      placeBone(r.bones[i === 0 ? 'upperF' : 'upperB'], SH, EL, 0.085); placeBone(r.bones[i === 0 ? 'foreF' : 'foreB'], EL, HAND, 0.075);
-      r.hands[i].position.copy(HAND);
-    }
-  }
-  const rider = makeRider(false);
+  // ---------- Rider ----------
+  // depth-tested so obstacles in front of the rider cover him; the sprite sits a little towards the camera so the snow never covers the board
+  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false });
+  spriteMats.push(riderMat);
+  const rider = new THREE.Sprite(riderMat);
+  rider.renderOrder = 10;
+  rider.center.set(0.5, 0.04);
+  scene.add(rider);
+  // second sprite for the duck pose so it can fade in and out instead of popping
+  const duckMat = new THREE.SpriteMaterial({ map: riderTex['rider-duck'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
+  spriteMats.push(duckMat);
+  const duckSprite = new THREE.Sprite(duckMat);
+  duckSprite.renderOrder = 11;
+  duckSprite.center.set(RIDER_CX['rider-duck'], 0.04);
+  scene.add(duckSprite);
   // protective glow while a shield or turbo is active
   const auraTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -777,6 +707,14 @@ body {
   const aura = new THREE.Sprite(auraMat);
   aura.renderOrder = 13;
   scene.add(aura);
+
+  // second sprite that fades in the next painted view during a spin
+  const spinMatB = new THREE.SpriteMaterial({ map: riderTex['rider-air'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
+  spriteMats.push(spinMatB);
+  const spinB = new THREE.Sprite(spinMatB);
+  spinB.renderOrder = 12;
+  scene.add(spinB);
+
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x3a5478, transparent: true, opacity: 0.3, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2;
@@ -995,7 +933,7 @@ body {
   let P, ents = [], coins = [], poles = [], nextD = 0, nextDeco = 0, startD = 0;
   let lastScoreD = 0;
   let score = 0, bonus = 0, coinCount = 0, topSpeed = 0, crashT = 0, crashReason = '', clock = 0, shake = 0;
-  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), orbitPos = new THREE.Vector3(), orbitLook = new THREE.Vector3();
+  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), orbitPos = new THREE.Vector3(), orbitLook = new THREE.Vector3(), TV4 = new THREE.Vector3();
   let camMix = 0;
 
   function resetRider(d) {
@@ -1750,11 +1688,7 @@ body {
     carbon: { name: 'Carbon',  cost: 700,  board: '#2b2f3a', boardTop: '#ffc531' },
     gold:   { name: 'Gold',    cost: 1200, board: '#ffd34d', boardTop: '#7a5a00' },
   };
-  function applyGear() {
-    const o = OUTFITS[gear.outfit] || OUTFITS.klassik, b = BOARDS[gear.board] || BOARDS.pink;
-    setOutfit(rider, Object.assign({}, o, b));
-  }
-  applyGear();
+  function applyGear() {}   // outfits come back with a proper 3D rider model
   function applyTrail() { if (trails.active !== 'regenbogen') sprayMat.color.set(TRAILS[trails.active].color); }
 
   // ---------- Missions ----------
@@ -1933,8 +1867,6 @@ body {
       row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
       list.appendChild(row);
     }
-    swatchGroup(list, 'Outfit', OUTFITS, gear.outfits, gear.outfit, k => { gear.outfit = k; applyGear(); }, o => `linear-gradient(180deg, ${o.helmet} 0 22%, ${o.jacket} 22% 62%, ${o.pants} 62%)`);
-    swatchGroup(list, 'Snowboard', BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
     const h3 = document.createElement('h3'); h3.textContent = 'Schneespur'; list.appendChild(h3);
     const sw = document.createElement('div'); sw.className = 'swatches';
     for (const k of Object.keys(TRAILS)) {
@@ -2202,8 +2134,7 @@ body {
     showPanel('menu');
   }
   function resetBody() {
-    rider.root.rotation.set(0, 0, 0); rider.pivot.rotation.set(0, 0, 0);
-    Object.assign(rider.st, { hip: 0.78, lean: 0.25, roll: 0, arms: 0, grab: 0, crash: 0 });
+    riderMat.rotation = 0; rider.center.y = 0.04;
   }
 
   function crash(reason) {
@@ -2499,8 +2430,10 @@ body {
   }
 
   // ghost rider: a pale see-through copy of the rider with a name tag
-  const ghostR = makeRider(true), ghost = ghostR.root;
-  ghost.visible = false;
+  const ghostMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], transparent: true, opacity: 0.5, color: 0xcfe6ff, depthTest: true, depthWrite: false });
+  const ghost = new THREE.Sprite(ghostMat);
+  ghost.center.set(0.5, 0.04); ghost.renderOrder = 9; ghost.visible = false;
+  scene.add(ghost);
   const tagCv = document.createElement('canvas'); tagCv.width = 256; tagCv.height = 64;
   const tagTex = new THREE.CanvasTexture(tagCv);
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, transparent: true, depthTest: false, depthWrite: false }));
@@ -2528,22 +2461,19 @@ body {
     if (!on) return;
     const s = duel ? ghostAt() : liveAt();
     if (s.d < P.d - 7 || s.d > P.d + 160) return;
-    // pose from the recorded flags: duck, air, crash, carving left / right
-    const gs = ghostR.st, k = Math.min(1, lastDt * 12);
-    const duck = s.f & 1 ? 1 : 0, air = s.f & 2 ? 1 : 0, down = s.f & 4 ? 1 : 0, lean = s.f & 8 ? -0.6 : s.f & 16 ? 0.6 : 0;
-    gs.hip += ((down ? 0.55 : air ? 0.66 : duck ? 0.5 : 0.8) - gs.hip) * k;
-    gs.lean += ((duck ? 0.85 : air ? 0.35 : 0.28) - gs.lean) * k;
-    gs.arms += ((air ? 0.55 : -duck * 0.35) - gs.arms) * k;
-    gs.crash += (down - gs.crash) * k; gs.roll = lean; gs.twist = 0.95 - lean * 0.15;
-    poseRider(ghostR, gs);
+    const pose = s.f & 4 ? 'rider-crash' : s.f & 1 ? 'rider-duck' : s.f & 2 ? 'rider-air' : s.f & 8 ? 'rider-left' : s.f & 16 ? 'rider-right' : 'rider-straight';
+    let h = RIDER_H[pose] * RIDER_SCALE, wk = 1;
+    if (pose === 'rider-duck') { h *= 0.74; wk = 1.15; }
+    if (ghostMat.map !== riderTex[pose]) ghostMat.map = riderTex[pose];
     const y = groundAt(s.d, s.x) + s.h;
-    ghost.position.set(s.x, y + 0.02, -s.d);
-    ghost.rotation.z += ((down ? 1.3 : air ? 0 : -lean * 0.32) - ghost.rotation.z) * k;
+    ghost.position.set(s.x, y, -s.d + 0.2);
+    ghost.center.x = RIDER_CX[pose];
+    ghost.scale.set(h * ASPECT[pose] * wk, h, 1);
     // fade the ghost when it overlaps the player so neither hides the other
     const near = Math.abs(s.d - P.d) < 3 && Math.abs(s.x - P.x) < 1.5;
-    for (const m of Object.values(ghostR.mats)) m.opacity = near ? 0.22 : 0.42;
+    ghostMat.opacity = near ? 0.28 : 0.5;
     ghost.visible = true;
-    tag.position.set(s.x, y + 2.6, -s.d);
+    tag.position.set(s.x, y + h + 0.45, -s.d + 0.2);
     tag.visible = true;
   }
   function updateDuelHud(myDist) {
@@ -3105,32 +3035,60 @@ body {
 
   // ---------- Render ----------
   function render(dt) {
-    // rider pose: targets from the riding state, eased so every change of pose is one smooth movement
+    // rider pose
+    rider.position.set(P.x, P.y, -P.d + 0.2);   // depth-tested: a gate between camera and rider covers him, one ahead is covered
     P.carve = -P.leanS * 0.3;
     const sq = clamp(P.sq, -0.25, 0.25);
+    // a little bob with the terrain and speed while riding
     const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.012 * Math.min(1, P.v / 20);
-    const dk = P.duckS * P.duckS * (3 - 2 * P.duckS);
-    const airK = P.air && !P.crashed ? 1 : 0, gk = P.grabS || 0;
-    const st = rider.st, ease = k => Math.min(1, dt * k);
-    const tHip = P.crashed ? 0.55 : lerp(lerp(0.8 + sq * 0.9 + bob * 6, 0.5, dk), lerp(0.66, 0.56, gk), airK);
-    st.hip += (tHip - st.hip) * ease(P.air ? 10 : 18);
-    st.lean += ((P.crashed ? 0.2 : lerp(lerp(0.28, 0.85, dk), lerp(0.35, 0.65, gk), airK)) - st.lean) * ease(12);
-    st.arms += ((P.crashed ? 0 : airK * (1 - gk) * (0.55 + Math.sin(P.airT * 4) * 0.1) - dk * 0.35) - st.arms) * ease(10);
-    st.grab += (gk - st.grab) * ease(16);
-    st.crash += ((P.crashed ? 1 : 0) - st.crash) * ease(8);
-    st.roll = P.leanS;
-    st.twist = 0.95 - P.leanS * 0.15;
-    poseRider(rider, st);
-    const R = rider.root;
-    R.position.set(P.x, P.y + 0.02, -P.d);
-    // carve: the whole rider leans into the turn around the board; a crash throws him onto his side
-    const tRoll = P.crashed ? 1.3 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) : -P.leanS * 0.32;
-    R.rotation.z += (tRoll - R.rotation.z) * ease(P.crashed ? 6 : 12);
-    R.rotation.y = P.air ? 0 : -P.vx * 0.025;
-    rider.pivot.rotation.y = P.yaw;
-    rider.pivot.rotation.x = P.pitch || 0;
-    // brief flicker while invulnerable after a shield save
-    R.visible = !(PW.invuln > 0 && Math.sin(clock * 30) < -0.2);
+    const spinning = P.air && !P.crashed && (Math.abs(P.spinTarget - P.yaw) > 0.05 || Math.abs(angDiff(P.yaw)) > 0.2);
+    let tex, rh, ar, cx;
+    if (spinning) {
+      // real turn around the body axis: pick the painted view for the current angle (8 views, 45° apart)
+      const a = ((-P.yaw % TAU) + TAU) % TAU, pos = a / (TAU / 8);
+      const i0 = Math.floor(pos) % 8, i1 = (i0 + 1) % 8, w = pos - Math.floor(pos);
+      const f = SPIN_VIEWS[i0], f1 = SPIN_VIEWS[i1];
+      tex = f.tex; ar = f.ar; rh = f.h * RIDER_SCALE; cx = f.cx;
+      // blend towards the next view so the turn reads as one movement instead of 8 jumps
+      spinMatB.map = f1.tex; spinMatB.opacity = w * w * (3 - 2 * w);
+      spinB.visible = true;
+      spinB.position.set(P.x, P.y, -P.d + 0.2);
+      spinB.center.x = f1.cx;
+      spinB.scale.set(f1.h * f1.ar * RIDER_SCALE, f1.h * RIDER_SCALE, 1);
+    } else {
+      const pose = P.grabS > 0.3 ? 'rider-air' : P.pose;
+      tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose] * RIDER_SCALE; cx = RIDER_CX[pose];
+    }
+    if (!spinning) spinB.visible = false;
+    if (riderMat.map !== tex) riderMat.map = tex;
+    // ducking: the riding pose sinks a little while the duck pose fades in on top of it
+    // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
+    const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
+    // ducking: the riding pose sinks while the crouched pose fades in over it, both end at the same height,
+    // so the rider goes down in one smooth movement and stays below a gate banner
+    const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
+    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4) * (1 + dk * 0.04), rh * (1 + sq + bob + airK) * (1 - dk * 0.24), 1);
+    rider.center.x = cx;
+    // backflip: the figure foreshortens, turns upside down and comes back, turning around its middle
+    const pc = Math.cos(P.pitch || 0), flipping = Math.abs(P.pitch || 0) > 0.05;
+    rider.center.y = flipping ? 0.5 : 0.04;
+    if (flipping) { rider.scale.y *= Math.max(0.12, Math.abs(pc)); rider.position.y += rh * 0.5; }
+    if (P.grabS > 0.01) rider.scale.y *= 1 - 0.14 * P.grabS;   // grab: tucked tight
+    const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
+    riderMat.opacity = blink * (1 - clamp((dk - 0.45) / 0.25, 0, 1));
+    duckSprite.visible = dk > 0.01;
+    if (duckSprite.visible) {
+      const dh = RIDER_H['rider-duck'] * RIDER_SCALE * 0.74 * (1 + (1 - dk) * 0.3);
+      duckSprite.position.copy(rider.position);
+      duckSprite.scale.set(dh * ASPECT['rider-duck'] * 1.15, dh, 1);
+      duckMat.opacity = blink * clamp((dk - 0.3) / 0.25, 0, 1);
+    }
+    const tilt = P.crashed ? 0 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) + Math.sin(P.airT * 5) * 0.03 : -P.leanS * 0.16;
+    riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
+    if (flipping && pc < 0) riderMat.rotation = Math.PI + tilt;
+    else if (flipping) riderMat.rotation = tilt;
+    duckMat.rotation = riderMat.rotation;
+    spinMatB.rotation = riderMat.rotation;
     // shield / turbo glow
     const prot = P.crashed ? 0 : PW.turbo > 0 ? 1 : PW.shield ? 0.8 : PW.invuln > 0 ? 0.4 : 0;
     auraMat.opacity += (prot * (0.75 + 0.25 * Math.sin(clock * 6)) - auraMat.opacity) * Math.min(1, dt * 8);
