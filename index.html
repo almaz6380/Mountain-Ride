@@ -97,12 +97,6 @@ body {
 .pchip img { width: 30px; height: 30px; display: block; }
 .pbar { width: 30px; height: 4px; border-radius: 2px; overflow: hidden; background: rgba(244, 248, 252, 0.3); }
 .pbar i { display: block; height: 100%; width: 100%; background: var(--snow); }
-.sound-btn {
-  position: fixed; z-index: 5; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-  width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
-  color: var(--snow); background: var(--card); cursor: pointer;
-}
-.sound-btn:focus-visible { outline: 3px solid var(--jacket); outline-offset: 2px; }
 .card { max-height: 100%; overflow-y: auto; grid-template-columns: minmax(0, 1fr); }
 .card > * { min-width: 0; }
 .btn.ghost { background: transparent; color: var(--snow); box-shadow: inset 0 0 0 2px rgba(244, 248, 252, 0.35); font-size: 18px; padding: 12px 16px; }
@@ -161,6 +155,33 @@ body {
 .seg button[aria-pressed="true"] { background: var(--jacket); color: var(--ink); box-shadow: none; }
 .seg button:focus-visible { outline: 3px solid var(--snow); outline-offset: 2px; }
 .note { margin: 0; font-size: 15px; opacity: 0.8; text-align: left; }
+.combo-chip { margin-top: 6px; display: inline-grid; gap: 3px; justify-items: end; font-weight: 800; font-size: 18px; color: var(--jacket); text-shadow: 0 2px 6px rgba(20, 35, 58, 0.45); }
+.combo-chip .pbar { width: 86px; }
+.title-screen { place-items: stretch; grid-template-rows: 1fr auto; text-align: center; background: linear-gradient(180deg, rgba(20, 35, 58, 0.55) 0%, rgba(20, 35, 58, 0) 42%, rgba(20, 35, 58, 0) 70%, rgba(20, 35, 58, 0.55) 100%); }
+.title-wrap { align-self: start; padding-top: 6vh; }
+.logo { font-family: var(--display); font-weight: 400; margin: 0; font-size: clamp(54px, 17vw, 112px); line-height: 0.86; color: var(--snow); text-shadow: 0 4px 0 rgba(20, 35, 58, 0.35), 0 10px 30px rgba(20, 35, 58, 0.45); }
+.logo span { display: block; color: var(--jacket); }
+.tagline { margin: 12px 0 0; font-weight: 700; font-size: clamp(16px, 4.4vw, 22px); letter-spacing: 0.24em; text-transform: uppercase; text-shadow: 0 2px 8px rgba(20, 35, 58, 0.6); }
+.tap-start { justify-self: center; margin-bottom: 4vh; font: 800 clamp(20px, 5.4vw, 26px)/1 var(--ui); letter-spacing: 0.16em; text-transform: uppercase; color: var(--snow); background: none; border: 0; padding: 18px 26px; cursor: pointer; text-shadow: 0 2px 8px rgba(20, 35, 58, 0.7); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .tap-start { animation: none; } }
+.menu-overlay { place-items: end center; }
+.menu-card { gap: 12px; padding: 18px 18px 16px; }
+.menu-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.title.mini { font-size: clamp(26px, 7.5vw, 34px); text-align: left; line-height: 0.9; }
+.title.mini span { display: inline; margin-left: 0.25em; }
+.menu-head .wallet { margin: 0; font-weight: 800; font-size: 22px; }
+.loc-pick { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 6px; background: rgba(244, 248, 252, 0.08); border-radius: 14px; padding: 8px; }
+.loc-arrow { height: 44px; border: 0; border-radius: 10px; background: rgba(244, 248, 252, 0.12); color: var(--snow); font: 800 28px/1 var(--ui); cursor: pointer; }
+.loc-arrow:focus-visible { outline: 3px solid var(--jacket); outline-offset: 2px; }
+.loc-info { display: grid; gap: 1px; }
+.loc-label { font-weight: 600; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.7; }
+.loc-info strong { font-weight: 800; font-size: 24px; line-height: 1.05; }
+.loc-sub { font-size: 14px; opacity: 0.8; text-wrap: balance; }
+.menu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.menu-row .btn { display: grid; gap: 3px; padding: 11px 10px; font-size: 18px; }
+.menu-row .btn small { font-size: 12px; letter-spacing: 0.06em; font-weight: 600; text-transform: none; opacity: 0.85; }
+.menu-row .btn:only-child, .menu-row .btn[hidden] + .btn, .menu-row:has(> .btn[hidden]) .btn:not([hidden]) { grid-column: 1 / -1; }
 .duel-chip { margin-top: 6px; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; background: rgba(20, 35, 58, 0.45); border-radius: 99px; padding: 3px 10px; display: inline-block; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .duel-chip.ahead { color: #9ff0b8; }
 .duel-chip.behind { color: #ffb4b4; }
@@ -195,10 +216,6 @@ body {
 
 <canvas id="game" aria-label="Mountain Ride Spielfeld"></canvas>
 
-<button class="sound-btn" id="soundBtn" type="button" aria-label="Ton ausschalten" aria-pressed="true">
-  <svg class="on" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-  <svg class="off" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" hidden><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-</button>
 <div class="hud" id="hud" hidden>
   <div class="hud-block">
     <span class="hud-label">Strecke</span>
@@ -212,17 +229,35 @@ body {
   <div class="hud-block right">
     <span class="hud-label">Punkte</span>
     <span class="hud-big" id="hudScore">0</span>
+    <div class="combo-chip" id="comboHud" hidden><span>Kombo ×2</span><span class="pbar"><i></i></span></div>
     <div class="powers" id="powers"></div>
   </div>
 </div>
 
-<div class="overlay" id="menu">
-  <div class="card">
-    <h1 class="title">Mountain<span>Ride</span></h1>
-    <p class="sub">Brett anschnallen und runter. Je weiter du kommst, desto schneller wird der Hang.</p>
-    <p class="wallet"><i class="coin-dot"></i><span id="menuWallet">0</span> Münzen</p>
+<div class="overlay title-screen" id="title">
+  <div class="title-wrap">
+    <h1 class="logo">Mountain<span>Ride</span></h1>
+    <p class="tagline">Snowboard · Tricks · Duelle</p>
+  </div>
+  <button class="tap-start" id="titleBtn" type="button">Tippen zum Starten</button>
+</div>
+
+<div class="overlay menu-overlay" id="menu" hidden>
+  <div class="card menu-card">
+    <div class="menu-head">
+      <h1 class="title mini">Mountain<span>Ride</span></h1>
+      <p class="wallet"><i class="coin-dot"></i><span id="menuWallet">0</span></p>
+    </div>
+    <div class="loc-pick">
+      <button class="loc-arrow" id="locPrev" type="button" aria-label="Vorheriger Ort">‹</button>
+      <div class="loc-info"><span class="loc-label">Ort</span><strong id="locName">Alpen</strong><span class="loc-sub" id="locSub"></span></div>
+      <button class="loc-arrow" id="locNext" type="button" aria-label="Nächster Ort">›</button>
+    </div>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
-    <button class="btn ghost" id="liveBtn" type="button" hidden>Live gegen Freund</button>
+    <div class="menu-row">
+      <button class="btn ghost" id="dailyBtn" type="button">Tagesrennen<small id="dailySub"></small></button>
+      <button class="btn ghost" id="liveBtn" type="button" hidden>Live-Duell<small>gegen Freunde</small></button>
+    </div>
     <div class="menu-grid">
       <button class="btn ghost" id="shopBtn" type="button">Shop</button>
       <button class="btn ghost" id="missionsBtn" type="button">Missionen<span class="badge" id="missionBadge" hidden></span></button>
@@ -332,6 +367,7 @@ body {
     <div class="seg" role="group" aria-label="Welche Liste">
       <button type="button" id="tabLocal" aria-pressed="true">Dieses Gerät</button>
       <button type="button" id="tabOnline" aria-pressed="false">Weltweit</button>
+      <button type="button" id="tabDaily" aria-pressed="false">Heute</button>
     </div>
     <ol class="scores" id="boardScores"></ol>
     <p class="note" id="boardNote" hidden></p>
@@ -417,7 +453,8 @@ body {
       <li><span class="key">← →</span><span>Wischen: eine Spur nach links oder rechts</span></li>
       <li><span class="key">↑</span><span>Wischen oder Tippen: springen</span></li>
       <li><span class="key">↓</span><span>Wischen: ducken, unter Bannern durch</span></li>
-      <li><span class="key">In der Luft</span><span>Seitlich: Spur wechseln · Hoch wischen oder Tippen: 360°-Drehung</span></li>
+      <li><span class="key">In der Luft</span><span>Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln</span></li>
+      <li><span class="key">Kombo</span><span>Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …</span></li>
       <li><span class="key">P · Esc</span><span>Pause</span></li>
     </ul>
     <button class="btn ghost" id="tutorialBtn" type="button">Tutorial nochmal spielen</button>
@@ -512,27 +549,7 @@ body {
     if (opts.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
     return t;
   }
-  // aspect ratios (w / h) of the cut-out sprites
-  const ASPECT = { 'rider-duck': 0.5222, 'rider-straight': 173 / 266, 'rider-left': 231 / 324, 'rider-right': 231 / 324, 'rider-air': 268 / 315, 'rider-crash': 419 / 270,
-    'tree-tall': 232 / 393, 'tree-round': 244 / 318, rock: 360 / 341, log: 381 / 242, snowman: 226 / 361, coin: 126 / 128, flag: 118 / 256 };
-  const spriteMats = [];
-  function spriteMat(name) {
-    const m = new THREE.SpriteMaterial({ map: tex(name + '.png'), alphaTest: 0.5, transparent: false });
-    spriteMats.push(m);
-    return m;
-  }
-  const riderTex = {};
-  for (const n of ['rider-straight', 'rider-left', 'rider-right', 'rider-air', 'rider-crash', 'rider-duck']) riderTex[n] = tex(n + '.png');
-  // 8 painted views for spins: 0° = from behind, then every 45° clockwise; [aspect, height m, body centre x]
-  const SPIN_META = [[0.7857, 1.95, 0.544], [0.8441, 1.928, 0.567], [0.4248, 1.95, 0.633], [0.7623, 1.943, 0.414], [0.7321, 1.943, 0.376], [0.7208, 1.943, 0.554], [0.4549, 1.95, 0.541], [0.8441, 1.928, 0.428]];
-  const SPIN_VIEWS = SPIN_META.map(([ar, h, cx], i) => ({ tex: tex('spin-' + i + '.png'), ar, h, cx }));
-  // the rider is drawn at roughly its painted size: plain linear filtering keeps it sharp (mipmaps would blur it)
-  for (const t of [...Object.values(riderTex), ...SPIN_VIEWS.map(v => v.tex)]) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; }
-  // sprite heights in metres, all poses share one pixel scale (about 162 px per metre)
-  const RIDER_CX = { 'rider-duck': 0.494, 'rider-straight': 0.475, 'rider-left': 0.467, 'rider-right': 0.528, 'rider-air': 0.459, 'rider-crash': 0.427 };
-  const RIDER_SCALE = 1.25;   // standing helmet about 2 m: tall enough to visibly hit a gate banner
-  const RIDER_H = { 'rider-duck': 1.85, 'rider-straight': 1.65, 'rider-left': 2.0, 'rider-right': 2.0, 'rider-air': 1.95, 'rider-crash': 1.4 };
-
+  const spriteMats = [];   // sprite materials tinted with the time of day (power-up icons)
   // painted sky + mountains: two camera-locked planes that cross-fade between times of day
   const SKY_AR = 1584 / 672;
   const SKY_HORIZON = 0.8;   // fraction from the image top where the valley mist sits
@@ -609,7 +626,8 @@ body {
       }
       // colour the snow by section (ice turns blue, tunnels darker)
       const sec = typeof sectionAt === 'function' ? sectionAt(dd) : null;
-      const tr = sec ? lerp(1, sec.def.tint[0], sec.w) : 1, tg = sec ? lerp(1, sec.def.tint[1], sec.w) : 1, tb = sec ? lerp(1, sec.def.tint[2], sec.w) : 1;
+      const lg = LOC.ground || [1, 1, 1];
+      const tr = (sec ? lerp(1, sec.def.tint[0], sec.w) : 1) * lg[0], tg = (sec ? lerp(1, sec.def.tint[1], sec.w) : 1) * lg[1], tb = (sec ? lerp(1, sec.def.tint[2], sec.w) : 1) * lg[2];
       for (let i = 0; i < GX; i++) {
         const k = (j * GX + i) * 3, o = offF[i];
         gCol[k] = lerp(1, 0.867, o) * tr; gCol[k + 1] = lerp(1, 0.902, o) * tg; gCol[k + 2] = lerp(1, 0.949, o) * tb;
@@ -652,21 +670,111 @@ body {
     return new THREE.Mesh(g, vcMatDouble);
   }
 
-  // ---------- Rider ----------
-  // depth-tested so obstacles in front of the rider cover him; the sprite sits a little towards the camera so the snow never covers the board
-  const riderMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false });
-  spriteMats.push(riderMat);
-  const rider = new THREE.Sprite(riderMat);
-  rider.renderOrder = 10;
-  rider.center.set(0.5, 0.04);
-  scene.add(rider);
-  // second sprite for the duck pose so it can fade in and out instead of popping
-  const duckMat = new THREE.SpriteMaterial({ map: riderTex['rider-duck'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
-  spriteMats.push(duckMat);
-  const duckSprite = new THREE.Sprite(duckMat);
-  duckSprite.renderOrder = 11;
-  duckSprite.center.set(RIDER_CX['rider-duck'], 0.04);
-  scene.add(duckSprite);
+  // ---------- Rider: a low-poly 3D snowboarder; knees and elbows are placed by two-bone IK every frame ----------
+  const RS = 1.3;   // overall size: riding helmet at about 2.1 m (a gate banner at 1.95 m hits him), ducked about 1.6 m
+  const OUTFIT_BASE = { jacket: '#f2b632', pants: '#283a5c', helmet: '#1d2633', goggles: '#2ec4b6', scarf: '#e5396f', board: '#e5396f', boardTop: '#2b2f3a' };
+  const boneGeo = new THREE.CylinderGeometry(1, 1, 1, 7);
+  const ballGeo = new THREE.IcosahedronGeometry(1, 1);
+  const UPV = new THREE.Vector3(0, 1, 0), TV1 = new THREE.Vector3(), TV2 = new THREE.Vector3(), TV3 = new THREE.Vector3(), TV4 = new THREE.Vector3();
+  function placeBone(m, a, b, rad) {
+    TV1.subVectors(b, a); const len = TV1.length() || 0.001;
+    m.position.addVectors(a, b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(UPV, TV1.multiplyScalar(1 / len));
+    m.scale.set(rad, len, rad);
+  }
+  // two-bone IK: the middle joint for a limb from a to b, bending towards pole
+  function ikJoint(out, a, b, l1, l2, pole) {
+    TV2.subVectors(b, a);
+    const d = Math.min(TV2.length(), l1 + l2 - 0.001), dir = TV2.normalize();
+    const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
+    TV3.copy(pole).addScaledVector(dir, -pole.dot(dir)).normalize();   // pole direction without its part along the limb
+    return out.copy(a).addScaledVector(dir, along).addScaledVector(TV3, h);
+  }
+  function makeRider(ghost) {
+    const mats = {};
+    const mat = (key, col) => {
+      const m = new THREE.MeshLambertMaterial({ color: col || 0x1d2633 });
+      if (ghost) { m.transparent = true; m.opacity = 0.42; m.depthWrite = false; m.color.lerp(new THREE.Color(0xcfe6ff), 0.35); }
+      return (mats[key] = m);
+    };
+    for (const k of Object.keys(OUTFIT_BASE)) mat(k, OUTFIT_BASE[k]);
+    mat('dark', 0x1d2633); mat('binding', 0x3b4252);
+    const mesh = (geo, m, parent) => { const o = new THREE.Mesh(geo, m); o.castShadow = !ghost; parent.add(o); return o; };
+    const root = new THREE.Group();          // board contact point; carving roll
+    const pivot = new THREE.Group();         // centre of the body: spins (yaw) and flips (pitch)
+    pivot.position.y = 0.9 * RS; pivot.rotation.order = 'YXZ';
+    const inner = new THREE.Group();
+    inner.position.y = -0.9 * RS; inner.scale.setScalar(RS);
+    root.add(pivot); pivot.add(inner);
+    // board along z (down the slope), nose and tail kicked up
+    const board = new THREE.Group(); inner.add(board);
+    mesh(new THREE.BoxGeometry(0.3, 0.035, 1.2), mats.board, board).position.y = 0.04;
+    for (const sz of [-1, 1]) { const k = mesh(new THREE.BoxGeometry(0.3, 0.035, 0.24), mats.board, board); k.position.set(0, 0.075, sz * 0.7); k.rotation.x = sz * 0.42; }
+    mesh(new THREE.BoxGeometry(0.24, 0.012, 1.0), mats.boardTop, board).position.y = 0.062;
+    for (const fz of [-0.27, 0.27]) { const bd = mesh(new THREE.BoxGeometry(0.26, 0.06, 0.16), mats.binding, board); bd.position.set(0, 0.09, fz); }
+    const boots = [-0.27, 0.27].map(fz => { const b = mesh(new THREE.BoxGeometry(0.28, 0.13, 0.14), mats.dark, inner); b.position.set(0.02, 0.15, fz); return b; });
+    const bones = {}, bone = (k, m) => (bones[k] = mesh(boneGeo, m, inner));
+    bone('thighF', mats.pants); bone('shinF', mats.pants); bone('thighB', mats.pants); bone('shinB', mats.pants);
+    bone('upperF', mats.jacket); bone('foreF', mats.jacket); bone('upperB', mats.jacket); bone('foreB', mats.jacket);
+    const hands = [mesh(ballGeo, mats.dark, inner), mesh(ballGeo, mats.dark, inner)];
+    hands.forEach(h => h.scale.setScalar(0.08));
+    // upper body: built facing +x and turned towards the valley
+    const torso = new THREE.Group(); inner.add(torso);
+    const pelvis = mesh(new THREE.CylinderGeometry(0.16, 0.15, 0.2, 8), mats.pants, torso); pelvis.position.y = 0.05; pelvis.scale.set(1, 1, 1.35);
+    const chest = mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.56, 12), mats.jacket, torso); chest.position.y = 0.38; chest.scale.set(0.95, 1, 1.3);
+    const hem = mesh(new THREE.TorusGeometry(0.2, 0.05, 6, 12), mats.jacket, torso); hem.position.y = 0.12; hem.rotation.x = Math.PI / 2; hem.scale.set(0.95, 1.3, 1);
+    const collar = mesh(new THREE.TorusGeometry(0.11, 0.05, 5, 10), mats.scarf, torso); collar.position.y = 0.68; collar.rotation.x = Math.PI / 2;
+    const head = new THREE.Group(); head.position.y = 0.84; torso.add(head);
+    mesh(ballGeo, mats.helmet, head).scale.set(0.17, 0.175, 0.17);
+    const gog = mesh(new THREE.BoxGeometry(0.07, 0.08, 0.27), mats.goggles, head); gog.position.set(0.13, 0.0, 0);
+    const strap = mesh(new THREE.TorusGeometry(0.165, 0.025, 4, 14), mats.goggles, head); strap.rotation.x = Math.PI / 2;
+    const shoulders = [new THREE.Object3D(), new THREE.Object3D()];
+    shoulders[0].position.set(0.02, 0.6, -0.21); shoulders[1].position.set(0.02, 0.6, 0.21);
+    shoulders.forEach(o => torso.add(o));
+    const r = { root, pivot, inner, torso, head, bones, hands, boots, mats, ghost, shoulders,
+      st: { hip: 0.78, lean: 0.25, roll: 0, twist: 0.95, arms: 0, grab: 0, crash: 0, duck: 0 } };
+    scene.add(root);
+    return r;
+  }
+  function setOutfit(r, o) {
+    for (const k of Object.keys(OUTFIT_BASE)) { r.mats[k].color.set(o[k] || OUTFIT_BASE[k]); if (r.ghost) r.mats[k].color.lerp(new THREE.Color(0xcfe6ff), 0.35); }
+  }
+  const HIP = new THREE.Vector3(), HF = new THREE.Vector3(), HB = new THREE.Vector3(), KF = new THREE.Vector3(), FT = new THREE.Vector3();
+  const SH = new THREE.Vector3(), EL = new THREE.Vector3(), HAND = new THREE.Vector3(), POLE_K = new THREE.Vector3(1, 0, -0.25), POLE_E = new THREE.Vector3();
+  // pose targets: hip height, forward lean, arm spread, grab, crash (all smoothed by the caller)
+  function poseRider(r, t) {
+    const st = r.st;
+    const hipY = st.hip, hipX = -0.05 + st.lean * 0.12;
+    HIP.set(hipX, hipY, 0);
+    const tor = r.torso;
+    tor.position.copy(HIP);
+    tor.rotation.set(0, st.twist, 0);
+    tor.rotateZ(-st.lean);   // lean over the toes (+x)
+    tor.rotateX(st.roll * 0.4);
+    r.head.rotation.set(0, -st.twist * 0.35, st.lean * 0.6);
+    tor.updateMatrix();
+    // legs: hips over the bindings, knees forward over the toes
+    for (const [i, fz, th, sh] of [[0, -0.27, 'thighF', 'shinF'], [1, 0.27, 'thighB', 'shinB']]) {
+      HF.set(hipX, hipY, fz * 0.42);
+      FT.set(0.02, 0.17, fz);
+      ikJoint(KF, HF, FT, 0.46, 0.46, POLE_K);
+      placeBone(r.bones[th], HF, KF, 0.085); placeBone(r.bones[sh], KF, FT, 0.075);
+    }
+    // arms: hands out for balance, up in the air, one on the board for a grab, flailing in a crash
+    for (let i = 0; i < 2; i++) {
+      SH.copy(r.shoulders[i].position).applyMatrix4(tor.matrix);
+      const side = i === 0 ? -1 : 1;   // 0 = front (valley side), 1 = back
+      // front hand reaches down the slope and out over the toes, back hand trails behind: visible from the camera
+      HAND.set(hipX + (side < 0 ? 0.42 : -0.18) + st.lean * 0.2, hipY + 0.3 + st.arms * 0.5, side * (0.5 + st.arms * 0.2));
+      if (st.crash > 0) HAND.set(hipX + 0.1, hipY + 0.9, side * 0.5);
+      if (i === 0 && st.grab > 0) { FT.set(0.2, 0.12, -0.05); HAND.lerp(FT, st.grab); }
+      POLE_E.set(-0.4, -1, side * 0.6);
+      ikJoint(EL, SH, HAND, 0.3, 0.3, POLE_E);
+      placeBone(r.bones[i === 0 ? 'upperF' : 'upperB'], SH, EL, 0.085); placeBone(r.bones[i === 0 ? 'foreF' : 'foreB'], EL, HAND, 0.075);
+      r.hands[i].position.copy(HAND);
+    }
+  }
+  const rider = makeRider(false);
   // protective glow while a shield or turbo is active
   const auraTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -679,12 +787,6 @@ body {
   const aura = new THREE.Sprite(auraMat);
   aura.renderOrder = 13;
   scene.add(aura);
-  // second sprite that fades in the next painted view during a spin
-  const spinMatB = new THREE.SpriteMaterial({ map: riderTex['rider-air'], alphaTest: 0.04, transparent: true, depthTest: true, depthWrite: false, opacity: 0 });
-  spriteMats.push(spinMatB);
-  const spinB = new THREE.Sprite(spinMatB);
-  spinB.renderOrder = 12;
-  scene.add(spinB);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16), new THREE.MeshBasicMaterial({ color: 0x3a5478, transparent: true, opacity: 0.3, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2;
@@ -809,6 +911,16 @@ body {
     dawn:   { sky: 'dawn',   fog: '#cccbd8', hemi: 0.58, sun: '#ffd2a8', sunI: 0.74, tint: '#f1e9f2' },
   };
   const CYCLE = [PAL.day, PAL.sunset, PAL.night, PAL.dawn, PAL.day];
+  PAL.torch   = { sky: 'night', fog: '#22365a', hemi: 0.52, sun: '#ffc890', sunI: 0.5,  tint: '#a4afcf' };
+  PAL.glacier = { sky: 'dawn',  fog: '#d4e6f6', hemi: 0.7,  sun: '#eef7ff', sunI: 0.72, tint: '#e8f3ff' };
+  // places to ride: each has its own light, scenery, favoured track sections and music
+  const LOCS = {
+    alpen:     { name: 'Alpen',        sub: 'Sonne, Tannen und der Lauf der Tageszeiten', cost: 0 },
+    wald:      { name: 'Waldabfahrt',  sub: 'Dichter Tannenwald und viel Tiefschnee', cost: 800, dense: true, favour: ['deep', 'deep'], ground: [0.98, 1, 0.97] },
+    nacht:     { name: 'Fackel-Nacht', sub: 'Nachtfahrt zwischen brennenden Fackeln', cost: 1200, fixed: PAL.torch, torches: true, favour: ['tunnel'] },
+    gletscher: { name: 'Gletscher',    sub: 'Blaue Eistürme, Spalten und Eisplatten', cost: 1500, fixed: PAL.glacier, ice: true, favour: ['ice', 'ice'], ground: [0.88, 0.94, 1] },
+  };
+  let LOC = LOCS.alpen, locKey = 'alpen';
   const cA = new THREE.Color(), cB = new THREE.Color();
   const mixC = (a, b, t) => cA.set(a).lerp(cB.set(b), t).clone();
   let lastSky = -1;
@@ -819,7 +931,7 @@ body {
     const key = Math.round(p * 300);
     if (key === lastSky) return;
     lastSky = key;
-    const a = CYCLE[i], b = CYCLE[i + 1];
+    const a = LOC.fixed || CYCLE[i], b = LOC.fixed || CYCLE[i + 1];
     skyA.material.map = skyTex[a.sky]; skyB.material.map = skyTex[b.sky];
     skyB.material.opacity = t; skyB.visible = t > 0.001;
     const fog = mixC(a.fog, b.fog, t);
@@ -893,7 +1005,8 @@ body {
   let P, ents = [], coins = [], poles = [], nextD = 0, nextDeco = 0, startD = 0;
   let lastScoreD = 0;
   let score = 0, bonus = 0, coinCount = 0, topSpeed = 0, crashT = 0, crashReason = '', clock = 0, shake = 0;
-  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), orbitPos = new THREE.Vector3(), orbitLook = new THREE.Vector3();
+  let camMix = 0;
 
   function resetRider(d) {
     P = { d, x: 0, tx: 0, y: groundAt(d, 0), vy: 0, v: 12, vxAir: 0, air: false, airT: 0, yaw: 0, spin: 0, carve: 0, lean: 0, onRamp: null, crashed: false, lastX: 0,
@@ -976,6 +1089,30 @@ body {
   }
   const FIR = [0, 1, 2].map(v => fir(true, v)), FIR_ROUND = [0, 1, 2].map(v => fir(false, v));
   const ROCKS = [1, 2, 3].map(v => merge([part(jitter(new THREE.IcosahedronGeometry(0.85, 1), 0.35, v), 0x7d8796, 0, 0.45, 0, 0, v, 0, 1.05, 0.72, 0.95)], snowOn(0.62)));
+  // glacier: blue ice towers instead of trees
+  const ICE = [1, 2, 3].map(v => merge([
+    part(jitter(new THREE.ConeGeometry(1.5, 5.4, 6, 2), 0.18, v), 0x8fd0f5, 0, 2.7, 0, 0, v),
+    part(jitter(new THREE.ConeGeometry(0.8, 3.4, 5, 1), 0.2, v + 3), 0xa9def9, 0.9, 1.7, 0.3, 0, v, -0.18),
+    part(jitter(new THREE.ConeGeometry(0.7, 2.8, 5, 1), 0.2, v + 6), 0x7cc3ee, -0.85, 1.4, -0.2, 0, v, 0.2),
+  ], snowOn(0.55, 0xeef7ff)));
+  // night: a torch on a post, its flame drawn unlit so it glows
+  const TORCH = merge([
+    part(new THREE.CylinderGeometry(0.06, 0.08, 2.0, 6), 0x5b3f2c, 0, 1.0, 0),
+    part(new THREE.CylinderGeometry(0.2, 0.12, 0.22, 7), 0x3b4252, 0, 2.08, 0),
+  ]);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa23a, fog: false });
+  const flameGeo = merge([part(new THREE.ConeGeometry(0.17, 0.55, 6), 0xffa23a, 0, 0, 0), part(new THREE.ConeGeometry(0.09, 0.35, 5), 0xfff0a0, 0, -0.06, 0)]);
+  const flameMat2 = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+  const glowTex = canvasTex(64, 64, (x, w, h) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,190,90,0.9)'); g.addColorStop(0.35, 'rgba(255,140,40,0.35)'); g.addColorStop(1, 'rgba(255,120,30,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const glowMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  function torchMesh() {
+    const grp = new THREE.Group();
+    grp.add(shadowed(new THREE.Mesh(TORCH, modelMat)));
+    const f = new THREE.Mesh(flameGeo, flameMat2); f.position.y = 2.42; grp.add(f);
+    const g = new THREE.Sprite(glowMat); g.position.y = 2.45; g.scale.setScalar(2.6); grp.add(g);
+    grp.userData.flame = f; grp.userData.glow = g;
+    return grp;
+  }
   const LOG = merge([
     part(new THREE.CylinderGeometry(0.36, 0.38, 2.75, 9), 0x6e4a32, 0, 0.36, 0, 0, 0, Math.PI / 2),
     part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 9), 0xd9b48a, -1.385, 0.36, 0, 0, 0, Math.PI / 2),
@@ -1095,7 +1232,7 @@ body {
       return e;
     }
     const v = Math.floor(Math.random() * 3);
-    const geo = type === 'tree' ? (Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
+    const geo = type === 'tree' ? (LOC.ice ? ICE[v] : Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
     const hgt = type === 'tree' ? spec.size * s : spec.size;
     const mesh = shadowed(new THREE.Mesh(geo, modelMat), !opts.deco || Math.abs(x) < 30);
     if (type === 'tree') mesh.scale.setScalar(s * rand(0.92, 1.08));
@@ -1314,21 +1451,23 @@ body {
   }
 
   function spawnDeco(d) {
+    // forest beside the piste: thick in the wood, sparse ice towers on the glacier
     for (const side of [-1, 1]) {
-      const n = Math.random() < 0.7 ? 2 : 1;
+      const n = LOC.dense ? 3 + (Math.random() < 0.5 ? 1 : 0) : LOC.ice ? (Math.random() < 0.5 ? 1 : 0) : Math.random() < 0.7 ? 2 : 1;
       for (let k = 0; k < n; k++) {
-        const x = side * rand(TRACK + 3.5, 55);
+        const x = side * rand(TRACK + (LOC.dense ? 2.6 : 3.5), LOC.dense ? 42 : 55);
         addEnt('tree', d + rand(-2, 2), x, { s: rand(0.9, 1.6), deco: true });
       }
+      if (LOC.ice && Math.random() < 0.35) addEnt('rock', d + rand(-2, 2), side * rand(TRACK + 3, 30), { deco: true });
     }
-    if (++poleCount % 3 === 0) {
+    if (++poleCount % (LOC.torches ? 2 : 3) === 0) {
       for (const side of [-1, 1]) {
         const x = side * (TRACK + 1.4);
-        const m = shadowed(new THREE.Mesh(POLE, modelMat));
-        m.rotation.y = side < 0 ? 0 : Math.PI;   // flags point towards the piste
+        const m = LOC.torches ? torchMesh() : shadowed(new THREE.Mesh(POLE, modelMat));
+        if (!LOC.torches) m.rotation.y = side < 0 ? 0 : Math.PI;   // flags point towards the piste
         m.position.set(x, baseH(d, x) - 0.05, -d);
         scene.add(m);
-        poles.push({ d, mesh: m });
+        poles.push({ d, mesh: m, torch: !!LOC.torches });
       }
     }
   }
@@ -1473,9 +1612,15 @@ body {
     }
 
     // ---- music: chill alpine loop, gets busier with speed ----
-    const BPM = 108, STEP = 60 / BPM / 4;
-    const CHORDS = [[57, 60, 64], [57, 60, 65], [55, 60, 64], [55, 59, 62]];   // Am F C G
-    const ROOTS = [45, 41, 48, 43];
+    // one loop per location: tempo, chords and roots
+    const THEMES = {
+      alpen:     { bpm: 108, chords: [[57, 60, 64], [57, 60, 65], [55, 60, 64], [55, 59, 62]], roots: [45, 41, 48, 43], arp: 'triangle' },   // Am F C G
+      wald:      { bpm: 100, chords: [[52, 55, 59], [48, 52, 55], [55, 59, 62], [50, 54, 57]], roots: [40, 36, 43, 38], arp: 'sine' },       // Em C G D
+      nacht:     { bpm: 94,  chords: [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]], roots: [38, 34, 43, 33], arp: 'square' },     // Dm Bb Gm A
+      gletscher: { bpm: 120, chords: [[60, 64, 67, 71], [57, 60, 64, 67], [53, 57, 60, 64], [55, 59, 62, 65]], roots: [48, 45, 41, 43], arp: 'sine' },   // Cmaj7 Am7 Fmaj7 G7
+    };
+    let BPM = 108, STEP = 60 / BPM / 4, CHORDS = THEMES.alpen.chords, ROOTS = THEMES.alpen.roots, ARP_WAVE = 'triangle';
+    function setTheme(k) { const th = THEMES[k] || THEMES.alpen; BPM = th.bpm; STEP = 60 / BPM / 4; CHORDS = th.chords; ROOTS = th.roots; ARP_WAVE = th.arp; }
     const BASS = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0];
     const ARP = [0, 1, 2, 1, 2, 0, 1, 2];
     let nextStep = 0, step = 0, intensity = 0;
@@ -1511,7 +1656,7 @@ body {
           if (BASS[s]) voice(mtof(ROOTS[bar] - 12), 'triangle', t, STEP * 2.5, 0.35, 600);
           if (s % 4 === 0 && (s === 0 || s === 8 || intensity > 0.15)) kick(t);
           if (intensity > 0.25 && s % 2 === 0) hat(t, s % 4 === 2 ? 0.12 : 0.06);
-          if (intensity > 0.55) voice(mtof(chord[ARP[s % 8]] + 12), 'triangle', t, STEP * 1.5, 0.12, 3000);
+          if (intensity > 0.55) voice(mtof(chord[ARP[s % 8] % chord.length] + 12), ARP_WAVE, t, STEP * 1.5, ARP_WAVE === 'square' ? 0.05 : 0.12, 3000);
           if (intensity > 0.85 && s % 4 === 3) voice(mtof(chord[2] + 24), 'sine', t, STEP * 2, 0.06, 5000);
         }
         nextStep += STEP; step++;
@@ -1536,19 +1681,10 @@ body {
     }
     function suspend() { if (ac && ac.state === 'running') ac.suspend(); }
     function resume() { if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
-    return { init, frame, setMuted, setVolumes, suspend, resume, isMuted: () => muted, ...fx };
+    return { init, frame, setMuted, setVolumes, suspend, resume, setTheme, isMuted: () => muted, ...fx };
   })();
 
-  const soundBtn = $('soundBtn');
-  function syncSoundBtn() {
-    const m = Sound.isMuted();
-    soundBtn.setAttribute('aria-pressed', String(!m));
-    soundBtn.setAttribute('aria-label', m ? 'Ton einschalten' : 'Ton ausschalten');
-    soundBtn.querySelector('.on').toggleAttribute('hidden', m); soundBtn.querySelector('.off').toggleAttribute('hidden', !m);
-  }
-  soundBtn.addEventListener('click', e => { e.stopPropagation(); Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); if (typeof syncSettings === 'function' && openPanel === 'settings') syncSettings(); });
-  soundBtn.addEventListener('pointerdown', e => e.stopPropagation());
-  syncSoundBtn();
+  function syncSoundBtn() {}   // sound is switched in the settings only
 
   // ---------- Saved progress: settings, wallet, shop, missions ----------
   const store = {
@@ -1580,8 +1716,10 @@ body {
   const stock = Object.assign({ shield: 0, boost: 0 }, store.get('stock', {}));
   const trails = Object.assign({ owned: ['schnee'], active: 'schnee' }, store.get('trails', {}));
   const career = Object.assign({ coins: 0, runs: 0 }, store.get('career', {}));
+  const gear = Object.assign({ outfits: ['klassik'], outfit: 'klassik', boards: ['pink'], board: 'pink' }, store.get('gear', {}));
+  const locs = Object.assign({ owned: ['alpen'], active: 'alpen' }, store.get('locs', {}));
   function saveMeta() {
-    store.set('wallet', wallet); store.set('upgrades', upgrades); store.set('stock', stock);
+    store.set('wallet', wallet); store.set('upgrades', upgrades); store.set('stock', stock); store.set('gear', gear); store.set('locs', locs);
     store.set('trails', trails); store.set('career', career); store.set('missions', missions);
   }
 
@@ -1604,6 +1742,29 @@ body {
     eis:        { name: 'Eis', color: '#7fe3ff', cost: 400 },
     regenbogen: { name: 'Regenbogen', color: 'conic-gradient(#ff5d5d, #ffd34d, #6fe38a, #6fc7ff, #b07cff, #ff5d5d)', cost: 900 },
   };
+  // outfits and boards for the 3D rider
+  const OUTFITS = {
+    klassik: { name: 'Klassik', cost: 0,    jacket: '#f2b632', pants: '#283a5c', helmet: '#1d2633', goggles: '#2ec4b6', scarf: '#e5396f' },
+    feuer:   { name: 'Feuer',   cost: 500,  jacket: '#e5432f', pants: '#2b2b2b', helmet: '#f4f6fa', goggles: '#ffb000', scarf: '#ffd34d' },
+    gletscher:{ name: 'Gletscher', cost: 500, jacket: '#7fd3ff', pants: '#f4f6fa', helmet: '#1d4e89', goggles: '#ff6fa8', scarf: '#f4f6fa' },
+    wald:    { name: 'Förster', cost: 600,  jacket: '#3f8f4f', pants: '#6b4a32', helmet: '#f2b632', goggles: '#ff8a1f', scarf: '#f2b632' },
+    nacht:   { name: 'Nachtfalke', cost: 800, jacket: '#23262e', pants: '#3a3f4b', helmet: '#e5396f', goggles: '#c7f464', scarf: '#c7f464' },
+    bonbon:  { name: 'Bonbon',  cost: 900,  jacket: '#ff8fc4', pants: '#8e7dff', helmet: '#f4f6fa', goggles: '#2ec4b6', scarf: '#8e7dff' },
+    gold:    { name: 'Champion', cost: 1500, jacket: '#ffd34d', pants: '#f4f6fa', helmet: '#ffd34d', goggles: '#2ec4b6', scarf: '#e5396f' },
+  };
+  const BOARDS = {
+    pink:   { name: 'Pink',    cost: 0,    board: '#e5396f', boardTop: '#2b2f3a' },
+    blau:   { name: 'Ozean',   cost: 300,  board: '#2f8fe0', boardTop: '#f4f6fa' },
+    flamme: { name: 'Flamme',  cost: 400,  board: '#ff6a1f', boardTop: '#2b2b2b' },
+    gruen:  { name: 'Tanne',   cost: 400,  board: '#22a866', boardTop: '#f4f6fa' },
+    carbon: { name: 'Carbon',  cost: 700,  board: '#2b2f3a', boardTop: '#ffc531' },
+    gold:   { name: 'Gold',    cost: 1200, board: '#ffd34d', boardTop: '#7a5a00' },
+  };
+  function applyGear() {
+    const o = OUTFITS[gear.outfit] || OUTFITS.klassik, b = BOARDS[gear.board] || BOARDS.pink;
+    setOutfit(rider, Object.assign({}, o, b));
+  }
+  applyGear();
   function applyTrail() { if (trails.active !== 'regenbogen') sprayMat.color.set(TRAILS[trails.active].color); }
 
   // ---------- Missions ----------
@@ -1668,7 +1829,7 @@ body {
   fillMissions();
 
   // ---------- Panels (shop, missions, settings, high scores, pause) ----------
-  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge', 'live'];
+  const PANELS = ['title', 'menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge', 'live'];
   let panelReturn = 'menu', openPanel = 'menu';
   function showPanel(id) {
     for (const p of PANELS) $(p).hidden = p !== id;
@@ -1686,8 +1847,35 @@ body {
     showPanel(id);
   }
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => { if (panelReturn === 'menu') refreshMenu(); showPanel(panelReturn); }));
+  // ---------- Places ----------
+  const LOC_KEYS = Object.keys(LOCS);
+  function setLocation(key) {
+    if (!LOCS[key]) key = 'alpen';
+    const changed = key !== locKey;
+    LOC = LOCS[key]; locKey = key; lastSky = -1; groundBase = null;
+    Sound.setTheme(key);
+    if (changed && state === 'menu') { clearWorld(); resetRider(P.d); P.v = 11; nextDeco = P.d - 30; }
+  }
+  let menuLoc = locs.active;
+  function showLoc(dir) {
+    const i = (LOC_KEYS.indexOf(menuLoc) + dir + LOC_KEYS.length) % LOC_KEYS.length;
+    menuLoc = LOC_KEYS[i];
+    if (locs.owned.includes(menuLoc)) { locs.active = menuLoc; saveMeta(); }
+    setLocation(menuLoc);
+    refreshMenu();
+  }
+  $('locPrev').addEventListener('click', () => showLoc(-1));
+  $('locNext').addEventListener('click', () => showLoc(1));
   function refreshMenu() {
     $('menuWallet').textContent = wallet.toLocaleString('de-DE');
+    const L = LOCS[menuLoc], owned = locs.owned.includes(menuLoc);
+    $('locName').textContent = L.name + (owned ? '' : ' 🔒');
+    $('locSub').textContent = L.sub;
+    const sb = $('startBtn');
+    sb.textContent = owned ? 'Losfahren' : `Freischalten · ${L.cost.toLocaleString('de-DE')}`;
+    sb.disabled = !owned && wallet < L.cost;
+    const dy = dailyInfo(), mine = store.get('dailyBest', {});
+    $('dailySub').textContent = LOCS[dy.loc].name + (mine.day === dy.day ? ` · dein Bestwert ${mine.dist.toLocaleString('de-DE')} m` : ' · heute neu');
     const done = missions.filter(m => m.done).length;
     $('missionBadge').hidden = !done;
     $('missionBadge').textContent = done ? '✓' + done : '';
@@ -1715,6 +1903,27 @@ body {
     b.addEventListener('click', () => { if (wallet < cost) return; wallet -= cost; onBuy(); saveMeta(); Sound.init(); Sound.coin(); renderShop(); });
     return b;
   }
+  // a row of colour swatches: tap an owned one to wear it, a locked one to buy it
+  function swatchGroup(list, title, defs, owned, active, choose, paint) {
+    const h = document.createElement('h3'); h.textContent = title; list.appendChild(h);
+    const sw = document.createElement('div'); sw.className = 'swatches';
+    for (const k of Object.keys(defs)) {
+      const d = defs[k], has = owned.includes(k);
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch';
+      b.setAttribute('aria-pressed', String(active === k));
+      const dot = document.createElement('i'); dot.style.background = paint(d);
+      const lab = document.createElement('span'); lab.textContent = has ? d.name : d.cost.toLocaleString('de-DE') + ' Münzen';
+      b.append(dot, lab);
+      b.setAttribute('aria-label', has ? `${title} ${d.name} wählen` : `${title} ${d.name} für ${d.cost} Münzen kaufen`);
+      if (!has && wallet < d.cost) { b.disabled = true; b.style.opacity = '0.5'; }
+      b.addEventListener('click', () => {
+        if (!has) { if (wallet < d.cost) return; wallet -= d.cost; owned.push(k); Sound.init(); Sound.coin(); }
+        choose(k); saveMeta(); renderShop();
+      });
+      sw.appendChild(b);
+    }
+    list.appendChild(sw);
+  }
   function renderShop() {
     $('shopWallet').textContent = wallet.toLocaleString('de-DE');
     const list = $('shopList'); list.replaceChildren();
@@ -1734,6 +1943,8 @@ body {
       row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
       list.appendChild(row);
     }
+    swatchGroup(list, 'Outfit', OUTFITS, gear.outfits, gear.outfit, k => { gear.outfit = k; applyGear(); }, o => `linear-gradient(180deg, ${o.helmet} 0 22%, ${o.jacket} 22% 62%, ${o.pants} 62%)`);
+    swatchGroup(list, 'Snowboard', BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
     const h3 = document.createElement('h3'); h3.textContent = 'Schneespur'; list.appendChild(h3);
     const sw = document.createElement('div'); sw.className = 'swatches';
     for (const k of Object.keys(TRAILS)) {
@@ -1799,10 +2010,29 @@ body {
     boardTab = tab;
     $('tabLocal').setAttribute('aria-pressed', String(tab === 'local'));
     $('tabOnline').setAttribute('aria-pressed', String(tab === 'online'));
+    $('tabDaily').setAttribute('aria-pressed', String(tab === 'daily'));
     const list = $('boardScores'), note = $('boardNote');
     note.hidden = true;
     if (tab === 'local') { renderScores(list); return; }
     list.replaceChildren();
+    if (tab === 'daily' && onlineReady) {
+      const dy = dailyInfo();
+      note.hidden = false; note.textContent = `Tagesrennen ${dy.label} · ${LOCS[dy.loc].name} · wird geladen …`;
+      try {
+        const rows = await fetchDaily(dy.day);
+        if (boardTab !== 'daily') return;
+        note.textContent = `Tagesrennen ${dy.label} · ${LOCS[dy.loc].name}` + (rows.length ? '' : ' · noch niemand gefahren. Sei der Erste!');
+        rows.slice(0, 25).forEach((s, i) => {
+          const li = document.createElement('li');
+          if (s.name === lastName) li.className = 'me';
+          for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', Number(s.score).toLocaleString('de-DE')], ['dist', Number(s.dist).toLocaleString('de-DE') + ' m']]) {
+            const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.appendChild(sp);
+          }
+          list.appendChild(li);
+        });
+      } catch (err) { if (boardTab === 'daily') note.textContent = 'Die Tages-Bestenliste wird gerade eingerichtet.'; }
+      return;
+    }
     if (!onlineReady) {
       note.hidden = false;
       note.textContent = /claude\.ai$/.test(location.hostname)
@@ -1831,6 +2061,7 @@ body {
   }
   $('tabLocal').addEventListener('click', () => showBoard('local'));
   $('tabOnline').addEventListener('click', () => showBoard('online'));
+  $('tabDaily').addEventListener('click', () => showBoard('daily'));
 
   // ---------- Tutorial ----------
   const tut = { active: false, step: 0, rowD: 0, failed: false, wait: 0 };
@@ -1842,7 +2073,7 @@ body {
       spawn(d) { for (let l = 0; l < 5; l++) addEnt('log', d, laneX(l)); return d; } },
     { key: '↓', text: 'Wische nach unten und duck dich unter den Bannern durch.',
       spawn(d) { for (let l = 0; l < 5; l++) addEnt('gate', d, laneX(l)); return d; } },
-    { key: '↑ ↑', text: 'Fahr über die Schanze und wisch in der Luft nochmal hoch: 360°!',
+    { key: '↑ ↓', text: 'Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!',
       spawn(d) { const r = addRamp(d, laneX(P.lane)); return r.d1 + 14; } },
   ];
   function tutShow(key, text) { $('tut').hidden = false; $('tutKey').textContent = key; $('tutText').textContent = text; }
@@ -1876,7 +2107,7 @@ body {
   const archGeo = new THREE.TorusGeometry(9.6, 0.4, 8, 32, Math.PI);
   const archMat = new THREE.MeshLambertMaterial({ color: 0xe8f1fb, emissive: 0x4a6b94, emissiveIntensity: 0.35 });
   function addSection(d0) {
-    const types = Object.keys(SECTIONS).filter(t => t !== lastSectionType);
+    const types = Object.keys(SECTIONS).concat(LOC.favour || []).filter(t => t !== lastSectionType);
     const type = types[Math.floor(secRnd() * types.length)];
     lastSectionType = type;
     const s = { type, d0, d1: d0 + 200 + secRnd() * 80 };
@@ -1934,11 +2165,13 @@ body {
     runLanes = 0;
     clearWorld();
     // every run is built from a seed: a duel replays the challenger's seed from the same spot on the mountain
-    const fixed = duel || live.next;
+    const fixed = duel || live.next || daily;
+    setLocation(fixed ? fixed.loc || 'alpen' : locs.active);
     runSeed = fixed ? fixed.seed : (Math.random() * 4294967296) >>> 0;
     rowRnd = seededRng(runSeed); secRnd = seededRng(runSeed ^ 0x9e3779b9); lastSectionType = '';
     resetRider(fixed ? fixed.sd : Math.round(P.d));
     P.v = 21;
+    combo = 0; comboT = 0;
     rec = { bytes: [], lastD: P.d, t: 0, tut: false }; ghostT = 0; duelPassed = false;
     startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
@@ -1966,23 +2199,26 @@ body {
   let runLanes = 0;
   function toMenu() {
     submitName();
-    duel = null;
+    duel = null; daily = null;
     liveLeave();
     fillMissions();
     clearWorld();
     resetRider(P.d);
     P.v = 11;
     state = 'menu';
+    menuLoc = locs.active; setLocation(locs.active);
     $('hud').hidden = true; $('tut').hidden = true;
     refreshMenu();
     showPanel('menu');
   }
   function resetBody() {
-    riderMat.rotation = 0;
+    rider.root.rotation.set(0, 0, 0); rider.pivot.rotation.set(0, 0, 0);
+    Object.assign(rider.st, { hip: 0.78, lean: 0.25, roll: 0, arms: 0, grab: 0, crash: 0 });
   }
 
   function crash(reason) {
     if (state !== 'play') return;
+    combo = 0; comboT = 0;
     state = 'crash'; crashT = 0; crashReason = reason; P.crashed = true;
     shake = reduceMotion ? 0 : 0.5;
     emit(P.x, P.y + 0.6, -P.d, 40, 3, 0, 3, -P.v * 0.2);
@@ -2011,9 +2247,10 @@ body {
     renderMissions($('overMissions'));
     $('hud').hidden = true; showPanel('over');
     pendingEntry = qualifies(total) ? { name: '', score: total, dist: Math.floor(P.d - startD), date: Date.now() } : null;
-    lastRun = { seed: runSeed, sd: startD, dm: Math.floor(P.d - startD), sc: total, bytes: Uint8Array.from(rec.bytes) };
+    lastRun = { seed: runSeed, sd: startD, loc: locKey, dm: Math.floor(P.d - startD), sc: total, bytes: Uint8Array.from(rec.bytes) };
     showDuelResult(lastRun);
     if (live.next) liveFinished(lastRun.dm);
+    if (daily) showDailyResult(lastRun);
     $('nameForm').hidden = !pendingEntry;
     if (pendingEntry) {
       const rank = scores.filter(s => s.score >= total).length + 1;
@@ -2046,6 +2283,7 @@ body {
 
   function takeOff(vy) {
     P.airDrag = 0; P.spinTarget = 0; P.yaw = 0; P.spinChain = 0;
+    P.pitch = 0; P.pitchTarget = 0; P.grab = false; P.grabT = 0;
     P.air = true; P.airT = 0; P.spin = 0; P.vy = vy;
     P.vxAir = 0;   // jumps go straight down the lane, no sideways drift
     P.onRamp = null;
@@ -2062,6 +2300,19 @@ body {
     if (left / SPIN_RATE + 0.15 > timeToLand()) return;
     P.spinTarget -= dir * TAU;
   }
+  // swipe up in the air: a backflip, if there is time to finish it (otherwise a spin, if that fits)
+  const FLIP_RATE = 8.5;
+  function startFlip() {
+    if (!P.air || state !== 'play') return;
+    const left = Math.abs(P.pitchTarget - P.pitch) + TAU;
+    if (left / FLIP_RATE + 0.2 > timeToLand()) { startSpin(1); return; }
+    P.pitchTarget -= TAU;
+  }
+  // swipe down in the air: grab the board until just before landing
+  function startGrab() {
+    if (!P.air || state !== 'play' || P.grab || timeToLand() < 0.4) return;
+    P.grab = true;
+  }
   function changeLane(dir) {
     if (state !== 'play') return;
     const l = clamp(P.lane + dir, 0, 4);
@@ -2071,12 +2322,13 @@ body {
   }
   function duck() {
     if (state !== 'play') return;
-    if (P.air) P.vy = Math.min(P.vy, P.v * slopeAt(P.d, P.x) - 14);   // dive back to the snow
+    if (P.air) { startGrab(); return; }
     P.duckT = 0.75;
   }
-  function jump() {
+  // flip: true for a swipe up (backflip in the air), false for a tap (360 spin in the air)
+  function jump(flip) {
     if (state !== 'play') return;
-    if (P.air) { startSpin(1); return; }   // up again while flying = 360 spin
+    if (P.air) { if (flip) startFlip(); else startSpin(1); return; }
     P.duckT = 0;
     takeOff(P.v * slopeAt(P.d, P.x) + JUMP * (PW.spring > 0 ? 1.45 : 1));
     P.y += 0.05;
@@ -2084,27 +2336,50 @@ body {
     emit(P.x, P.y, -P.d, 12, 1.5, 0, 1.5, 0);
   }
 
+  // ---------- Tricks and combos ----------
+  // one jump: spins, flips and a grab add up, and mixing different tricks multiplies them;
+  // landing clean and going again within a few seconds builds a combo multiplier
+  const COMBO_TIME = 4;
+  let combo = 0, comboT = 0;
+  function comboBreak() { if (combo > 1) popup('Kombo vorbei', '×' + comboMult().toFixed(1).replace('.0', '')); combo = 0; comboT = 0; }
+  function comboMult() { return Math.min(5, 1 + (combo - 1) * 0.5); }
   function land(gy) {
-    const diff = Math.abs(P.spinTarget - P.yaw);
+    const diff = Math.abs(P.spinTarget - P.yaw), pdiff = Math.abs(P.pitchTarget - P.pitch);
     P.y = gy;
-    if (diff > 1.6) { crash('Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.'); return; }
+    if (pdiff > 1.3) { comboBreak(); crash('Salto nicht geschafft. Starte ihn früher oder springe höher.'); return; }
+    if (diff > 1.6) { comboBreak(); crash('Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.'); return; }
     P.spin = P.spinTarget;
-    P.air = false; P.vy = 0;
-    const spins = Math.round(Math.abs(P.spin) / TAU);
-    let pts = 0; const names = [];
-    if (spins > 0) { pts += 300 * spins * spins; names.push((spins * 360) + '°'); progressMission('spins', spins); }
+    P.air = false; P.vy = 0; P.grab = false;
+    const spins = Math.round(Math.abs(P.spin) / TAU), flips = Math.round(Math.abs(P.pitchTarget) / TAU);
+    let pts = 0, kinds = 0; const names = [];
+    if (spins > 0) { pts += 300 * spins * spins; kinds++; names.push((spins * 360) + '°'); progressMission('spins', spins); }
+    if (flips > 0) { pts += 600 * flips; kinds++; names.push(flips > 1 ? flips + '× Backflip' : 'Backflip'); }
+    if (P.grabT > 0.25) { pts += 150 + Math.round(P.grabT * 250); kinds++; names.push('Grab'); }
     if (P.airT > 1.1) { pts += Math.round(P.airT * 120); names.push('Big Air'); }
-    if (pts > 0 && diff < 0.22) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); P.v += 2; }
-    else if (diff > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
+    if (kinds > 1) { pts = Math.round(pts * (kinds === 2 ? 1.5 : 2.2)); names.push('Mix'); }
+    const clean = Math.max(diff, pdiff) < 0.22;
+    if (pts > 0 && clean) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); P.v += 2; }
+    else if (Math.max(diff, pdiff) > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
     Sound.land(P.airT > 1);
     P.sq = 0; P.sqv = -2.2 - Math.min(2.5, P.airT * 1.8);   // absorb the landing
     if (pts) {
-      const m = PW.double > 0 ? 2 : 1;
-      bonus += pts; score += pts * m;
-      popup(names.join(' · '), '+' + pts * m); Sound.trick();
+      if (Math.max(diff, pdiff) > 0.4) comboBreak();
+      else if (kinds > 0) { combo++; comboT = COMBO_TIME; }
+      const cm = combo > 1 ? comboMult() : 1;
+      const m = (PW.double > 0 ? 2 : 1) * cm;
+      pts = Math.round(pts * m);
+      bonus += pts; score += pts;
+      popup(names.join(' · '), '+' + pts.toLocaleString('de-DE') + (combo > 1 ? '  Kombo ×' + cm.toFixed(1).replace('.0', '') : '')); Sound.trick();
     }
-    P.yaw = angDiff(P.yaw); P.spin = 0;
+    P.yaw = angDiff(P.yaw); P.spin = 0; P.pitch = 0; P.pitchTarget = 0;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
+  }
+  function updateCombo(dt) {
+    if (combo > 0 && !P.air && state === 'play') { comboT -= dt; if (comboT <= 0) comboBreak(); }
+    const el = $('comboHud');
+    const on = combo > 1 && state === 'play';
+    if (el.hidden === on) el.hidden = !on;
+    if (on) { el.firstChild.textContent = 'Kombo ×' + comboMult().toFixed(1).replace('.0', ''); el.lastChild.firstChild.style.width = Math.round(100 * clamp(comboT / COMBO_TIME, 0, 1)) + '%'; }
   }
 
   // ---------- Input ----------
@@ -2132,7 +2407,7 @@ body {
     g.x0 = e.clientX; g.y0 = e.clientY;
     if (act === g.last) return;
     g.last = act; g.jumped = true;
-    if (act === 'left') changeLane(-1); else if (act === 'right') changeLane(1); else if (act === 'up') jump(); else duck();
+    if (act === 'left') changeLane(-1); else if (act === 'right') changeLane(1); else if (act === 'up') jump(true); else duck();
   });
   function endDrag(e) {
     const g = input.drag;
@@ -2151,30 +2426,40 @@ body {
       if (state === 'play') { pauseGame(); return; }
       if (state === 'paused' && openPanel === 'pause') { resumeGame(); return; }
     }
-    if (state === 'paused' || (openPanel && openPanel !== 'menu' && openPanel !== 'over')) return;
+    if (state === 'paused' || (openPanel && openPanel !== 'menu' && openPanel !== 'over' && openPanel !== 'title')) return;
     if (KEYS[e.code]) {
       input[KEYS[e.code]] = true; e.preventDefault();
       if (!e.repeat) changeLane(KEYS[e.code] === 'right' ? 1 : -1);
       return;
     }
     if ((e.code === 'ArrowDown' || e.code === 'KeyS') && !e.repeat) { e.preventDefault(); duck(); return; }
-    if (e.code === 'KeyM') { Sound.setMuted(!Sound.isMuted()); syncSoundBtn(); return; }
     if (!['Space', 'ArrowUp', 'KeyW'].includes(e.code)) return;
     e.preventDefault();
     if (e.repeat) return;
-    if (state === 'play') jump();
-    else if (state === 'menu') start();
+    if (state === 'play') jump(e.code !== 'Space');   // in the air: Space spins, ↑ / W flips
+    else if (openPanel === 'title') { Sound.init(); refreshMenu(); showPanel('menu'); }
+    else if (state === 'menu' && openPanel === 'menu' && locs.owned.includes(menuLoc)) start();
     else if (state === 'over' && !$('againBtn').disabled) { submitName(); start(); }
   });
   addEventListener('keyup', e => { if (KEYS[e.code]) input[KEYS[e.code]] = false; });
   addEventListener('blur', () => { input.left = input.right = false; input.drag = null; });
-  $('startBtn').addEventListener('click', start);
+  $('startBtn').addEventListener('click', () => {
+    if (locs.owned.includes(menuLoc)) { start(); return; }
+    const L = LOCS[menuLoc];
+    if (wallet < L.cost) return;
+    wallet -= L.cost; locs.owned.push(menuLoc); locs.active = menuLoc; saveMeta();
+    Sound.init(); Sound.coin(); popup(L.name, 'freigeschaltet!');
+    refreshMenu();
+  });
+  $('title').addEventListener('click', () => { Sound.init(); refreshMenu(); showPanel('menu'); });   // tap anywhere
+  $('dailyBtn').addEventListener('click', () => { daily = dailyInfo(); start(); });
   $('boardBtn').addEventListener('click', () => openSub('board', 'menu'));
   $('shopBtn').addEventListener('click', () => openSub('shop', 'menu'));
   $('missionsBtn').addEventListener('click', () => openSub('missions', 'menu'));
   $('settingsBtn').addEventListener('click', () => openSub('settings', 'menu'));
   $('toMenuBtn').addEventListener('click', toMenu);
   $('againBtn').addEventListener('click', () => { submitName(); if (live.next) liveRematch(); else start(); });
+  showPanel('title');
   refreshMenu();
 
   // ---------- Duel by link: same seed, the challenger rides along as a ghost ----------
@@ -2207,7 +2492,7 @@ body {
   const unb64u = str => { const s = atob(str.replace(/-/g, '+').replace(/_/g, '/')); const b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; };
   async function pipeBytes(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
   async function encodeDuel(run, name) {
-    const head = new TextEncoder().encode(JSON.stringify({ v: 1, n: name, s: run.seed, sd: run.sd, dm: run.dm, sc: run.sc }));
+    const head = new TextEncoder().encode(JSON.stringify({ v: 1, n: name, s: run.seed, sd: run.sd, dm: run.dm, sc: run.sc, l: run.loc }));
     const raw = new Uint8Array(2 + head.length + run.bytes.length);
     raw[0] = head.length >> 8; raw[1] = head.length & 255; raw.set(head, 2); raw.set(run.bytes, 2 + head.length);
     try { if (window.CompressionStream) return 'z' + b64u(await pipeBytes(raw, new CompressionStream('deflate-raw'))); } catch (e) {}
@@ -2220,14 +2505,12 @@ body {
     const h = JSON.parse(new TextDecoder().decode(raw.subarray(2, 2 + len)));
     if (h.v !== 1 || typeof h.s !== 'number' || typeof h.sd !== 'number') throw new Error('bad duel');
     const name = String(h.n || 'Fahrer').slice(0, 14);
-    return { name, seed: h.s >>> 0, sd: h.sd, dm: Math.max(0, h.dm | 0), sc: Math.max(0, h.sc | 0), g: unpackGhost(raw.subarray(2 + len), h.sd) };
+    return { name, seed: h.s >>> 0, sd: h.sd, loc: LOCS[h.l] ? h.l : 'alpen', dm: Math.max(0, h.dm | 0), sc: Math.max(0, h.sc | 0), g: unpackGhost(raw.subarray(2 + len), h.sd) };
   }
 
   // ghost rider: a pale see-through copy of the rider with a name tag
-  const ghostMat = new THREE.SpriteMaterial({ map: riderTex['rider-straight'], transparent: true, opacity: 0.5, color: 0xcfe6ff, depthTest: true, depthWrite: false });
-  const ghost = new THREE.Sprite(ghostMat);
-  ghost.center.set(0.5, 0.04); ghost.renderOrder = 9; ghost.visible = false;
-  scene.add(ghost);
+  const ghostR = makeRider(true), ghost = ghostR.root;
+  ghost.visible = false;
   const tagCv = document.createElement('canvas'); tagCv.width = 256; tagCv.height = 64;
   const tagTex = new THREE.CanvasTexture(tagCv);
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, transparent: true, depthTest: false, depthWrite: false }));
@@ -2255,19 +2538,22 @@ body {
     if (!on) return;
     const s = duel ? ghostAt() : liveAt();
     if (s.d < P.d - 7 || s.d > P.d + 160) return;
-    const pose = s.f & 4 ? 'rider-crash' : s.f & 1 ? 'rider-duck' : s.f & 2 ? 'rider-air' : s.f & 8 ? 'rider-left' : s.f & 16 ? 'rider-right' : 'rider-straight';
-    let h = RIDER_H[pose] * RIDER_SCALE, wk = 1;
-    if (pose === 'rider-duck') { h *= 0.74; wk = 1.15; }
-    if (ghostMat.map !== riderTex[pose]) ghostMat.map = riderTex[pose];
+    // pose from the recorded flags: duck, air, crash, carving left / right
+    const gs = ghostR.st, k = Math.min(1, lastDt * 12);
+    const duck = s.f & 1 ? 1 : 0, air = s.f & 2 ? 1 : 0, down = s.f & 4 ? 1 : 0, lean = s.f & 8 ? -0.6 : s.f & 16 ? 0.6 : 0;
+    gs.hip += ((down ? 0.55 : air ? 0.66 : duck ? 0.5 : 0.8) - gs.hip) * k;
+    gs.lean += ((duck ? 0.85 : air ? 0.35 : 0.28) - gs.lean) * k;
+    gs.arms += ((air ? 0.55 : -duck * 0.35) - gs.arms) * k;
+    gs.crash += (down - gs.crash) * k; gs.roll = lean; gs.twist = 0.95 - lean * 0.15;
+    poseRider(ghostR, gs);
     const y = groundAt(s.d, s.x) + s.h;
-    ghost.position.set(s.x, y, -s.d + 0.2);
-    ghost.center.x = RIDER_CX[pose];
-    ghost.scale.set(h * ASPECT[pose] * wk, h, 1);
+    ghost.position.set(s.x, y + 0.02, -s.d);
+    ghost.rotation.z += ((down ? 1.3 : air ? 0 : -lean * 0.32) - ghost.rotation.z) * k;
     // fade the ghost when it overlaps the player so neither hides the other
     const near = Math.abs(s.d - P.d) < 3 && Math.abs(s.x - P.x) < 1.5;
-    ghostMat.opacity = near ? 0.28 : 0.5;
+    for (const m of Object.values(ghostR.mats)) m.opacity = near ? 0.22 : 0.42;
     ghost.visible = true;
-    tag.position.set(s.x, y + h + 0.45, -s.d + 0.2);
+    tag.position.set(s.x, y + 2.6, -s.d);
     tag.visible = true;
   }
   function updateDuelHud(myDist) {
@@ -2305,6 +2591,7 @@ body {
     $('duelName').textContent = d.name;
     $('duelDist').textContent = d.dm.toLocaleString('de-DE') + ' m';
     $('duelScore').textContent = d.sc.toLocaleString('de-DE');
+    $('duelName').parentElement.lastChild.textContent = ` fordert dich heraus! Ort: ${LOCS[d.loc].name}`;
     showPanel('duel');
   }
   $('duelGoBtn').addEventListener('click', start);
@@ -2346,6 +2633,59 @@ body {
   }
   addEventListener('hashchange', checkDuelLink);
   checkDuelLink();
+
+  // ---------- Daily race: one fixed course per day for everyone, with its own leaderboard ----------
+  let daily = null;
+  function dailyInfo() {
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+    const day = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    let h = 0x811c9dc5;   // FNV-1a hash of the date: the same seed on every phone
+    for (const ch of day + '|mountain-ride') { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193); }
+    const idx = Math.floor(Date.UTC(y, m, d) / 864e5);
+    return { day, seed: h >>> 0, sd: 1000, loc: LOC_KEYS[idx % LOC_KEYS.length], label: `${String(d).padStart(2, '0')}.${String(m + 1).padStart(2, '0')}.` };
+  }
+  async function postDaily(entry) {
+    if (!onlineReady) return false;
+    try {
+      const res = await fetch(ONLINE.url + '/rest/v1/daily', { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(entry) });
+      return res.ok;
+    } catch (e) { return false; }
+  }
+  // today's best run per player, best first
+  async function fetchDaily(day) {
+    const res = await fetch(ONLINE.url + `/rest/v1/daily?select=name,dist,score&day=eq.${day}&order=dist.desc&limit=300`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(res.status);
+    const seen = new Set(), out = [];
+    for (const row of await res.json()) { if (seen.has(row.name)) continue; seen.add(row.name); out.push(row); }
+    return out;
+  }
+  function showDailyResult(run) {
+    const box = $('duelResult');
+    box.hidden = false; box.replaceChildren();
+    const mine = store.get('dailyBest', {});
+    const isBest = mine.day !== daily.day || run.dm > mine.dist;
+    if (isBest) store.set('dailyBest', { day: daily.day, dist: run.dm });
+    const t = document.createElement('div'); t.className = 'win'; t.textContent = `Tagesrennen ${daily.label}` + (isBest ? ' · neuer Tagesbestwert!' : '');
+    const row = (a, b) => { const r2 = document.createElement('div'); r2.className = 'row'; const x = document.createElement('b'); x.textContent = a; const y = document.createElement('span'); y.textContent = b; r2.append(x, y); return r2; };
+    const rank = row('Platz heute', onlineReady ? '…' : '–');
+    box.append(t, row('Diese Fahrt', run.dm.toLocaleString('de-DE') + ' m'), row('Dein Bestwert heute', Math.max(run.dm, mine.day === daily.day ? mine.dist : 0).toLocaleString('de-DE') + ' m'), rank);
+    const send = async name => {
+      const ok = await postDaily({ day: daily.day, name, dist: run.dm, score: run.sc });
+      try {
+        const rows = await fetchDaily(daily.day);
+        const i = rows.findIndex(x => x.name === name);
+        rank.lastChild.textContent = i >= 0 ? `${i + 1} von ${rows.length}` : ok ? '–' : 'nicht erreichbar';
+      } catch (e) { rank.lastChild.textContent = 'nicht erreichbar'; }
+    };
+    if (!onlineReady) return;
+    if (lastName) { send(lastName); return; }
+    // first daily run without a name: ask for one right here
+    const f = document.createElement('form'); f.className = 'name-row';
+    const inp = document.createElement('input'); inp.maxLength = 14; inp.placeholder = 'Dein Name'; inp.setAttribute('aria-label', 'Dein Name für die Tages-Bestenliste');
+    const b = document.createElement('button'); b.className = 'btn small'; b.type = 'submit'; b.textContent = 'Eintragen';
+    f.append(inp, b); box.append(f);
+    f.addEventListener('submit', e => { e.preventDefault(); const n = inp.value.trim().slice(0, 14); if (!n) return; lastName = n; try { localStorage.setItem(NAME_KEY, n); } catch (err) {} f.remove(); send(n); });
+  }
 
   // ---------- Live duel: both ride at the same time, linked through Supabase Realtime ----------
   // ?livetest uses a BroadcastChannel between two tabs of one browser instead (for testing without a server)
@@ -2441,11 +2781,11 @@ body {
     if (live.next && !o && !live.oppDone) { live.oppDone = true; popup(`${live.oppName || 'Gegner'} ist raus`, 'Verbindung getrennt'); refreshLiveResult(); }
   }
   // the first start message wins; if both press at once, both pick the smaller seed and end up in the same race
-  function liveBegin(seed, sd) {
+  function liveBegin(seed, sd, loc) {
     if (live.next && state === 'countdown' && live.next.seed <= seed) return;
     const o = opp();
     live.oppName = o ? o[1].name : 'Gegner';
-    live.next = { seed, sd };
+    live.next = { seed, sd, loc };
     live.snap = live.prev = null; live.oppDone = false; live.oppDist = 0; live.myDone = false; live.wantRematch = false;
     duel = null;
     start();
@@ -2463,7 +2803,7 @@ body {
     if (m.t === 'start' && typeof m.seed === 'number') {
       if (state === 'play' || state === 'crash') return;   // never yank someone out of a running race
       showPanel(null);
-      liveBegin(m.seed >>> 0, +m.sd || 0);
+      liveBegin(m.seed >>> 0, +m.sd || 0, LOCS[m.loc] ? m.loc : 'alpen');
     } else if (m.t === 's' && live.next) {
       live.prev = live.snap;
       live.snap = { d: +m.d, x: +m.x, h: +m.h, f: m.f | 0, at: performance.now() };
@@ -2535,9 +2875,9 @@ body {
     if (!live.wantRematch || !live.oppWants) return;
     live.oppWants = false; live.wantRematch = false; live.wonSound = false;
     const seed = (Math.random() * 4294967296) >>> 0, sd = Math.round(P.d) + 40;
-    live.link.send({ t: 'start', seed, sd });
+    live.link.send({ t: 'start', seed, sd, loc: locs.active });
     showPanel(null);
-    liveBegin(seed, sd);
+    liveBegin(seed, sd, locs.active);
   }
   $('liveBtn').addEventListener('click', () => { liveShowJoin(); showPanel('live'); });
   $('liveCreateBtn').addEventListener('click', () => {
@@ -2549,9 +2889,9 @@ body {
   $('liveStartBtn').addEventListener('click', () => {
     if (!live.link || !opp()) return;
     const seed = (Math.random() * 4294967296) >>> 0, sd = Math.round(P.d);
-    live.link.send({ t: 'start', seed, sd });
+    live.link.send({ t: 'start', seed, sd, loc: locs.active });
     showPanel(null);
-    liveBegin(seed, sd);
+    liveBegin(seed, sd, locs.active);
   });
   $('liveShareBtn').addEventListener('click', async () => {
     const url = SHARE_BASE + '#live=' + live.room, text = `Fahr live gegen mich bei Mountain Ride! Raum-Code: ${live.room}`;
@@ -2635,6 +2975,9 @@ body {
         if (steer && steer === P.spinChain && Math.abs(P.spinTarget - P.yaw) < 0.3) startSpin(steer);
         const left = P.spinTarget - P.yaw;   // fast through the turn, easing into the landing angle
         P.yaw += clamp(left * 8 * dt, -SPIN_RATE * dt, SPIN_RATE * dt) + Math.sign(left) * Math.min(Math.abs(left), 0.6 * dt);
+        const lp = P.pitchTarget - P.pitch;
+        P.pitch += clamp(lp * 7 * dt, -FLIP_RATE * dt, FLIP_RATE * dt) + Math.sign(lp) * Math.min(Math.abs(lp), 0.6 * dt);
+        if (P.grab) { P.grabT += dt; if (timeToLand() < 0.25) P.grab = false; }
         const gy = groundAt(P.d, P.x);
         if (P.y <= gy) land(gy);
       }
@@ -2648,6 +2991,8 @@ body {
     const leanT = P.air || P.crashed ? 0 : clamp(P.vx / 10, -1, 1);
     P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
     P.poseT += dt;
+    P.grabS = (P.grabS || 0) + (((P.grab && P.air) ? 1 : 0) - (P.grabS || 0)) * Math.min(1, dt * 14);
+    updateCombo(dt);
     let want = P.pose;
     if (P.crashed) want = 'rider-crash';
     else if (P.air) want = 'rider-air';
@@ -2770,53 +3115,32 @@ body {
 
   // ---------- Render ----------
   function render(dt) {
-    // rider pose
-    rider.position.set(P.x, P.y, -P.d + 0.2);   // depth-tested: a gate between camera and rider covers him, one ahead is covered
+    // rider pose: targets from the riding state, eased so every change of pose is one smooth movement
     P.carve = -P.leanS * 0.3;
     const sq = clamp(P.sq, -0.25, 0.25);
-    // a little bob with the terrain and speed while riding
     const bob = P.air || P.crashed ? 0 : Math.sin(clock * (6 + P.v * 0.2)) * 0.012 * Math.min(1, P.v / 20);
-    const spinning = P.air && !P.crashed && (Math.abs(P.spinTarget - P.yaw) > 0.05 || Math.abs(angDiff(P.yaw)) > 0.2);
-    let tex, rh, ar, cx;
-    if (spinning) {
-      // real turn around the body axis: pick the painted view for the current angle (8 views, 45° apart)
-      const a = ((-P.yaw % TAU) + TAU) % TAU, pos = a / (TAU / 8);
-      const i0 = Math.floor(pos) % 8, i1 = (i0 + 1) % 8, w = pos - Math.floor(pos);
-      const f = SPIN_VIEWS[i0], f1 = SPIN_VIEWS[i1];
-      tex = f.tex; ar = f.ar; rh = f.h * RIDER_SCALE; cx = f.cx;
-      // blend towards the next view so the turn reads as one movement instead of 8 jumps
-      spinMatB.map = f1.tex; spinMatB.opacity = w * w * (3 - 2 * w);
-      spinB.visible = true;
-      spinB.position.set(P.x, P.y, -P.d + 0.2);
-      spinB.center.x = f1.cx;
-      spinB.scale.set(f1.h * f1.ar * RIDER_SCALE, f1.h * RIDER_SCALE, 1);
-    } else {
-      const pose = P.pose;
-      tex = riderTex[pose]; ar = ASPECT[pose]; rh = RIDER_H[pose] * RIDER_SCALE; cx = RIDER_CX[pose];
-    }
-    if (!spinning) spinB.visible = false;
-    if (riderMat.map !== tex) riderMat.map = tex;
-    // ducking: the riding pose sinks a little while the duck pose fades in on top of it
-    // in the air: stretch on the way up, tuck at the top, reach for the snow on the way down
-    const airK = P.air && !P.crashed ? clamp(P.vy * 0.007, -0.07, 0.09) - 0.06 * Math.exp(-Math.abs(P.vy) * 0.25) : 0;
-    // ducking: the riding pose sinks while the crouched pose fades in over it, both end at the same height,
-    // so the rider goes down in one smooth movement and stays below a gate banner
-    const dk = spinning ? 0 : P.duckS * P.duckS * (3 - 2 * P.duckS);
-    rider.scale.set(rh * ar * (1 - sq * 0.5) * (1 - airK * 0.4) * (1 + dk * 0.04), rh * (1 + sq + bob + airK) * (1 - dk * 0.24), 1);
-    rider.center.x = cx;
-    const blink = PW.invuln > 0 ? 0.55 + 0.45 * Math.abs(Math.sin(clock * 20)) : 1;
-    riderMat.opacity = blink * (1 - clamp((dk - 0.45) / 0.25, 0, 1));
-    duckSprite.visible = dk > 0.01;
-    if (duckSprite.visible) {
-      const dh = RIDER_H['rider-duck'] * RIDER_SCALE * 0.74 * (1 + (1 - dk) * 0.3);
-      duckSprite.position.copy(rider.position);
-      duckSprite.scale.set(dh * ASPECT['rider-duck'] * 1.15, dh, 1);
-      duckMat.opacity = blink * clamp((dk - 0.3) / 0.25, 0, 1);
-    }
-    const tilt = P.crashed ? 0 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) + Math.sin(P.airT * 5) * 0.03 : -P.leanS * 0.16;
-    riderMat.rotation += (tilt - riderMat.rotation) * Math.min(1, dt * 12);
-    duckMat.rotation = riderMat.rotation;
-    spinMatB.rotation = riderMat.rotation;
+    const dk = P.duckS * P.duckS * (3 - 2 * P.duckS);
+    const airK = P.air && !P.crashed ? 1 : 0, gk = P.grabS || 0;
+    const st = rider.st, ease = k => Math.min(1, dt * k);
+    const tHip = P.crashed ? 0.55 : lerp(lerp(0.8 + sq * 0.9 + bob * 6, 0.5, dk), lerp(0.66, 0.56, gk), airK);
+    st.hip += (tHip - st.hip) * ease(P.air ? 10 : 18);
+    st.lean += ((P.crashed ? 0.2 : lerp(lerp(0.28, 0.85, dk), lerp(0.35, 0.65, gk), airK)) - st.lean) * ease(12);
+    st.arms += ((P.crashed ? 0 : airK * (1 - gk) * (0.55 + Math.sin(P.airT * 4) * 0.1) - dk * 0.35) - st.arms) * ease(10);
+    st.grab += (gk - st.grab) * ease(16);
+    st.crash += ((P.crashed ? 1 : 0) - st.crash) * ease(8);
+    st.roll = P.leanS;
+    st.twist = 0.95 - P.leanS * 0.15;
+    poseRider(rider, st);
+    const R = rider.root;
+    R.position.set(P.x, P.y + 0.02, -P.d);
+    // carve: the whole rider leans into the turn around the board; a crash throws him onto his side
+    const tRoll = P.crashed ? 1.3 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) : -P.leanS * 0.32;
+    R.rotation.z += (tRoll - R.rotation.z) * ease(P.crashed ? 6 : 12);
+    R.rotation.y = P.air ? 0 : -P.vx * 0.025;
+    rider.pivot.rotation.y = P.yaw;
+    rider.pivot.rotation.x = P.pitch || 0;
+    // brief flicker while invulnerable after a shield save
+    R.visible = !(PW.invuln > 0 && Math.sin(clock * 30) < -0.2);
     // shield / turbo glow
     const prot = P.crashed ? 0 : PW.turbo > 0 ? 1 : PW.shield ? 0.8 : PW.invuln > 0 ? 0.4 : 0;
     auraMat.opacity += (prot * (0.75 + 0.25 * Math.sin(clock * 6)) - auraMat.opacity) * Math.min(1, dt * 8);
@@ -2855,6 +3179,23 @@ body {
     camLook.y = camLook.y ? camLook.y + (lookY - camLook.y) * (1 - Math.exp(-dt * 6)) : lookY;
     camLook.z = -lookD;
     camera.position.copy(camPos);
+    // start screen: the camera swings slowly round the front of the rider; a new run glides into the chase view
+    camMix = state === 'menu' ? 0 : Math.min(1, camMix + dt * 1.1);
+    const lookAt = TV4.copy(camLook);
+    if (camMix < 1) {
+      // on the title the rider stands in the lower middle under the logo; with the menu open he sits above the card
+      const onTitle = openPanel === 'title', a = Math.sin(clock * 0.17) * 1.05, R = (portrait ? 8.5 : 6.5) * (onTitle ? 0.85 : 1);
+      const ox = P.x + Math.sin(a) * R, od = P.d + Math.cos(a) * R;
+      orbitPos.set(ox, Math.max(baseH(od, ox) + 1.6, P.y + (onTitle ? 1.6 : 2.6)), -od);
+      orbitLook.set(P.x, P.y + (onTitle ? 1.7 : portrait ? -1.9 : 0.2), -P.d);
+      const m = camMix * camMix * (3 - 2 * camMix);
+      camera.position.lerpVectors(orbitPos, camPos, m);
+      lookAt.lerpVectors(orbitLook, camLook, m);
+    }
+    for (const pl of poles) if (pl.torch) {
+      const u = pl.mesh.userData, f = 1 + Math.sin(clock * 17 + pl.d) * 0.08 + Math.sin(clock * 29 + pl.d * 3) * 0.06;
+      u.flame.scale.set(1, f, 1); u.glow.scale.setScalar(2.6 * f);
+    }
     for (const pl of poles) if (pl.arch) {
       const o = clamp((pl.d + camPos.z - 4) / 14, 0, 1);   // distance in front of the camera
       pl.mesh.material.opacity = o;
@@ -2863,7 +3204,7 @@ body {
     }
     if (!settings.shake) shake = 0;
     if (shake > 0.01) { camera.position.x += rand(-shake, shake); camera.position.y += rand(-shake, shake); shake *= Math.pow(0.02, dt); }
-    camera.lookAt(camLook);
+    camera.lookAt(lookAt);
     P.camRoll += (-P.leanS * 0.035 - P.camRoll) * (1 - Math.exp(-dt * 4));
     camera.rotateZ(P.camRoll);
     const fov = (portrait ? 70 : 58) + 14 * clamp((P.v - 12) / 20, 0, 1);
