@@ -1,10 +1,11 @@
 # Mountain Ride – notes for Claude
 
-Endless snowboard runner in the browser (three.js r128), German UI. The owner talks German: answer in German.
+Endless snowboard runner in the browser (three.js r128), UI in 10 languages (German first). The owner talks German: answer in German.
 
 ## Files
 - `index.html` – the whole game (HTML, CSS, JS in one file). Written as an Artifact page: no doctype/head of its own.
 - `assets/` – textures, sprites, sky images, icons, `rider.glb` (the 3D rider, static T-pose mesh; skeleton and skin weights are built in code at load time, see `buildRig` / `poseRig`). The painted `rider-*.png` / `spin-*.png` sprites are the fallback if the GLB fails to load.
+- **Texts / languages**: no hard-coded UI text. German lives in `index.html` as `I18N_DE`; the other 9 languages (en es pt fr it ru zh ja ar) in `assets/lib/i18n.js` (`window.I18N`). Use `tx('key', {vars})` in JS and `data-i18n` / `data-i18n-ph` / `data-i18n-aria` / `data-i18n-title` ('A|B' = two-tone title) in HTML; numbers via `fmt()`. **A new key must be added to all 10 languages.** Arabic switches the page to `dir=rtl`: wrap numbers-with-units in a bidi isolate (CSS `unicode-bidi: isolate` or `\u2066…\u2069`) and check screenshots.
 - `sw.js` – service worker (offline cache). **Bump `CACHE` (`mountain-ride-vNN`) on every release**, otherwise phones keep the old version. Supabase requests are never cached.
 - `manifest.webmanifest`, `tools/build-pages.py` (builds `dist/` for GitHub Pages), `docs/online-bestenliste.md` (Supabase setup: tables `scores` and `daily`).
 

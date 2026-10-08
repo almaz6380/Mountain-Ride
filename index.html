@@ -6,6 +6,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap">
 <style>
+  /* numbers with units stay left-to-right inside Arabic (rtl) text */
+  #hudSpeed, #stSpeed, #stDist, #setMusicVal, #setSfxVal { unicode-bidi: isolate; direction: ltr; }
+  [dir=rtl] #stSpeed, [dir=rtl] #stDist { text-align: right; }
 /* Layout: full-bleed 3D view behind the rider, HUD pinned to the top corners, one centred overlay card for start / game over */
 :root {
   --snow: #f4f8fc;
@@ -80,7 +83,8 @@ body {
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
 .stats div { background: rgba(244, 248, 252, 0.08); border-radius: 10px; padding: 10px 12px; text-align: left; }
 .stats dt { font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
-.stats dd { margin: 2px 0 0; font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; }
+.stats dd { margin: 2px 0 0; font-weight: 800; font-size: 28px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stats dd small { font-size: 15px; font-weight: 700; }
 .record { justify-self: center; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: 14px; color: var(--ink); background: var(--jacket); padding: 4px 10px; border-radius: 99px; }
 .powers { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 .pchip { display: grid; gap: 3px; justify-items: center; }
@@ -176,6 +180,8 @@ body {
 .menu-row .btn { display: grid; gap: 3px; padding: 11px 10px; font-size: 18px; }
 .menu-row .btn small { font-size: 12px; letter-spacing: 0.06em; font-weight: 600; text-transform: none; opacity: 0.85; }
 .menu-row .btn:only-child, .menu-row .btn[hidden] + .btn, .menu-row:has(> .btn[hidden]) .btn:not([hidden]) { grid-column: 1 / -1; }
+.lang-select { font: 600 17px var(--ui); color: var(--snow); background: rgba(244, 248, 252, 0.12); border: 0; border-radius: 10px; padding: 8px 10px; }
+.lang-select option { color: #14233a; }
 .duel-chip { margin-top: 6px; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; background: rgba(20, 35, 58, 0.45); border-radius: 99px; padding: 3px 10px; display: inline-block; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .duel-chip.ahead { color: #9ff0b8; }
 .duel-chip.behind { color: #ffb4b4; }
@@ -212,23 +218,23 @@ body {
 
 <div class="hud" id="hud" hidden>
   <div class="hud-block">
-    <span class="hud-label" id="hudStage">Strecke</span>
+    <span class="hud-label" id="hudStage" data-i18n="hud.distance">Strecke</span>
     <span class="hud-big" id="hudDist">0<small>m</small></span>
     <div class="hud-row"><span id="hudSpeed">0 km/h</span><span><i class="coin-dot"></i><span id="hudCoins">0</span></span></div>
     <span class="duel-chip" id="duelHud" hidden></span>
   </div>
-  <button class="pause-btn" id="pauseBtn" type="button" aria-label="Pause">
+  <button class="pause-btn" id="pauseBtn" type="button" aria-label="Pause" data-i18n-aria="hud.pause">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
   </button>
   <div class="hud-block right">
-    <span class="hud-label">Punkte</span>
+    <span class="hud-label" data-i18n="hud.points">Punkte</span>
     <span class="hud-big" id="hudScore">0</span>
     <div class="combo-chip" id="comboHud" hidden><span>Kombo ×2</span><span class="pbar"><i></i></span></div>
     <div class="powers" id="powers"></div>
   </div>
 </div>
 
-<div class="loading" id="loading" role="progressbar" aria-label="Lädt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+<div class="loading" id="loading" role="progressbar" aria-label="Lädt" data-i18n-aria="loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
   <h1 class="logo">Mountain<span>Ride</span></h1>
   <div class="load-bar"><i id="loadFill"></i></div>
 </div>
@@ -236,9 +242,9 @@ body {
 <div class="overlay title-screen" id="title" hidden>
   <div class="title-wrap">
     <h1 class="logo">Mountain<span>Ride</span></h1>
-    <p class="tagline">Snowboard · Tricks · Duelle</p>
+    <p class="tagline" data-i18n="title.tagline">Snowboard · Tricks · Duelle</p>
   </div>
-  <button class="tap-start" id="titleBtn" type="button">Tippen zum Starten</button>
+  <button class="tap-start" id="titleBtn" type="button" data-i18n="title.tap">Tippen zum Starten</button>
 </div>
 
 <div class="overlay menu-overlay" id="menu" hidden>
@@ -248,20 +254,20 @@ body {
       <p class="wallet"><i class="coin-dot"></i><span id="menuWallet">0</span></p>
     </div>
     <div class="loc-pick">
-      <button class="loc-arrow" id="locPrev" type="button" aria-label="Vorheriger Ort">‹</button>
-      <div class="loc-info"><span class="loc-label">Ort</span><strong id="locName">Alpen</strong><span class="loc-sub" id="locSub"></span></div>
-      <button class="loc-arrow" id="locNext" type="button" aria-label="Nächster Ort">›</button>
+      <button class="loc-arrow" id="locPrev" type="button" aria-label="Vorheriger Ort" data-i18n-aria="menu.prevPlace">‹</button>
+      <div class="loc-info"><span class="loc-label" data-i18n="menu.place">Ort</span><strong id="locName">Alpen</strong><span class="loc-sub" id="locSub"></span></div>
+      <button class="loc-arrow" id="locNext" type="button" aria-label="Nächster Ort" data-i18n-aria="menu.nextPlace">›</button>
     </div>
     <button class="btn" id="startBtn" type="button">Losfahren</button>
     <div class="menu-row">
-      <button class="btn ghost" id="dailyBtn" type="button">Tagesrennen<small id="dailySub"></small></button>
-      <button class="btn ghost" id="liveBtn" type="button" hidden>Live-Duell<small>gegen Freunde</small></button>
+      <button class="btn ghost" id="dailyBtn" type="button"><span data-i18n="menu.daily">Tagesrennen</span><small id="dailySub"></small></button>
+      <button class="btn ghost" id="liveBtn" type="button" hidden><span data-i18n="menu.live">Live-Duell</span><small data-i18n="menu.liveSub">gegen Freunde</small></button>
     </div>
     <div class="menu-grid">
-      <button class="btn ghost" id="shopBtn" type="button">Shop</button>
-      <button class="btn ghost" id="missionsBtn" type="button">Missionen<span class="badge" id="missionBadge" hidden></span></button>
-      <button class="btn ghost" id="boardBtn" type="button">Bestenliste</button>
-      <button class="btn ghost" id="settingsBtn" type="button">Einstellungen</button>
+      <button class="btn ghost" id="shopBtn" type="button" data-i18n="menu.shop">Shop</button>
+      <button class="btn ghost" id="missionsBtn" type="button"><span data-i18n="menu.missions">Missionen</span><span class="badge" id="missionBadge" hidden></span></button>
+      <button class="btn ghost" id="boardBtn" type="button" data-i18n="menu.board">Bestenliste</button>
+      <button class="btn ghost" id="settingsBtn" type="button" data-i18n="menu.settings">Einstellungen</button>
     </div>
     <p class="best-line" id="menuBest"></p>
   </div>
@@ -269,216 +275,225 @@ body {
 
 <div class="overlay" id="over" hidden>
   <div class="card">
-    <h2 class="title" id="overTitle">Gestürzt</h2>
+    <h2 class="title" id="overTitle" data-i18n="over.title">Gestürzt</h2>
     <p class="sub" id="overReason"></p>
-    <span class="record" id="overRecord" hidden>Neuer Rekord</span>
+    <span class="record" id="overRecord" hidden data-i18n="over.record">Neuer Rekord</span>
     <div class="duel-result" id="duelResult" hidden></div>
     <dl class="stats">
-      <div><dt>Punkte</dt><dd id="stScore">0</dd></div>
-      <div><dt>Strecke</dt><dd id="stDist">0 m</dd></div>
-      <div><dt>Top-Speed</dt><dd id="stSpeed">0 km/h</dd></div>
-      <div><dt>Münzen</dt><dd id="stCoins">0</dd></div>
+      <div><dt data-i18n="over.points">Punkte</dt><dd id="stScore">0</dd></div>
+      <div><dt data-i18n="over.distance">Strecke</dt><dd id="stDist">0 m</dd></div>
+      <div><dt data-i18n="over.topSpeed">Top-Speed</dt><dd id="stSpeed">0 <small>km/h</small></dd></div>
+      <div><dt data-i18n="over.coins">Münzen</dt><dd id="stCoins">0</dd></div>
     </dl>
     <form class="name-form" id="nameForm" hidden>
-      <label for="nameInput" id="nameLabel">Du kommst in die Bestenliste! Dein Name:</label>
+      <label for="nameInput" id="nameLabel" data-i18n="over.nameLabel">Du kommst in die Bestenliste! Dein Name:</label>
       <div class="name-row">
-        <input id="nameInput" name="player" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name">
-        <button class="btn small" type="submit">Eintragen</button>
+        <input id="nameInput" name="player" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name" data-i18n-ph="name.placeholder">
+        <button class="btn small" type="submit" data-i18n="over.enter">Eintragen</button>
       </div>
     </form>
     <p class="wallet" id="overWallet"></p>
-    <p class="list-title">Missionen</p>
+    <p class="list-title" data-i18n="over.missions">Missionen</p>
     <ol class="mlist" id="overMissions"></ol>
-    <p class="list-title">Bestenliste</p>
+    <p class="list-title" data-i18n="over.board">Bestenliste</p>
     <ol class="scores" id="overScores"></ol>
-    <button class="btn" id="againBtn" type="button">Nochmal</button>
-    <button class="btn ghost" id="challengeBtn" type="button">Freund herausfordern</button>
-    <button class="btn ghost" id="toMenuBtn" type="button">Menü</button>
+    <button class="btn" id="againBtn" type="button" data-i18n="over.again">Nochmal</button>
+    <button class="btn ghost" id="challengeBtn" type="button" data-i18n="over.challenge">Freund herausfordern</button>
+    <button class="btn ghost" id="toMenuBtn" type="button" data-i18n="over.menu">Menü</button>
     <p class="best-line" id="overBest"></p>
   </div>
 </div>
 
 <div class="overlay" id="duel" hidden>
   <div class="card">
-    <h2 class="title">Du<span>ell</span></h2>
-    <p class="duel-vs"><b id="duelName">Jemand</b> fordert dich heraus!</p>
+    <h2 class="title" data-i18n-title="duel.title">Du<span>ell</span></h2>
+    <p class="duel-vs" id="duelVs"></p>
     <dl class="stats">
-      <div><dt>Strecke</dt><dd id="duelDist">0 m</dd></div>
-      <div><dt>Punkte</dt><dd id="duelScore">0</dd></div>
+      <div><dt data-i18n="over.distance">Strecke</dt><dd id="duelDist">0 m</dd></div>
+      <div><dt data-i18n="over.points">Punkte</dt><dd id="duelScore">0</dd></div>
     </dl>
-    <p class="note">Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.</p>
-    <button class="btn" id="duelGoBtn" type="button">Duell starten</button>
-    <button class="btn ghost" id="duelCancelBtn" type="button">Abbrechen</button>
+    <p class="note" data-i18n="duel.note">Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.</p>
+    <button class="btn" id="duelGoBtn" type="button" data-i18n="duel.go">Duell starten</button>
+    <button class="btn ghost" id="duelCancelBtn" type="button" data-i18n="common.cancel">Abbrechen</button>
   </div>
 </div>
 
 <div class="overlay" id="live" hidden>
   <div class="card">
-    <h2 class="title">Live-<span>Duell</span></h2>
+    <h2 class="title" data-i18n-title="live.title">Live-<span>Duell</span></h2>
     <div id="liveJoin">
-      <p class="note">Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.</p>
+      <p class="note" data-i18n="live.note">Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.</p>
       <form class="name-form" id="liveNameForm">
-        <label for="liveName">Dein Spielername:</label>
-        <div class="name-row"><input id="liveName" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name"></div>
+        <label for="liveName" data-i18n="live.name">Dein Spielername:</label>
+        <div class="name-row"><input id="liveName" maxlength="14" autocomplete="nickname" enterkeyhint="done" placeholder="Name" data-i18n-ph="name.placeholder"></div>
       </form>
-      <button class="btn" id="liveCreateBtn" type="button">Raum erstellen</button>
+      <button class="btn" id="liveCreateBtn" type="button" data-i18n="live.create">Raum erstellen</button>
       <form class="name-form" id="liveCodeForm">
-        <label for="liveCode">Oder Raum-Code eingeben:</label>
+        <label for="liveCode" data-i18n="live.codeLabel">Oder Raum-Code eingeben:</label>
         <div class="name-row">
           <input id="liveCode" maxlength="4" autocomplete="off" autocapitalize="characters" enterkeyhint="go" placeholder="CODE">
-          <button class="btn small" type="submit">Beitreten</button>
+          <button class="btn small" type="submit" data-i18n="live.join">Beitreten</button>
         </div>
       </form>
     </div>
     <div id="liveRoom" hidden>
-      <p class="list-title">Raum-Code</p>
+      <p class="list-title" data-i18n="live.room">Raum-Code</p>
       <p class="room-code" id="liveRoomCode">----</p>
-      <button class="btn ghost" id="liveShareBtn" type="button">Einladung teilen</button>
+      <button class="btn ghost" id="liveShareBtn" type="button" data-i18n="live.invite">Einladung teilen</button>
       <ul class="live-players" id="livePlayers"></ul>
-      <p class="note" id="liveStatus">Warte auf deinen Gegner …</p>
-      <button class="btn" id="liveStartBtn" type="button" disabled>Rennen starten</button>
+      <p class="note" id="liveStatus"></p>
+      <button class="btn" id="liveStartBtn" type="button" disabled data-i18n="live.start">Rennen starten</button>
     </div>
     <p class="note" id="liveErr" hidden></p>
-    <button class="btn ghost" id="liveLeaveBtn" type="button">Zurück</button>
+    <button class="btn ghost" id="liveLeaveBtn" type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="challenge" hidden>
   <div class="card">
-    <h2 class="title">Heraus<span>fordern</span></h2>
+    <h2 class="title" data-i18n-title="ch.title">Heraus<span>fordern</span></h2>
     <p class="note" id="chText">Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist.</p>
     <form class="name-form" id="chForm">
-      <label for="chName">Dein Spielername:</label>
+      <label for="chName" data-i18n="ch.name">Dein Spielername:</label>
       <div class="name-row">
-        <input id="chName" maxlength="14" autocomplete="nickname" enterkeyhint="send" placeholder="Name">
-        <button class="btn small" type="submit">Link teilen</button>
+        <input id="chName" maxlength="14" autocomplete="nickname" enterkeyhint="send" placeholder="Name" data-i18n-ph="name.placeholder">
+        <button class="btn small" type="submit" data-i18n="ch.share">Link teilen</button>
       </div>
     </form>
-    <input class="share-link" id="chLink" readonly hidden aria-label="Duell-Link">
+    <input class="share-link" id="chLink" readonly hidden aria-label="Duell-Link" data-i18n-aria="ch.linkAria">
     <p class="note" id="chStatus" hidden></p>
-    <button class="btn ghost" data-back type="button">Zurück</button>
+    <button class="btn ghost" data-back type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="board" hidden>
   <div class="card">
-    <h2 class="title">Besten<span>liste</span></h2>
-    <div class="seg" role="group" aria-label="Welche Liste">
-      <button type="button" id="tabLocal" aria-pressed="true">Dieses Gerät</button>
-      <button type="button" id="tabOnline" aria-pressed="false">Weltweit</button>
-      <button type="button" id="tabDaily" aria-pressed="false">Heute</button>
+    <h2 class="title" data-i18n-title="board.title">Besten<span>liste</span></h2>
+    <div class="seg" role="group" aria-label="Welche Liste" data-i18n-aria="board.which">
+      <button type="button" id="tabLocal" aria-pressed="true" data-i18n="board.local">Dieses Gerät</button>
+      <button type="button" id="tabOnline" aria-pressed="false" data-i18n="board.online">Weltweit</button>
+      <button type="button" id="tabDaily" aria-pressed="false" data-i18n="board.today">Heute</button>
     </div>
     <ol class="scores" id="boardScores"></ol>
     <p class="note" id="boardNote" hidden></p>
-    <button class="btn" data-back type="button">Zurück</button>
+    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="shop" hidden>
   <div class="card">
-    <h2 class="title">Shop</h2>
-    <p class="wallet"><i class="coin-dot"></i><span id="shopWallet">0</span> Münzen</p>
+    <h2 class="title" data-i18n="shop.title">Shop</h2>
+    <p class="wallet"><i class="coin-dot"></i><span id="shopWallet">0</span> <span data-i18n="shop.coins">Münzen</span></p>
     <div class="shop" id="shopList"></div>
-    <button class="btn" data-back type="button">Zurück</button>
+    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="missions" hidden>
   <div class="card">
-    <h2 class="title">Missi<span>onen</span></h2>
-    <p class="note">Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.</p>
+    <h2 class="title" data-i18n-title="mis.title">Missi<span>onen</span></h2>
+    <p class="note" data-i18n="mis.note">Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.</p>
     <ol class="mlist" id="missionList"></ol>
-    <button class="btn" data-back type="button">Zurück</button>
+    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="settings" hidden>
   <div class="card">
-    <h2 class="title">Einstel<span>lungen</span></h2>
+    <h2 class="title" data-i18n-title="set.title">Einstel<span>lungen</span></h2>
     <div class="setting">
-      <label for="setMusic">Musik <span id="setMusicVal"></span></label>
+      <label for="setLang" data-i18n="set.lang">Sprache</label>
+      <select id="setLang" class="lang-select">
+        <option value="auto" data-i18n="set.langAuto">Automatisch</option>
+        <option value="de">Deutsch</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option>
+        <option value="fr">Français</option><option value="it">Italiano</option><option value="ru">Русский</option><option value="zh">中文</option>
+        <option value="ja">日本語</option><option value="ar">العربية</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label for="setMusic"><span data-i18n="set.music">Musik</span> <span id="setMusicVal"></span></label>
       <input type="range" id="setMusic" min="0" max="100" step="5">
     </div>
     <div class="setting">
-      <label for="setSfx">Effekte <span id="setSfxVal"></span></label>
+      <label for="setSfx"><span data-i18n="set.sfx">Effekte</span> <span id="setSfxVal"></span></label>
       <input type="range" id="setSfx" min="0" max="100" step="5">
     </div>
     <div class="setting">
-      <span class="lbl" id="soundLabel">Ton</span>
+      <span class="lbl" id="soundLabel" data-i18n="set.sound">Ton</span>
       <div class="seg" role="group" aria-labelledby="soundLabel">
-        <button type="button" data-opt="sound" data-val="1">An</button>
-        <button type="button" data-opt="sound" data-val="0">Aus</button>
+        <button type="button" data-opt="sound" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="sound" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="gfxLabel">Grafik</span>
+      <span class="lbl" id="gfxLabel" data-i18n="set.gfx">Grafik</span>
       <div class="seg" role="group" aria-labelledby="gfxLabel">
-        <button type="button" data-opt="gfx" data-val="2">Hoch</button>
-        <button type="button" data-opt="gfx" data-val="1">Auto</button>
-        <button type="button" data-opt="gfx" data-val="0">Schnell</button>
+        <button type="button" data-opt="gfx" data-val="2" data-i18n="set.high">Hoch</button>
+        <button type="button" data-opt="gfx" data-val="1" data-i18n="set.auto">Auto</button>
+        <button type="button" data-opt="gfx" data-val="0" data-i18n="set.fast">Schnell</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="fpsLabel">Bildrate anzeigen</span>
+      <span class="lbl" id="fpsLabel" data-i18n="set.fps">Bildrate anzeigen</span>
       <div class="seg" role="group" aria-labelledby="fpsLabel">
-        <button type="button" data-opt="fps" data-val="1">An</button>
-        <button type="button" data-opt="fps" data-val="0">Aus</button>
+        <button type="button" data-opt="fps" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="fps" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="vibLabel">Vibration bei Sturz</span>
+      <span class="lbl" id="vibLabel" data-i18n="set.vibrate">Vibration bei Sturz</span>
       <div class="seg" role="group" aria-labelledby="vibLabel">
-        <button type="button" data-opt="vibrate" data-val="1">An</button>
-        <button type="button" data-opt="vibrate" data-val="0">Aus</button>
+        <button type="button" data-opt="vibrate" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="vibrate" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="snowLabel">Schneefall</span>
+      <span class="lbl" id="snowLabel" data-i18n="set.snow">Schneefall</span>
       <div class="seg" role="group" aria-labelledby="snowLabel">
-        <button type="button" data-opt="snow" data-val="1">An</button>
-        <button type="button" data-opt="snow" data-val="0">Aus</button>
+        <button type="button" data-opt="snow" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="snow" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="shakeLabel">Kamera wackelt bei Treffern</span>
+      <span class="lbl" id="shakeLabel" data-i18n="set.shake">Kamera wackelt bei Treffern</span>
       <div class="seg" role="group" aria-labelledby="shakeLabel">
-        <button type="button" data-opt="shake" data-val="1">An</button>
-        <button type="button" data-opt="shake" data-val="0">Aus</button>
+        <button type="button" data-opt="shake" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="shake" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
     <div class="setting">
-      <span class="lbl" id="sensLabel">Wisch-Empfindlichkeit</span>
+      <span class="lbl" id="sensLabel" data-i18n="set.sens">Wisch-Empfindlichkeit</span>
       <div class="seg" role="group" aria-labelledby="sensLabel">
-        <button type="button" data-sens="niedrig">Niedrig</button>
-        <button type="button" data-sens="mittel">Mittel</button>
-        <button type="button" data-sens="hoch">Hoch</button>
+        <button type="button" data-sens="niedrig" data-i18n="set.low">Niedrig</button>
+        <button type="button" data-sens="mittel" data-i18n="set.mid">Mittel</button>
+        <button type="button" data-sens="hoch" data-i18n="set.high">Hoch</button>
       </div>
     </div>
-    <p class="list-title">Steuerung</p>
+    <p class="list-title" data-i18n="set.controls">Steuerung</p>
     <ul class="controls">
-      <li><span class="key">← →</span><span>Wischen: eine Spur nach links oder rechts</span></li>
-      <li><span class="key">↑</span><span>Wischen oder Tippen: springen</span></li>
-      <li><span class="key">↓</span><span>Wischen: ducken, unter Bannern durch</span></li>
-      <li><span class="key">In der Luft</span><span>Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln</span></li>
-      <li><span class="key">Kombo</span><span>Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …</span></li>
-      <li><span class="key">P · Esc</span><span>Pause</span></li>
+      <li><span class="key">← →</span><span data-i18n="set.c1">Wischen: eine Spur nach links oder rechts</span></li>
+      <li><span class="key">↑</span><span data-i18n="set.c2">Wischen oder Tippen: springen</span></li>
+      <li><span class="key">↓</span><span data-i18n="set.c3">Wischen: ducken, unter Bannern durch</span></li>
+      <li><span class="key" data-i18n="set.cAir">In der Luft</span><span data-i18n="set.c4">Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln</span></li>
+      <li><span class="key" data-i18n="set.cCombo">Kombo</span><span data-i18n="set.c5">Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …</span></li>
+      <li><span class="key">P · Esc</span><span data-i18n="set.cPause">Pause</span></li>
     </ul>
-    <button class="btn ghost" id="tutorialBtn" type="button">Tutorial nochmal spielen</button>
-    <button class="btn" data-back type="button">Zurück</button>
+    <button class="btn ghost" id="tutorialBtn" type="button" data-i18n="set.tutorial">Tutorial nochmal spielen</button>
+    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
   </div>
 </div>
 
 <div class="overlay" id="pause" hidden>
   <div class="card">
-    <h2 class="title">Pause</h2>
-    <button class="btn" id="resumeBtn" type="button">Weiter</button>
-    <button class="btn ghost" id="pauseSettingsBtn" type="button">Einstellungen</button>
-    <button class="btn ghost" id="quitBtn" type="button">Lauf beenden</button>
+    <h2 class="title" data-i18n="pause.title">Pause</h2>
+    <button class="btn" id="resumeBtn" type="button" data-i18n="pause.resume">Weiter</button>
+    <button class="btn ghost" id="pauseSettingsBtn" type="button" data-i18n="pause.settings">Einstellungen</button>
+    <button class="btn ghost" id="quitBtn" type="button" data-i18n="pause.quit">Lauf beenden</button>
   </div>
 </div>
 
 <div class="tut" id="tut" hidden aria-live="polite">
-  <span class="tut-tag">Tutorial</span>
+  <span class="tut-tag" data-i18n="tut.tag">Tutorial</span>
   <span class="gesture" id="tutKey"></span>
   <p id="tutText"></p>
 </div>
@@ -486,12 +501,48 @@ body {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="assets/lib/i18n.js"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const cvs = $('game');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!window.THREE) { $('menuBest').textContent = '3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.'; return; }
+
+  // ---------- Languages: German is built in, the others come from assets/lib/i18n.js (window.I18N) ----------
+  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune & Schneekugeln","stage.3.sub":"Neu: Absperrungen und rollende Schneekugeln","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration bei Sturz","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt"};
+  const LANGS = ['de', 'en', 'es', 'pt', 'fr', 'it', 'ru', 'zh', 'ja', 'ar'];
+  const LOCALES = { de: 'de-DE', en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', it: 'it-IT', ru: 'ru-RU', zh: 'zh-CN', ja: 'ja-JP', ar: 'ar-u-nu-latn' };
+  let langPref = 'auto';
+  try { langPref = localStorage.getItem('mountain-ride-lang') || 'auto'; } catch (e) {}
+  function pickLang(pref) {
+    if (pref !== 'auto' && LANGS.includes(pref)) return pref;
+    for (const l of navigator.languages || [navigator.language || 'de']) { const c = String(l).slice(0, 2).toLowerCase(); if (LANGS.includes(c) && (c === 'de' || (window.I18N && I18N[c]))) return c; }
+    return window.I18N && I18N.en ? 'en' : 'de';
+  }
+  let LANG = pickLang(langPref);
+  // tx('key', { n: 3 }) -> text in the current language, German as fallback
+  function tx(key, vars) {
+    const d = LANG !== 'de' && window.I18N && I18N[LANG];
+    let str = (d && d[key] != null) ? d[key] : I18N_DE[key] != null ? I18N_DE[key] : key;
+    if (vars) str = str.replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? vars[k] : m);
+    return str;
+  }
+  const fmt = n => Number(n).toLocaleString(LOCALES[LANG] || 'de-DE');
+  function applyI18n(root) {
+    root = root || document;
+    document.documentElement.lang = LANG;
+    document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
+    root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tx(el.dataset.i18n); });
+    root.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tx(el.dataset.i18nPh); });
+    root.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', tx(el.dataset.i18nAria)); });
+    root.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const [a, b] = tx(el.dataset.i18nTitle).split('|');
+      el.replaceChildren(document.createTextNode(a));
+      if (b) { const sp = document.createElement('span'); sp.textContent = b; el.appendChild(sp); }
+    });
+  }
+  applyI18n();
+  if (!window.THREE) { $('menuBest').textContent = tx('err.three'); return; }
   // store apps: the WebView's localStorage can be cleared by the system, so every 'mountain-ride-*' key is mirrored
   // into Capacitor Preferences and restored from there if the local copy is gone
   const PREFS = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.Preferences;
@@ -543,7 +594,7 @@ body {
   // ---------- Renderer / scene ----------
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true }); }
-  catch (e) { $('menuBest').textContent = 'Dein Browser unterstützt kein WebGL.'; return; }
+  catch (e) { $('menuBest').textContent = tx('err.webgl'); return; }
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 600);
   scene.fog = new THREE.Fog(0xcfe3f2, 80, 205);
@@ -1033,10 +1084,10 @@ body {
   PAL.glacier = { sky: 'dawn',  fog: '#d4e6f6', hemi: 0.7,  sun: '#eef7ff', sunI: 0.72, tint: '#e8f3ff' };
   // places to ride: each has its own light, scenery, favoured track sections and music
   const LOCS = {
-    alpen:     { name: 'Alpen',        sub: 'Sonne, Tannen und der Lauf der Tageszeiten', cost: 0 },
-    wald:      { name: 'Waldabfahrt',  sub: 'Dichter Tannenwald und viel Tiefschnee', cost: 800, dense: true, favour: ['deep', 'deep'], ground: [0.98, 1, 0.97] },
-    nacht:     { name: 'Fackel-Nacht', sub: 'Nachtfahrt zwischen brennenden Fackeln', cost: 1200, fixed: PAL.torch, torches: true, favour: ['tunnel'] },
-    gletscher: { name: 'Gletscher',    sub: 'Blaue Eistürme, Spalten und Eisplatten', cost: 1500, fixed: PAL.glacier, ice: true, favour: ['ice', 'ice'], ground: [0.88, 0.94, 1] },
+    alpen:     { get name() { return tx('loc.alpen'); }, get sub() { return tx('loc.alpen.sub'); }, cost: 0 },
+    wald:      { get name() { return tx('loc.wald'); }, get sub() { return tx('loc.wald.sub'); }, cost: 800, dense: true, favour: ['deep', 'deep'], ground: [0.98, 1, 0.97] },
+    nacht:     { get name() { return tx('loc.nacht'); }, get sub() { return tx('loc.nacht.sub'); }, cost: 1200, fixed: PAL.torch, torches: true, favour: ['tunnel'] },
+    gletscher: { get name() { return tx('loc.gletscher'); }, get sub() { return tx('loc.gletscher.sub'); }, cost: 1500, fixed: PAL.glacier, ice: true, favour: ['ice', 'ice'], ground: [0.88, 0.94, 1] },
   };
   let LOC = LOCS.alpen, locKey = 'alpen';
   const cA = new THREE.Color(), cB = new THREE.Color();
@@ -1102,13 +1153,13 @@ body {
     listEl.replaceChildren();
     if (!scores.length) {
       const li = document.createElement('li'); li.className = 'empty';
-      li.textContent = 'Noch keine Einträge. Fahr los!';
+      li.textContent = tx('board.empty');
       listEl.appendChild(li); return;
     }
     scores.forEach((s, i) => {
       const li = document.createElement('li');
       if (i === highlight) li.className = 'me';
-      for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', s.score.toLocaleString('de-DE')], ['dist', s.dist.toLocaleString('de-DE') + ' m']]) {
+      for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', fmt(s.score)], ['dist', fmt(s.dist) + ' m']]) {
         const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.appendChild(sp);
       }
       listEl.appendChild(li);
@@ -1132,14 +1183,14 @@ body {
   }
 
   const OB = {
-    tree:    { hw: 0.8, hd: 0.8, h: 6, size: 6.5, reason: 'Gegen einen Baum gefahren.' },
-    rock:    { hw: 0.75, hd: 0.7, h: 1.05, size: 1.5, reason: 'Gegen einen Felsen gekracht.' },
-    snowman: { hw: 0.6, hd: 0.6, h: 2.4, size: 2.6, reason: 'Einen Schneemann umgefahren.' },
-    log:     { hw: 1.45, hd: 0.5, h: 0.75, size: 2.0, reason: 'Über den Baumstamm gestolpert. Spring drüber!' },
-    gate:    { hw: 1.5, hd: 0.4, h: 2.2, reason: 'Gegen das Banner gefahren. Wisch nach unten zum Ducken!' },
-    fence:   { hw: 1.5, hd: 0.4, h: 9, reason: 'In die Absperrung gefahren. Wechsel rechtzeitig die Spur!' },
-    snowball:{ hw: 0.75, hd: 0.75, h: 1.35, reason: 'Von einer rollenden Schneekugel erwischt.' },
-    crevasse:{ hw: 1.6, hd: 0.8, h: 0.6, reason: 'In eine Gletscherspalte gestürzt. Spring drüber!' },
+    tree:    { hw: 0.8, hd: 0.8, h: 6, size: 6.5, get reason() { return tx('crash.tree'); } },
+    rock:    { hw: 0.75, hd: 0.7, h: 1.05, size: 1.5, get reason() { return tx('crash.rock'); } },
+    snowman: { hw: 0.6, hd: 0.6, h: 2.4, size: 2.6, get reason() { return tx('crash.snowman'); } },
+    log:     { hw: 1.45, hd: 0.5, h: 0.75, size: 2.0, get reason() { return tx('crash.log'); } },
+    gate:    { hw: 1.5, hd: 0.4, h: 2.2, get reason() { return tx('crash.gate'); } },
+    fence:   { hw: 1.5, hd: 0.4, h: 9, get reason() { return tx('crash.fence'); } },
+    snowball:{ hw: 0.75, hd: 0.75, h: 1.35, get reason() { return tx('crash.snowball'); } },
+    crevasse:{ hw: 1.6, hd: 0.8, h: 0.6, get reason() { return tx('crash.crevasse'); } },
   };
   // painted obstacle sprites (gate, fence, snowball) and the crevasse ground texture
   const crevTex = tex('crevasse.png', { repeat: true, aniso: true });
@@ -1397,11 +1448,11 @@ body {
 
   // ---------- Power-ups ----------
   const POWERS = {
-    magnet: { name: 'Magnet', color: '#e5396f', time: 10 },
-    shield: { name: 'Schild', color: '#2f8fe0', time: 0 },
-    turbo:  { name: 'Turbo', color: '#ff8a1f', time: 5 },
-    double: { name: 'Doppelte Punkte', color: '#7d55e8', time: 15 },
-    spring: { name: 'Super-Sprung', color: '#22a866', time: 12 },
+    magnet: { get name() { return tx('pw.magnet'); }, color: '#e5396f', time: 10 },
+    shield: { get name() { return tx('pw.shield'); }, color: '#2f8fe0', time: 0 },
+    turbo:  { get name() { return tx('pw.turbo'); }, color: '#ff8a1f', time: 5 },
+    double: { get name() { return tx('pw.double'); }, color: '#7d55e8', time: 15 },
+    spring: { get name() { return tx('pw.spring'); }, color: '#22a866', time: 12 },
   };
   const powerMats = {};
   for (const t of Object.keys(POWERS)) powerMats[t] = new THREE.SpriteMaterial({ map: tex('power-' + t + '.png'), transparent: true, depthWrite: false });
@@ -1419,16 +1470,16 @@ body {
   }
   function collectPower(type) {
     if (type === 'shield') PW.shield = 1; else PW[type] = powerTime(type);
-    popup(POWERS[type].name, type === 'shield' ? 'schützt vor einem Treffer' : powerTime(type) + ' Sekunden');
+    popup(POWERS[type].name, type === 'shield' ? tx('pw.shieldSub') : tx('pw.seconds', { n: powerTime(type) }));
     progressMission('powers', 1);
     Sound.power();
   }
   // returns true if the rider is out of the run
   let lastTurboMsg = -9;
   function hitObstacle(e, reason) {
-    if (tut.active) { smash(e); tut.failed = true; shake = reduceMotion ? 0 : 0.3; Sound.shieldBreak(); popup('Getroffen!', 'Im Tutorial darfst du es nochmal versuchen'); return false; }
-    if (PW.turbo > 0 || PW.invuln > 0) { smash(e); if (PW.turbo > 0 && clock - lastTurboMsg > 1.5) { lastTurboMsg = clock; popup('Turbo!', 'Du bist gerade unverwundbar'); } return false; }
-    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup('Schild hat dich gerettet!', 'Jetzt ist es weg'); Sound.shieldBreak(); buzz(60); return false; }
+    if (tut.active) { smash(e); tut.failed = true; shake = reduceMotion ? 0 : 0.3; Sound.shieldBreak(); popup(tx('hit.tut'), tx('hit.tutSub')); return false; }
+    if (PW.turbo > 0 || PW.invuln > 0) { smash(e); if (PW.turbo > 0 && clock - lastTurboMsg > 1.5) { lastTurboMsg = clock; popup(tx('hit.turbo'), tx('hit.turboSub')); } return false; }
+    if (PW.shield) { PW.shield = 0; PW.invuln = 1; smash(e); popup(tx('hit.shield'), tx('hit.shieldSub')); Sound.shieldBreak(); buzz(60); return false; }
     crash(reason); return true;
   }
   function smash(e) {
@@ -1456,12 +1507,12 @@ body {
 
   // the run comes in stages: each one adds one new kind of obstacle, so nothing new arrives before the last one is learned
   const STAGES = [
-    { from: 0,    name: 'Aufwärmen',            sub: 'Bäume und Felsen: wisch zur Seite' },
-    { from: 450,  name: 'Baumstämme',           sub: 'Neu: Baumstämme und Schanzen. Wisch hoch zum Springen' },
-    { from: 1000, name: 'Banner',               sub: 'Neu: Banner. Wisch runter zum Ducken' },
-    { from: 1650, name: 'Zäune & Schneekugeln', sub: 'Neu: Absperrungen und rollende Schneekugeln' },
-    { from: 2400, name: 'Gletscherspalten',     sub: 'Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt' },
-    { from: 3200, name: 'Profi',                sub: 'Alles, immer schneller' },
+    { from: 0,    get name() { return tx('stage.0'); }, get sub() { return tx('stage.0.sub'); } },
+    { from: 450,  get name() { return tx('stage.1'); }, get sub() { return tx('stage.1.sub'); } },
+    { from: 1000, get name() { return tx('stage.2'); }, get sub() { return tx('stage.2.sub'); } },
+    { from: 1650, get name() { return tx('stage.3'); }, get sub() { return tx('stage.3.sub'); } },
+    { from: 2400, get name() { return tx('stage.4'); }, get sub() { return tx('stage.4.sub'); } },
+    { from: 3200, get name() { return tx('stage.5'); }, get sub() { return tx('stage.5.sub'); } },
   ];
   function stageAt(d) { const m = d - startD; let i = 0; while (i + 1 < STAGES.length && m >= STAGES[i + 1].from) i++; return i; }
   function difficulty() { return clamp(0.05 + (P.d - startD) / 4500, 0, 1); }   // rises slowly, full after about 4 km
@@ -1647,7 +1698,11 @@ body {
   // long: a sentence to read (stage intros), shown smaller and longer
   function popup(text, sub, long) {
     const subStyle = long ? 'font-family:var(--ui);font-weight:700;color:var(--jacket);font-size:clamp(17px,4.4vw,22px);margin:6px auto 0;max-width:22em;padding:0 16px' : 'font-family:var(--display);color:var(--jacket);font-size:clamp(22px,5vw,32px);margin-top:4px';
-    popEl.innerHTML = `<div style="font-weight:800;font-size:clamp(26px,6vw,40px);line-height:1">${text}</div><div style="${subStyle}">${sub}</div>`;
+    // built with textContent: texts can contain player names from duel links
+    const a = document.createElement('div'), b = document.createElement('div');
+    a.style.cssText = 'font-weight:800;font-size:clamp(26px,6vw,40px);line-height:1'; a.textContent = text;
+    b.style.cssText = subStyle; b.textContent = sub;
+    popEl.replaceChildren(a, b);
     popEl.style.opacity = '1'; popEl.style.transform = 'translateY(-8px)';
     popTimer = long ? 3 : 1.4;
   }
@@ -1862,23 +1917,23 @@ body {
   }
 
   const UPGRADES = {
-    magnet: { name: 'Magnet', per: 3 },
-    turbo:  { name: 'Turbo', per: 1 },
-    double: { name: 'Doppelte Punkte', per: 3 },
-    spring: { name: 'Super-Sprung', per: 3 },
+    magnet: { get name() { return tx('pw.magnet'); }, per: 3 },
+    turbo:  { get name() { return tx('pw.turbo'); }, per: 1 },
+    double: { get name() { return tx('pw.double'); }, per: 3 },
+    spring: { get name() { return tx('pw.spring'); }, per: 3 },
   };
   const UP_COST = [150, 300, 500, 800, 1200], UP_MAX = 5;
   function powerTime(t) { return POWERS[t].time + (UPGRADES[t] ? UPGRADES[t].per * upgrades[t] : 0); }
   const CONSUMABLES = {
-    shield: { name: 'Start-Schild', desc: 'Du startest den nächsten Lauf mit einem Schild.', cost: 250, icon: 'shield' },
-    boost:  { name: 'Turbo-Start', desc: 'Die ersten 6 Sekunden im Turbo, unverwundbar.', cost: 300, icon: 'turbo' },
+    shield: { get name() { return tx('shop.startShield'); }, get desc() { return tx('shop.startShield.desc'); }, cost: 250, icon: 'shield' },
+    boost:  { get name() { return tx('shop.turboStart'); }, get desc() { return tx('shop.turboStart.desc'); }, cost: 300, icon: 'turbo' },
   };
   const TRAILS = {
-    schnee:     { name: 'Pulver', color: '#ffffff', cost: 0 },
-    gold:       { name: 'Gold', color: '#ffd34d', cost: 400 },
-    pink:       { name: 'Pink', color: '#ff6fa8', cost: 400 },
-    eis:        { name: 'Eis', color: '#7fe3ff', cost: 400 },
-    regenbogen: { name: 'Regenbogen', color: 'conic-gradient(#ff5d5d, #ffd34d, #6fe38a, #6fc7ff, #b07cff, #ff5d5d)', cost: 900 },
+    schnee:     { get name() { return tx('trail.schnee'); }, color: '#ffffff', cost: 0 },
+    gold:       { get name() { return tx('trail.gold'); }, color: '#ffd34d', cost: 400 },
+    pink:       { get name() { return tx('trail.pink'); }, color: '#ff6fa8', cost: 400 },
+    eis:        { get name() { return tx('trail.eis'); }, color: '#7fe3ff', cost: 400 },
+    regenbogen: { get name() { return tx('trail.regenbogen'); }, color: 'conic-gradient(#ff5d5d, #ffd34d, #6fe38a, #6fc7ff, #b07cff, #ff5d5d)', cost: 900 },
   };
   // outfits and boards for the 3D rider
   const OUTFITS = {
@@ -1891,12 +1946,12 @@ body {
     gold:    { name: 'Champion', cost: 1500, jacket: '#ffd34d', pants: '#f4f6fa', helmet: '#ffd34d', goggles: '#2ec4b6', scarf: '#e5396f' },
   };
   const BOARDS = {
-    pink:   { name: 'Pink',    cost: 0,    board: '#e5396f', boardTop: '#2b2f3a' },
-    blau:   { name: 'Ozean',   cost: 300,  board: '#2f8fe0', boardTop: '#f4f6fa' },
-    flamme: { name: 'Flamme',  cost: 400,  board: '#ff6a1f', boardTop: '#2b2b2b' },
-    gruen:  { name: 'Tanne',   cost: 400,  board: '#22a866', boardTop: '#f4f6fa' },
-    carbon: { name: 'Carbon',  cost: 700,  board: '#2b2f3a', boardTop: '#ffc531' },
-    gold:   { name: 'Gold',    cost: 1200, board: '#ffd34d', boardTop: '#7a5a00' },
+    pink:   { get name() { return tx('board.pink'); }, cost: 0,    board: '#e5396f', boardTop: '#2b2f3a' },
+    blau:   { get name() { return tx('board.blau'); }, cost: 300,  board: '#2f8fe0', boardTop: '#f4f6fa' },
+    flamme: { get name() { return tx('board.flamme'); }, cost: 400,  board: '#ff6a1f', boardTop: '#2b2b2b' },
+    gruen:  { get name() { return tx('board.gruen'); }, cost: 400,  board: '#22a866', boardTop: '#f4f6fa' },
+    carbon: { get name() { return tx('board.carbon'); }, cost: 700,  board: '#2b2f3a', boardTop: '#ffc531' },
+    gold:   { get name() { return tx('board.gold'); }, cost: 1200, board: '#ffd34d', boardTop: '#7a5a00' },
   };
   function applyGear() {
     if (!rider3d) return;
@@ -1907,16 +1962,16 @@ body {
 
   // ---------- Missions ----------
   const MISSION_POOL = [
-    { type: 'runDist',   run: true,  targets: [500, 1000, 1500, 2500], text: n => `Fahre ${n.toLocaleString('de-DE')} m in einem Lauf` },
-    { type: 'runCoins',  run: true,  targets: [30, 60, 100],           text: n => `Sammle ${n} Münzen in einem Lauf` },
-    { type: 'runScore',  run: true,  targets: [1500, 3000, 6000],      text: n => `Erreiche ${n.toLocaleString('de-DE')} Punkte in einem Lauf` },
-    { type: 'runLanes',  run: true,  targets: [40, 80],                text: n => `Wechsle ${n}-mal die Spur in einem Lauf` },
-    { type: 'coins',     run: false, targets: [200, 500],              text: n => `Sammle insgesamt ${n} Münzen` },
-    { type: 'spins',     run: false, targets: [3, 6, 10],              text: n => `Lande ${n} Drehungen` },
-    { type: 'gates',     run: false, targets: [3, 8],                  text: n => `Ducke dich unter ${n} Bannern durch` },
-    { type: 'crevasses', run: false, targets: [2, 5],                  text: n => `Springe über ${n} Gletscherspalten` },
-    { type: 'powers',    run: false, targets: [3, 8],                  text: n => `Sammle ${n} Power-ups` },
-    { type: 'runs',      run: false, targets: [3, 5],                  text: n => `Spiele ${n} Läufe` },
+    { type: 'runDist',   run: true,  targets: [500, 1000, 1500, 2500], text: n => tx('mis.runDist', { n: fmt(n) }) },
+    { type: 'runCoins',  run: true,  targets: [30, 60, 100],           text: n => tx('mis.runCoins', { n: fmt(n) }) },
+    { type: 'runScore',  run: true,  targets: [1500, 3000, 6000],      text: n => tx('mis.runScore', { n: fmt(n) }) },
+    { type: 'runLanes',  run: true,  targets: [40, 80],                text: n => tx('mis.runLanes', { n }) },
+    { type: 'coins',     run: false, targets: [200, 500],              text: n => tx('mis.coins', { n: fmt(n) }) },
+    { type: 'spins',     run: false, targets: [3, 6, 10],              text: n => tx('mis.spins', { n }) },
+    { type: 'gates',     run: false, targets: [3, 8],                  text: n => tx('mis.gates', { n }) },
+    { type: 'crevasses', run: false, targets: [2, 5],                  text: n => tx('mis.crevasses', { n }) },
+    { type: 'powers',    run: false, targets: [3, 8],                  text: n => tx('mis.powers', { n }) },
+    { type: 'runs',      run: false, targets: [3, 5],                  text: n => tx('mis.runs', { n }) },
   ];
   const REWARDS = [60, 120, 200, 300];
   let missions = store.get('missions', []).filter(m => MISSION_POOL.some(t => t.type === m.type));
@@ -1940,7 +1995,7 @@ body {
       if (m.progress >= m.target) {
         m.progress = m.target; m.done = true;
         wallet += m.reward;
-        popup('Mission erfüllt!', '+' + m.reward + ' Münzen');
+        popup(tx('mis.done'), tx('mis.reward', { n: m.reward }));
         Sound.power();
       }
       saveMeta();
@@ -1959,7 +2014,7 @@ body {
       const fill = document.createElement('i'); fill.style.width = Math.round(100 * Math.min(1, m.progress / m.target)) + '%';
       bar.appendChild(fill);
       const count = document.createElement('span'); count.className = 'count';
-      count.textContent = `${Math.floor(m.progress).toLocaleString('de-DE')} / ${m.target.toLocaleString('de-DE')}`;
+      count.textContent = `\u2066${fmt(Math.floor(m.progress))} / ${fmt(m.target)}\u2069`;   // isolated: stays '3 / 5' in Arabic
       li.append(tick, what, rew, bar, count);
       el.appendChild(li);
     }
@@ -2005,19 +2060,19 @@ body {
   $('locPrev').addEventListener('click', () => showLoc(-1));
   $('locNext').addEventListener('click', () => showLoc(1));
   function refreshMenu() {
-    $('menuWallet').textContent = wallet.toLocaleString('de-DE');
+    $('menuWallet').textContent = fmt(wallet);
     const L = LOCS[menuLoc], owned = locs.owned.includes(menuLoc);
     $('locName').textContent = L.name + (owned ? '' : ' 🔒');
     $('locSub').textContent = L.sub;
     const sb = $('startBtn');
-    sb.textContent = owned ? 'Losfahren' : `Freischalten · ${L.cost.toLocaleString('de-DE')}`;
+    sb.textContent = owned ? tx('menu.start') : tx('menu.unlock', { n: fmt(L.cost) });
     sb.disabled = !owned && wallet < L.cost;
     const dy = dailyInfo(), mine = store.get('dailyBest', {});
-    $('dailySub').textContent = LOCS[dy.loc].name + (mine.day === dy.day ? ` · dein Bestwert ${mine.dist.toLocaleString('de-DE')} m` : ' · heute neu');
+    $('dailySub').textContent = mine.day === dy.day ? tx('menu.dailyBest', { place: LOCS[dy.loc].name, n: fmt(mine.dist) }) : tx('menu.dailyNew', { place: LOCS[dy.loc].name });
     const done = missions.filter(m => m.done).length;
     $('missionBadge').hidden = !done;
     $('missionBadge').textContent = done ? '✓' + done : '';
-    $('menuBest').textContent = best ? 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte' : 'Sammle Münzen und kauf dir im Shop stärkere Power-ups.';
+    $('menuBest').textContent = best ? tx('menu.best', { n: fmt(best) }) : tx('menu.hint');
   }
 
   // ---------- Shop ----------
@@ -2035,9 +2090,9 @@ body {
   function buyButton(cost, label, onBuy) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small';
     if (cost == null) { b.textContent = label; b.disabled = true; return b; }
-    b.innerHTML = '<i class="coin-dot"></i>'; b.append(cost.toLocaleString('de-DE'));
+    b.innerHTML = '<i class="coin-dot"></i>'; b.append(fmt(cost));
     b.disabled = wallet < cost;
-    b.setAttribute('aria-label', `${label} für ${cost} Münzen kaufen`);
+    b.setAttribute('aria-label', tx('shop.buy', { label, n: fmt(cost) }));
     b.addEventListener('click', () => { if (wallet < cost) return; wallet -= cost; onBuy(); saveMeta(); Sound.init(); Sound.coin(); renderShop(); });
     return b;
   }
@@ -2050,9 +2105,9 @@ body {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch';
       b.setAttribute('aria-pressed', String(active === k));
       const dot = document.createElement('i'); dot.style.background = paint(d);
-      const lab = document.createElement('span'); lab.textContent = has ? d.name : d.cost.toLocaleString('de-DE') + ' Münzen';
+      const lab = document.createElement('span'); lab.textContent = has ? d.name : tx('shop.price', { n: fmt(d.cost) });
       b.append(dot, lab);
-      b.setAttribute('aria-label', has ? `${title} ${d.name} wählen` : `${title} ${d.name} für ${d.cost} Münzen kaufen`);
+      b.setAttribute('aria-label', has ? tx('shop.choose', { group: title, name: d.name }) : tx('shop.buyItem', { group: title, name: d.name, n: fmt(d.cost) }));
       if (!has && wallet < d.cost) { b.disabled = true; b.style.opacity = '0.5'; }
       b.addEventListener('click', () => {
         if (!has) { if (wallet < d.cost) return; wallet -= d.cost; owned.push(k); Sound.init(); Sound.coin(); }
@@ -2063,35 +2118,35 @@ body {
     list.appendChild(sw);
   }
   function renderShop() {
-    $('shopWallet').textContent = wallet.toLocaleString('de-DE');
+    $('shopWallet').textContent = fmt(wallet);
     const list = $('shopList'); list.replaceChildren();
-    const h1 = document.createElement('h3'); h1.textContent = 'Power-ups verbessern'; list.appendChild(h1);
+    const h1 = document.createElement('h3'); h1.textContent = tx('shop.upgrades'); list.appendChild(h1);
     for (const t of Object.keys(UPGRADES)) {
       const lvl = upgrades[t];
       const pips = document.createElement('div'); pips.className = 'pips';
       for (let i = 0; i < UP_MAX; i++) { const p = document.createElement('i'); if (i < lvl) p.className = 'on'; pips.appendChild(p); }
-      const row = shopRow(t, UPGRADES[t].name, `Hält ${powerTime(t)} Sekunden` + (lvl < UP_MAX ? ` · nächste Stufe ${powerTime(t) + UPGRADES[t].per} s` : ''), pips);
-      row.appendChild(lvl < UP_MAX ? buyButton(UP_COST[lvl], UPGRADES[t].name, () => { upgrades[t]++; }) : buyButton(null, 'Maximal'));
+      const row = shopRow(t, UPGRADES[t].name, tx('shop.lasts', { n: powerTime(t) }) + (lvl < UP_MAX ? tx('shop.next', { n: powerTime(t) + UPGRADES[t].per }) : ''), pips);
+      row.appendChild(lvl < UP_MAX ? buyButton(UP_COST[lvl], UPGRADES[t].name, () => { upgrades[t]++; }) : buyButton(null, tx('shop.max')));
       list.appendChild(row);
     }
-    const h2 = document.createElement('h3'); h2.textContent = 'Für den nächsten Lauf'; list.appendChild(h2);
+    const h2 = document.createElement('h3'); h2.textContent = tx('shop.nextRun'); list.appendChild(h2);
     for (const k of Object.keys(CONSUMABLES)) {
       const c = CONSUMABLES[k];
-      const row = shopRow(c.icon, c.name, c.desc + (stock[k] ? ` Vorrat: ${stock[k]}` : ''));
+      const row = shopRow(c.icon, c.name, c.desc + (stock[k] ? tx('shop.stock', { n: stock[k] }) : ''));
       row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
       list.appendChild(row);
     }
-    swatchGroup(list, 'Snowboard', BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
-    const h3 = document.createElement('h3'); h3.textContent = 'Schneespur'; list.appendChild(h3);
+    swatchGroup(list, tx('shop.board'), BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
+    const h3 = document.createElement('h3'); h3.textContent = tx('shop.trail'); list.appendChild(h3);
     const sw = document.createElement('div'); sw.className = 'swatches';
     for (const k of Object.keys(TRAILS)) {
       const tr = TRAILS[k], owned = trails.owned.includes(k);
       const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch';
       b.setAttribute('aria-pressed', String(trails.active === k));
       const dot = document.createElement('i'); dot.style.background = tr.color;
-      const lab = document.createElement('span'); lab.textContent = owned ? tr.name : tr.cost + ' Münzen';
+      const lab = document.createElement('span'); lab.textContent = owned ? tr.name : tx('shop.price', { n: fmt(tr.cost) });
       b.append(dot, lab);
-      b.setAttribute('aria-label', owned ? `Schneespur ${tr.name} wählen` : `Schneespur ${tr.name} für ${tr.cost} Münzen kaufen`);
+      b.setAttribute('aria-label', owned ? tx('shop.choose', { group: tx('shop.trail'), name: tr.name }) : tx('shop.buyItem', { group: tx('shop.trail'), name: tr.name, n: fmt(tr.cost) }));
       if (!owned && wallet < tr.cost) b.disabled = true, b.style.opacity = '0.5';
       b.addEventListener('click', () => {
         if (!owned) { if (wallet < tr.cost) return; wallet -= tr.cost; trails.owned.push(k); Sound.init(); Sound.coin(); }
@@ -2141,6 +2196,15 @@ body {
   $('setSfx').addEventListener('input', e => { settings.sfx = e.target.value / 100; saveSettings(); });
   document.querySelectorAll('[data-sens]').forEach(b => b.addEventListener('click', () => { settings.sens = b.dataset.sens; saveSettings(); }));
   $('tutorialBtn').addEventListener('click', () => { tutForce = true; start(); });
+  // language: switching redraws every visible text
+  $('setLang').value = langPref;
+  $('setLang').addEventListener('change', e => {
+    langPref = e.target.value;
+    try { localStorage.setItem('mountain-ride-lang', langPref); } catch (err) {}
+    LANG = pickLang(langPref);
+    applyI18n(); refreshMenu(); syncSettings();
+    if (curStage >= 0) $('hudStage').textContent = tx('hud.stage', { n: curStage + 1 });
+  });
 
   // ---------- High scores: this device / worldwide ----------
   // Worldwide list: fill in a Supabase project URL and its public anon key (see docs/online-bestenliste.md)
@@ -2170,46 +2234,46 @@ body {
     list.replaceChildren();
     if (tab === 'daily' && onlineReady) {
       const dy = dailyInfo();
-      note.hidden = false; note.textContent = `Tagesrennen ${dy.label} · ${LOCS[dy.loc].name} · wird geladen …`;
+      note.hidden = false; note.textContent = tx('board.dailyHead', { date: dy.label, place: LOCS[dy.loc].name }) + ' · ' + tx('board.loading');
       try {
         const rows = await fetchDaily(dy.day);
         if (boardTab !== 'daily') return;
-        note.textContent = `Tagesrennen ${dy.label} · ${LOCS[dy.loc].name}` + (rows.length ? '' : ' · noch niemand gefahren. Sei der Erste!');
+        note.textContent = tx('board.dailyHead', { date: dy.label, place: LOCS[dy.loc].name }) + (rows.length ? '' : tx('board.dailyFirst'));
         rows.slice(0, 25).forEach((s, i) => {
           const li = document.createElement('li');
           if (s.name === lastName) li.className = 'me';
-          for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', Number(s.score).toLocaleString('de-DE')], ['dist', Number(s.dist).toLocaleString('de-DE') + ' m']]) {
+          for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', fmt(Number(s.score))], ['dist', fmt(Number(s.dist)) + ' m']]) {
             const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.appendChild(sp);
           }
           list.appendChild(li);
         });
-      } catch (err) { if (boardTab === 'daily') note.textContent = 'Die Tages-Bestenliste wird gerade eingerichtet.'; }
+      } catch (err) { if (boardTab === 'daily') note.textContent = tx('board.dailyDown'); }
       return;
     }
     if (!onlineReady) {
       note.hidden = false;
       note.textContent = /claude\.ai$/.test(location.hostname)
-        ? 'Die weltweite Bestenliste gibt es nur in der Web-App (almaz6380.github.io/Mountain-Ride).'
-        : 'Die weltweite Bestenliste ist noch nicht eingerichtet.';
+        ? tx('board.onlineArtifact')
+        : tx('board.onlineOff');
       return;
     }
-    note.hidden = false; note.textContent = 'Wird geladen …';
+    note.hidden = false; note.textContent = tx('board.loading');
     try {
       const res = await fetch(ONLINE.url + '/rest/v1/scores?select=name,score,dist&order=score.desc&limit=25', { headers: authHeaders() });
       if (!res.ok) throw new Error(res.status);
       const rows = await res.json();
       if (boardTab !== 'online') return;
-      note.hidden = rows.length > 0; note.textContent = 'Noch keine Einträge weltweit.';
+      note.hidden = rows.length > 0; note.textContent = tx('board.onlineEmpty');
       rows.forEach((s, i) => {
         const li = document.createElement('li');
         if (s.name === lastName) li.className = 'me';
-        for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', Number(s.score).toLocaleString('de-DE')], ['dist', Number(s.dist).toLocaleString('de-DE') + ' m']]) {
+        for (const [cls, text] of [['rank', i + 1 + '.'], ['who', s.name], ['pts', fmt(Number(s.score))], ['dist', fmt(Number(s.dist)) + ' m']]) {
           const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; li.appendChild(sp);
         }
         list.appendChild(li);
       });
     } catch (err) {
-      if (boardTab === 'online') { note.hidden = false; note.textContent = 'Die weltweite Bestenliste ist gerade nicht erreichbar.'; }
+      if (boardTab === 'online') { note.hidden = false; note.textContent = tx('board.onlineDown'); }
     }
   }
   $('tabLocal').addEventListener('click', () => showBoard('local'));
@@ -2220,13 +2284,13 @@ body {
   const tut = { active: false, step: 0, rowD: 0, failed: false, wait: 0 };
   let tutForce = false;
   const TUT_STEPS = [
-    { key: '← →', text: 'Wische nach links oder rechts und fahr durch die freie Spur.',
+    { key: '← →', get text() { return tx('tut.1'); },
       spawn(d) { const free = P.lane + (P.lane < 2 ? 2 : -2); for (let l = 0; l < 5; l++) if (l !== free) addEnt('tree', d, laneX(l), { s: 0.75 }); return d; } },
-    { key: '↑', text: 'Wische nach oben und spring über die Baumstämme.',
+    { key: '↑', get text() { return tx('tut.2'); },
       spawn(d) { for (let l = 0; l < 5; l++) addEnt('log', d, laneX(l)); return d; } },
-    { key: '↓', text: 'Wische nach unten und duck dich unter den Bannern durch.',
+    { key: '↓', get text() { return tx('tut.3'); },
       spawn(d) { for (let l = 0; l < 5; l++) addEnt('gate', d, laneX(l)); return d; } },
-    { key: '↑ ↓', text: 'Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!',
+    { key: '↑ ↓', get text() { return tx('tut.4'); },
       spawn(d) { const r = addRamp(d, laneX(P.lane)); return r.d1 + 14; } },
   ];
   function tutShow(key, text) { $('tut').hidden = false; $('tutKey').textContent = key; $('tutText').textContent = text; }
@@ -2239,22 +2303,22 @@ body {
   function tutUpdate(dt) {
     if (tut.wait > 0) { tut.wait -= dt; if (tut.wait <= 0) tutSpawn(); return; }
     if (P.d < tut.rowD + 2 || P.air) return;
-    if (tut.failed) { tut.wait = 0.6; tutShow('↺', 'Nochmal!'); return; }
+    if (tut.failed) { tut.wait = 0.6; tutShow('↺', tx('tut.again')); return; }
     tut.step++;
-    if (tut.step < TUT_STEPS.length) { tut.wait = 0.7; tutShow('✓', 'Super!'); return; }
+    if (tut.step < TUT_STEPS.length) { tut.wait = 0.7; tutShow('✓', tx('tut.good')); return; }
     tut.active = false;
     store.set('tutorialDone', true);
     $('tut').hidden = true;
-    popup('Tutorial geschafft!', "Jetzt geht's richtig los");
+    popup(tx('tut.done'), tx('tut.doneSub'));
     nextD = P.d + 120; nextSectionD = P.d + 400; nextPowerD = P.d + 160;
   }
 
   // ---------- Track sections: deep snow, ice, tunnel, steep ----------
   const SECTIONS = {
-    deep:   { name: 'Tiefschnee', sub: 'Langsamer, aber weich', speed: 0.82, tint: [1.0, 0.99, 0.97], K: 70, damp: 2, spray: 3 },
-    ice:    { name: 'Eisplatte', sub: 'Schneller und rutschig!', speed: 1.16, tint: [0.7, 0.86, 1.0], K: 60, damp: 1.1, spray: 0.3 },
-    tunnel: { name: 'Schneetunnel', sub: 'Bleib in deiner Spur', speed: 1, tint: [0.93, 0.95, 1.0], K: 120, damp: 2, spray: 1 },
-    steep:  { name: 'Steilhang', sub: 'Vollgas!', speed: 1.28, tint: [1, 1, 1], K: 120, damp: 2, spray: 1.5 },
+    deep:   { get name() { return tx('sec.deep'); }, get sub() { return tx('sec.deep.sub'); }, speed: 0.82, tint: [1.0, 0.99, 0.97], K: 70, damp: 2, spray: 3 },
+    ice:    { get name() { return tx('sec.ice'); }, get sub() { return tx('sec.ice.sub'); }, speed: 1.16, tint: [0.7, 0.86, 1.0], K: 60, damp: 1.1, spray: 0.3 },
+    tunnel: { get name() { return tx('sec.tunnel'); }, get sub() { return tx('sec.tunnel.sub'); }, speed: 1, tint: [0.93, 0.95, 1.0], K: 120, damp: 2, spray: 1 },
+    steep:  { get name() { return tx('sec.steep'); }, get sub() { return tx('sec.steep.sub'); }, speed: 1.28, tint: [1, 1, 1], K: 120, damp: 2, spray: 1.5 },
   };
   let sections = [], nextSectionD = 0, curSection = null, lastSectionType = '';
   const archGeo = new THREE.TorusGeometry(9.6, 0.4, 8, 32, Math.PI);
@@ -2307,7 +2371,7 @@ body {
   $('pauseBtn').addEventListener('pointerdown', e => e.stopPropagation());
   $('resumeBtn').addEventListener('click', resumeGame);
   $('pauseSettingsBtn').addEventListener('click', () => openSub('settings', 'pause'));
-  $('quitBtn').addEventListener('click', () => { showPanel(null); state = 'play'; Sound.resume(); crashReason = 'Lauf beendet.'; P.crashed = false; gameOver(); });
+  $('quitBtn').addEventListener('click', () => { showPanel(null); state = 'play'; Sound.resume(); crashReason = tx('over.quit'); P.crashed = false; gameOver(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 
   // ---------- Game flow ----------
@@ -2338,11 +2402,11 @@ body {
     tut.active = !fixed && (tutForce || !store.get('tutorialDone', false));
     tutForce = false;
     $('tut').hidden = true;
-    if (tut.active) { tut.step = 0; tut.wait = 1.2; tut.rowD = 0; tutShow('', 'Willkommen! Kurze Einführung …'); }
+    if (tut.active) { tut.step = 0; tut.wait = 1.2; tut.rowD = 0; tutShow('', tx('tut.welcome')); }
     // items bought in the shop
     rec.tut = tut.active;
-    if (!tut.active && stock.shield > 0) { stock.shield--; PW.shield = 1; popup('Start-Schild', 'aktiv'); }
-    if (!tut.active && stock.boost > 0) { stock.boost--; PW.turbo = 6; popup('Turbo-Start', '6 Sekunden'); }
+    if (!tut.active && stock.shield > 0) { stock.shield--; PW.shield = 1; popup(tx('shop.startShield'), tx('shop.active')); }
+    if (!tut.active && stock.boost > 0) { stock.boost--; PW.turbo = 6; popup(tx('shop.turboStart'), tx('pw.seconds', { n: 6 })); }
     saveMeta();
     state = 'play';
     input.drag = null;
@@ -2380,6 +2444,7 @@ body {
   }
 
   function gameOver() {
+    popTimer = 0; popEl.style.opacity = '0';   // no stage/trick banner on top of the result card
     keepAwake(false); setTimeout(backupSave, 500);
     state = 'over';
     $('tut').hidden = true; tut.active = false;
@@ -2391,13 +2456,13 @@ body {
     if (isRecord) { best = total; saveBest(); }
     $('overReason').textContent = crashReason;
     $('overRecord').hidden = !isRecord;
-    $('stScore').textContent = total.toLocaleString('de-DE');
-    $('stDist').textContent = Math.floor(P.d - startD).toLocaleString('de-DE') + ' m';
-    $('stSpeed').textContent = Math.round(topSpeed * KMH) + ' km/h';
+    $('stScore').textContent = fmt(total);
+    $('stDist').textContent = fmt(Math.floor(P.d - startD)) + ' m';
+    $('stSpeed').firstChild.textContent = Math.round(topSpeed * KMH) + ' ';
     $('stCoins').textContent = coinCount;
-    $('overBest').textContent = 'Bestwert: ' + best.toLocaleString('de-DE') + ' Punkte';
+    $('overBest').textContent = tx('over.best', { n: fmt(best) });
     $('overWallet').innerHTML = '<i class="coin-dot"></i>';
-    $('overWallet').append(`+${coinCount} Münzen · Konto: ${wallet.toLocaleString('de-DE')}`);
+    $('overWallet').append(tx('over.wallet', { n: coinCount, w: fmt(wallet) }));
     renderMissions($('overMissions'));
     $('hud').hidden = true; showPanel('over');
     pendingEntry = qualifies(total) ? { name: '', score: total, dist: Math.floor(P.d - startD), date: Date.now() } : null;
@@ -2408,7 +2473,7 @@ body {
     $('nameForm').hidden = !pendingEntry;
     if (pendingEntry) {
       const rank = scores.filter(s => s.score >= total).length + 1;
-      $('nameLabel').textContent = `Platz ${rank} in der Bestenliste! Dein Name:`;
+      $('nameLabel').textContent = tx('over.rankLabel', { n: rank });
       $('nameInput').value = lastName;
     }
     renderScores($('overScores'));
@@ -2422,7 +2487,7 @@ body {
   let pendingEntry = null;
   function submitName() {
     if (!pendingEntry) return;
-    const name = $('nameInput').value.trim().slice(0, 14) || 'Fahrer';
+    const name = $('nameInput').value.trim().slice(0, 14) || tx('name.default');
     lastName = name;
     try { localStorage.setItem(NAME_KEY, name); } catch (e) {}
     pendingEntry.name = name;
@@ -2495,25 +2560,25 @@ body {
   // landing clean and going again within a few seconds builds a combo multiplier
   const COMBO_TIME = 4;
   let combo = 0, comboT = 0, curStage = -1;
-  function comboBreak() { if (combo > 1) popup('Kombo vorbei', '×' + comboMult().toFixed(1).replace('.0', '')); combo = 0; comboT = 0; }
+  function comboBreak() { if (combo > 1) popup(tx('trick.comboEnd'), '×' + comboMult().toFixed(1).replace('.0', '')); combo = 0; comboT = 0; }
   function comboMult() { return Math.min(5, 1 + (combo - 1) * 0.5); }
   function land(gy) {
     const diff = Math.abs(P.spinTarget - P.yaw), pdiff = Math.abs(P.pitchTarget - P.pitch);
     P.y = gy;
-    if (pdiff > 1.3) { comboBreak(); crash('Salto nicht geschafft. Starte ihn früher oder springe höher.'); return; }
-    if (diff > 1.6) { comboBreak(); crash('Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.'); return; }
+    if (pdiff > 1.3) { comboBreak(); crash(tx('crash.flip')); return; }
+    if (diff > 1.6) { comboBreak(); crash(tx('crash.edge')); return; }
     P.spin = P.spinTarget;
     P.air = false; P.vy = 0; P.grab = false;
     const spins = Math.round(Math.abs(P.spin) / TAU), flips = Math.round(Math.abs(P.pitchTarget) / TAU);
     let pts = 0, kinds = 0; const names = [];
     if (spins > 0) { pts += 300 * spins * spins; kinds++; names.push((spins * 360) + '°'); progressMission('spins', spins); }
-    if (flips > 0) { pts += 600 * flips; kinds++; names.push(flips > 1 ? flips + '× Backflip' : 'Backflip'); }
-    if (P.grabT > 0.25) { pts += 150 + Math.round(P.grabT * 250); kinds++; names.push('Grab'); }
-    if (P.airT > 1.1) { pts += Math.round(P.airT * 120); names.push('Big Air'); }
-    if (kinds > 1) { pts = Math.round(pts * (kinds === 2 ? 1.5 : 2.2)); names.push('Mix'); }
+    if (flips > 0) { pts += 600 * flips; kinds++; names.push(flips > 1 ? tx('trick.backflips', { n: flips }) : tx('trick.backflip')); }
+    if (P.grabT > 0.25) { pts += 150 + Math.round(P.grabT * 250); kinds++; names.push(tx('trick.grab')); }
+    if (P.airT > 1.1) { pts += Math.round(P.airT * 120); names.push(tx('trick.bigAir')); }
+    if (kinds > 1) { pts = Math.round(pts * (kinds === 2 ? 1.5 : 2.2)); names.push(tx('trick.mix')); }
     const clean = Math.max(diff, pdiff) < 0.22;
-    if (pts > 0 && clean) { pts = Math.round(pts * 1.5) + 100; names.push('Perfekt'); P.v += 2; }
-    else if (Math.max(diff, pdiff) > 0.4) { P.v *= 0.85; if (pts) names.push('Wackelig'); }
+    if (pts > 0 && clean) { pts = Math.round(pts * 1.5) + 100; names.push(tx('trick.perfect')); P.v += 2; }
+    else if (Math.max(diff, pdiff) > 0.4) { P.v *= 0.85; if (pts) names.push(tx('trick.wobbly')); }
     Sound.land(P.airT > 1);
     P.sq = 0; P.sqv = -2.2 - Math.min(2.5, P.airT * 1.8);   // absorb the landing
     if (pts) {
@@ -2523,7 +2588,7 @@ body {
       const m = (PW.double > 0 ? 2 : 1) * cm;
       pts = Math.round(pts * m);
       bonus += pts; score += pts;
-      popup(names.join(' · '), '+' + pts.toLocaleString('de-DE') + (combo > 1 ? '  Kombo ×' + cm.toFixed(1).replace('.0', '') : '')); Sound.trick();
+      popup(names.join(' · '), '+' + fmt(pts) + (combo > 1 ? '  ' + tx('trick.combo', { n: cm.toFixed(1).replace('.0', '') }) : '')); Sound.trick();
     }
     P.yaw = angDiff(P.yaw); P.spin = 0; P.pitch = 0; P.pitchTarget = 0;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
@@ -2533,7 +2598,7 @@ body {
     const el = $('comboHud');
     const on = combo > 1 && state === 'play';
     if (el.hidden === on) el.hidden = !on;
-    if (on) { el.firstChild.textContent = 'Kombo ×' + comboMult().toFixed(1).replace('.0', ''); el.lastChild.firstChild.style.width = Math.round(100 * clamp(comboT / COMBO_TIME, 0, 1)) + '%'; }
+    if (on) { el.firstChild.textContent = tx('trick.combo', { n: comboMult().toFixed(1).replace('.0', '') }); el.lastChild.firstChild.style.width = Math.round(100 * clamp(comboT / COMBO_TIME, 0, 1)) + '%'; }
   }
 
   // ---------- Input ----------
@@ -2602,7 +2667,7 @@ body {
     const L = LOCS[menuLoc];
     if (wallet < L.cost) return;
     wallet -= L.cost; locs.owned.push(menuLoc); locs.active = menuLoc; saveMeta();
-    Sound.init(); Sound.coin(); popup(L.name, 'freigeschaltet!');
+    Sound.init(); Sound.coin(); popup(L.name, tx('menu.unlocked'));
     refreshMenu();
   });
   $('title').addEventListener('click', () => { Sound.init(); refreshMenu(); showPanel('menu'); });   // tap anywhere
@@ -2658,7 +2723,7 @@ body {
     const len = (raw[0] << 8) | raw[1];
     const h = JSON.parse(new TextDecoder().decode(raw.subarray(2, 2 + len)));
     if (h.v !== 1 || typeof h.s !== 'number' || typeof h.sd !== 'number') throw new Error('bad duel');
-    const name = String(h.n || 'Fahrer').slice(0, 14);
+    const name = String(h.n || tx('name.default')).slice(0, 14);
     return { name, seed: h.s >>> 0, sd: h.sd, loc: LOCS[h.l] ? h.l : 'alpen', dm: Math.max(0, h.dm | 0), sc: Math.max(0, h.sc | 0), g: unpackGhost(raw.subarray(2 + len), h.sd) };
   }
 
@@ -2730,27 +2795,27 @@ body {
     const s = ghostAt(), gap = Math.round(P.d - s.d);
     const el = $('duelHud');
     if (s.done && myDist > duel.dm) {
-      el.textContent = `${duel.name} geschlagen!`; el.className = 'duel-chip ahead';
-      if (!duelPassed) { duelPassed = true; popup(`${duel.name} geschlagen!`, 'Fahr weiter für mehr Punkte'); Sound.power(); }
+      el.textContent = tx('duel.beaten', { name: duel.name }); el.className = 'duel-chip ahead';
+      if (!duelPassed) { duelPassed = true; popup(tx('duel.beaten', { name: duel.name }), tx('duel.beatenSub')); Sound.power(); }
       return;
     }
-    el.textContent = gap >= 0 ? `${duel.name}: ${gap} m hinter dir` : `${duel.name}: ${-gap} m vor dir`;
+    el.textContent = gap >= 0 ? tx('duel.behind', { name: duel.name, n: gap }) : tx('duel.ahead', { name: duel.name, n: -gap });
     el.className = 'duel-chip ' + (gap >= 0 ? 'ahead' : 'behind');
   }
   function showDuelResult(run) {
     const box = $('duelResult');
     box.hidden = !duel;
-    $('challengeBtn').textContent = duel ? 'Zurückfordern' : 'Freund herausfordern';
-    $('againBtn').textContent = duel ? 'Revanche' : 'Nochmal';
+    $('challengeBtn').textContent = duel ? tx('duel.rematch') : tx('over.challenge');
+    $('againBtn').textContent = duel ? tx('duel.revenge') : tx('over.again');
     $('challengeBtn').hidden = !run.bytes.length || rec.tut;   // a tutorial run has no real course to share
     if (!duel) return;
-    const me = lastName || 'Du', win = run.dm > duel.dm ? 'Du gewinnst!' : run.dm < duel.dm ? `${duel.name} gewinnt` : 'Unentschieden';
+    const me = lastName || tx('name.you'), win = run.dm > duel.dm ? tx('duel.youWin') : run.dm < duel.dm ? tx('duel.theyWin', { name: duel.name }) : tx('duel.draw');
     box.replaceChildren();
     const t = document.createElement('div'); t.className = 'win'; t.textContent = win; box.append(t);
     for (const [n, dm] of [[me, run.dm], [duel.name, duel.dm]]) {
       const row = document.createElement('div'); row.className = 'row';
       const b = document.createElement('b'); b.textContent = n;
-      const v = document.createElement('span'); v.textContent = dm.toLocaleString('de-DE') + ' m';
+      const v = document.createElement('span'); v.textContent = fmt(dm) + ' m';
       row.append(b, v); box.append(row);
     }
     if (run.dm > duel.dm) Sound.power();
@@ -2758,10 +2823,9 @@ body {
   function openDuel(d) {
     duel = d;
     drawTag(d.name);
-    $('duelName').textContent = d.name;
-    $('duelDist').textContent = d.dm.toLocaleString('de-DE') + ' m';
-    $('duelScore').textContent = d.sc.toLocaleString('de-DE');
-    $('duelName').parentElement.lastChild.textContent = ` fordert dich heraus! Ort: ${LOCS[d.loc].name}`;
+        $('duelDist').textContent = fmt(d.dm) + ' m';
+    $('duelScore').textContent = fmt(d.sc);
+    $('duelVs').textContent = tx('duel.vs', { name: d.name, place: LOCS[d.loc].name });
     showPanel('duel');
   }
   $('duelGoBtn').addEventListener('click', start);
@@ -2770,28 +2834,28 @@ body {
     submitName();
     $('chName').value = lastName;
     $('chLink').hidden = true; $('chStatus').hidden = true;
-    $('chText').textContent = `Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist (${lastRun.dm.toLocaleString('de-DE')} m).`;
+    $('chText').textContent = tx('ch.text', { n: fmt(lastRun.dm) });
     openSub('challenge', 'over');
     if (!lastName) $('chName').focus({ preventScroll: true });
   });
   $('chForm').addEventListener('submit', async e => {
     e.preventDefault();
     if (!lastRun) return;
-    const name = $('chName').value.trim().slice(0, 14) || 'Fahrer';
+    const name = $('chName').value.trim().slice(0, 14) || tx('name.default');
     lastName = name;
     try { localStorage.setItem(NAME_KEY, name); } catch (err) {}
     $('chName').blur();
     const url = SHARE_BASE + '#duel=' + await encodeDuel(lastRun, name);
-    const text = `${name} fordert dich bei Mountain Ride heraus: ${lastRun.dm.toLocaleString('de-DE')} m! Schaffst du mehr?`;
+    const text = tx('ch.shareText', { name, n: fmt(lastRun.dm) });
     const status = $('chStatus');
     status.hidden = false;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Mountain Ride Duell', text, url }); status.textContent = 'Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.'; return; }
+      try { await navigator.share({ title: tx('ch.shareTitle'), text, url }); status.textContent = tx('ch.shared'); return; }
       catch (err) { if (err && err.name === 'AbortError') { status.hidden = true; return; } }
     }
     $('chLink').value = url; $('chLink').hidden = false;
-    try { await navigator.clipboard.writeText(text + ' ' + url); status.textContent = 'Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.'; }
-    catch (err) { $('chLink').select(); status.textContent = 'Kopiere diesen Link und schick ihn deinem Freund.'; }
+    try { await navigator.clipboard.writeText(text + ' ' + url); status.textContent = tx('ch.copied'); }
+    catch (err) { $('chLink').select(); status.textContent = tx('ch.copyIt'); }
   });
   // a duel link opens straight into the challenge screen
   async function checkDuelLink() {
@@ -2799,7 +2863,7 @@ body {
     if (!m) return;
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     try { const d = await decodeDuel(m[1]); if (state === 'menu') openDuel(d); }
-    catch (e) { popup('Duell-Link kaputt', 'Lass ihn dir nochmal schicken'); }
+    catch (e) { popup(tx('duel.broken'), tx('duel.brokenSub')); }
   }
   addEventListener('hashchange', checkDuelLink);
   checkDuelLink();
@@ -2812,7 +2876,7 @@ body {
     let h = 0x811c9dc5;   // FNV-1a hash of the date: the same seed on every phone
     for (const ch of day + '|mountain-ride') { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193); }
     const idx = Math.floor(Date.UTC(y, m, d) / 864e5);
-    return { day, seed: h >>> 0, sd: 1000, loc: LOC_KEYS[idx % LOC_KEYS.length], label: `${String(d).padStart(2, '0')}.${String(m + 1).padStart(2, '0')}.` };
+    return { day, seed: h >>> 0, sd: 1000, loc: LOC_KEYS[idx % LOC_KEYS.length], get label() { return new Date(y, m, d).toLocaleDateString(LOCALES[LANG] || 'de-DE', { day: 'numeric', month: 'short' }); } };
   }
   async function postDaily(entry) {
     if (!onlineReady) return false;
@@ -2835,24 +2899,24 @@ body {
     const mine = store.get('dailyBest', {});
     const isBest = mine.day !== daily.day || run.dm > mine.dist;
     if (isBest) store.set('dailyBest', { day: daily.day, dist: run.dm });
-    const t = document.createElement('div'); t.className = 'win'; t.textContent = `Tagesrennen ${daily.label}` + (isBest ? ' · neuer Tagesbestwert!' : '');
+    const t = document.createElement('div'); t.className = 'win'; t.textContent = tx('daily.head', { date: daily.label }) + (isBest ? tx('daily.newBest') : '');
     const row = (a, b) => { const r2 = document.createElement('div'); r2.className = 'row'; const x = document.createElement('b'); x.textContent = a; const y = document.createElement('span'); y.textContent = b; r2.append(x, y); return r2; };
-    const rank = row('Platz heute', onlineReady ? '…' : '–');
-    box.append(t, row('Diese Fahrt', run.dm.toLocaleString('de-DE') + ' m'), row('Dein Bestwert heute', Math.max(run.dm, mine.day === daily.day ? mine.dist : 0).toLocaleString('de-DE') + ' m'), rank);
+    const rank = row(tx('daily.rank'), onlineReady ? '…' : '–');
+    box.append(t, row(tx('daily.thisRun'), fmt(run.dm) + ' m'), row(tx('daily.best'), fmt(Math.max(run.dm, mine.day === daily.day ? mine.dist : 0)) + ' m'), rank);
     const send = async name => {
       const ok = await postDaily({ day: daily.day, name, dist: run.dm, score: run.sc });
       try {
         const rows = await fetchDaily(daily.day);
         const i = rows.findIndex(x => x.name === name);
-        rank.lastChild.textContent = i >= 0 ? `${i + 1} von ${rows.length}` : ok ? '–' : 'nicht erreichbar';
-      } catch (e) { rank.lastChild.textContent = 'nicht erreichbar'; }
+        rank.lastChild.textContent = i >= 0 ? tx('daily.rankOf', { n: i + 1, total: rows.length }) : ok ? '–' : tx('daily.down');
+      } catch (e) { rank.lastChild.textContent = tx('daily.down'); }
     };
     if (!onlineReady) return;
     if (lastName) { send(lastName); return; }
     // first daily run without a name: ask for one right here
     const f = document.createElement('form'); f.className = 'name-row';
-    const inp = document.createElement('input'); inp.maxLength = 14; inp.placeholder = 'Dein Name'; inp.setAttribute('aria-label', 'Dein Name für die Tages-Bestenliste');
-    const b = document.createElement('button'); b.className = 'btn small'; b.type = 'submit'; b.textContent = 'Eintragen';
+    const inp = document.createElement('input'); inp.maxLength = 14; inp.placeholder = tx('daily.namePh'); inp.setAttribute('aria-label', tx('daily.nameAria'));
+    const b = document.createElement('button'); b.className = 'btn small'; b.type = 'submit'; b.textContent = tx('over.enter');
     f.append(inp, b); box.append(f);
     f.addEventListener('submit', e => { e.preventDefault(); const n = inp.value.trim().slice(0, 14); if (!n) return; lastName = n; try { localStorage.setItem(NAME_KEY, n); } catch (err) {} f.remove(); send(n); });
   }
@@ -2891,7 +2955,7 @@ body {
     ch.on('presence', { event: 'sync' }, () => {
       const st = ch.presenceState();
       live.peers = {};
-      for (const [id, metas] of Object.entries(st)) live.peers[id] = { name: (metas[0] && metas[0].name) || 'Fahrer' };
+      for (const [id, metas] of Object.entries(st)) live.peers[id] = { name: (metas[0] && metas[0].name) || tx('name.default') };
       livePresence();
     });
     await new Promise((ok, fail) => {
@@ -2910,7 +2974,7 @@ body {
   }
   function liveSetName() {
     const n = $('liveName').value.trim().slice(0, 14);
-    if (!n) { liveErr('Gib zuerst deinen Spielernamen ein.'); $('liveName').focus(); return false; }
+    if (!n) { liveErr(tx('live.needName')); $('liveName').focus(); return false; }
     live.name = lastName = n;
     try { localStorage.setItem(NAME_KEY, n); } catch (e) {}
     return true;
@@ -2918,13 +2982,13 @@ body {
   async function liveJoin(room) {
     if (!liveSetName()) return;
     room = room.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
-    if (room.length !== 4) { liveErr('Der Raum-Code hat 4 Zeichen.'); return; }
-    liveErr('Verbinde …');
+    if (room.length !== 4) { liveErr(tx('live.codeLen')); return; }
+    liveErr(tx('live.connecting'));
     try {
       if (live.link) live.link.close();
       live.peers = {}; live.room = room;
       live.link = await liveConnect(room);
-    } catch (e) { live.link = null; liveErr('Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.'); return; }
+    } catch (e) { live.link = null; liveErr(tx('live.failed')); return; }
     liveErr('');
     $('liveJoin').hidden = true; $('liveRoom').hidden = false;
     $('liveRoomCode').textContent = room;
@@ -2940,33 +3004,33 @@ body {
     for (const [id, p] of Object.entries(live.peers)) {
       const li = document.createElement('li');
       li.textContent = p.name;
-      const tag2 = document.createElement('span'); tag2.textContent = id === live.id ? 'du' : 'Gegner';
+      const tag2 = document.createElement('span'); tag2.textContent = id === live.id ? tx('live.you') : tx('live.opp');
       li.append(tag2); ul.append(li);
     }
     const o = opp(), n = Object.keys(live.peers).length;
     $('liveStartBtn').disabled = !o || n > 2;
-    $('liveStatus').textContent = n > 2 ? 'Der Raum ist voll (nur 2 Fahrer).' : o ? `${o[1].name} ist da. Bereit?` : 'Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.';
+    $('liveStatus').textContent = n > 2 ? tx('live.full') : o ? tx('live.ready', { name: o[1].name }) : tx('live.waiting');
     if (o) drawTag(o[1].name);
     // the opponent left in the middle of a race: they are out, their last distance counts
-    if (live.next && !o && !live.oppDone) { live.oppDone = true; popup(`${live.oppName || 'Gegner'} ist raus`, 'Verbindung getrennt'); refreshLiveResult(); }
+    if (live.next && !o && !live.oppDone) { live.oppDone = true; popup(tx('live.left', { name: live.oppName || tx('live.opp') }), tx('live.leftSub')); refreshLiveResult(); }
   }
   // the first start message wins; if both press at once, both pick the smaller seed and end up in the same race
   function liveBegin(seed, sd, loc) {
     if (live.next && state === 'countdown' && live.next.seed <= seed) return;
     const o = opp();
-    live.oppName = o ? o[1].name : 'Gegner';
+    live.oppName = o ? o[1].name : tx('live.opp');
     live.next = { seed, sd, loc };
     live.snap = live.prev = null; live.oppDone = false; live.oppDist = 0; live.myDone = false; live.wantRematch = false;
     duel = null;
     start();
     state = 'countdown'; live.countT = 3.2; live.lastCount = 0;
-    $('duelHud').hidden = false; $('duelHud').textContent = `gegen ${live.oppName}`; $('duelHud').className = 'duel-chip';
+    $('duelHud').hidden = false; $('duelHud').textContent = tx('live.vs', { name: live.oppName }); $('duelHud').className = 'duel-chip';
   }
   function liveCountdown(dt) {
     live.countT -= dt;
     const n = Math.ceil(live.countT - 0.2);
-    if (n !== live.lastCount && n > 0) { live.lastCount = n; popup(String(n), 'gegen ' + live.oppName); Sound.coin(); }
-    if (live.countT <= 0) { state = 'play'; popup('Los!', ''); Sound.power(); }
+    if (n !== live.lastCount && n > 0) { live.lastCount = n; popup(String(n), tx('live.vs', { name: live.oppName })); Sound.coin(); }
+    if (live.countT <= 0) { state = 'play'; popup(tx('live.go'), ''); Sound.power(); }
   }
   function liveMsg(m) {
     if (!m || typeof m !== 'object') return;
@@ -2980,11 +3044,11 @@ body {
       live.oppDist = Math.max(live.oppDist, m.dist | 0);
     } else if (m.t === 'over' && live.next) {
       live.oppDone = true; live.oppDist = m.dist | 0;
-      if (state === 'play') popup(`${live.oppName} gestürzt`, live.oppDist.toLocaleString('de-DE') + ' m – fahr weiter!');
+      if (state === 'play') popup(tx('live.fell', { name: live.oppName }), tx('live.fellSub', { n: fmt(live.oppDist) }));
       refreshLiveResult();
     } else if (m.t === 'again' && live.next) {
       live.oppWants = true;
-      if (state === 'over') { $('againBtn').textContent = live.wantRematch ? 'Startet …' : `${live.oppName} will Revanche!`; }
+      if (state === 'over') { $('againBtn').textContent = live.wantRematch ? tx('live.starting') : tx('live.wantsRematch', { name: live.oppName }); }
       liveTryRematch();
     }
   }
@@ -3006,9 +3070,9 @@ body {
   function updateLiveHud(myDist) {
     const el = $('duelHud');
     if (!live.snap) { el.textContent = `${live.oppName} …`; el.className = 'duel-chip'; return; }
-    if (live.oppDone && myDist > live.oppDist) { el.textContent = `${live.oppName} geschlagen!`; el.className = 'duel-chip ahead'; return; }
+    if (live.oppDone && myDist > live.oppDist) { el.textContent = tx('duel.beaten', { name: live.oppName }); el.className = 'duel-chip ahead'; return; }
     const gap = Math.round(P.d - liveAt().d);
-    el.textContent = gap >= 0 ? `${live.oppName}: ${gap} m hinter dir` : `${live.oppName}: ${-gap} m vor dir`;
+    el.textContent = gap >= 0 ? tx('duel.behind', { name: live.oppName, n: gap }) : tx('duel.ahead', { name: live.oppName, n: -gap });
     el.className = 'duel-chip ' + (gap >= 0 ? 'ahead' : 'behind');
   }
   function liveFinished(dist) {
@@ -3022,20 +3086,20 @@ body {
     const box = $('duelResult');
     box.hidden = false; box.replaceChildren();
     const t = document.createElement('div'); t.className = 'win';
-    t.textContent = !live.oppDone ? `${live.oppName} fährt noch …` : live.myDist > live.oppDist ? 'Du gewinnst!' : live.myDist < live.oppDist ? `${live.oppName} gewinnt` : 'Unentschieden';
+    t.textContent = !live.oppDone ? tx('live.stillRiding', { name: live.oppName }) : live.myDist > live.oppDist ? tx('duel.youWin') : live.myDist < live.oppDist ? tx('duel.theyWin', { name: live.oppName }) : tx('duel.draw');
     box.append(t);
-    for (const [n, dm] of [[live.name || 'Du', live.myDist], [live.oppName, live.oppDist]]) {
+    for (const [n, dm] of [[live.name || tx('name.you'), live.myDist], [live.oppName, live.oppDist]]) {
       const row = document.createElement('div'); row.className = 'row';
       const b = document.createElement('b'); b.textContent = n;
-      const v = document.createElement('span'); v.textContent = dm.toLocaleString('de-DE') + ' m';
+      const v = document.createElement('span'); v.textContent = fmt(dm) + ' m';
       row.append(b, v); box.append(row);
     }
-    $('againBtn').textContent = live.wantRematch ? 'Warte auf ' + live.oppName + ' …' : live.oppWants ? `${live.oppName} will Revanche!` : 'Revanche';
+    $('againBtn').textContent = live.wantRematch ? tx('live.waitFor', { name: live.oppName }) : live.oppWants ? tx('live.wantsRematch', { name: live.oppName }) : tx('duel.revenge');
     if (live.oppDone && live.myDist > live.oppDist && !live.wonSound) { live.wonSound = true; Sound.power(); }
   }
   // rematch: both press it, then the one who pressed last starts the new race for both
   function liveRematch() {
-    if (!live.link || !opp()) { popup('Gegner ist weg', 'Zurück ins Menü'); toMenu(); return; }
+    if (!live.link || !opp()) { popup(tx('live.gone'), tx('live.goneSub')); toMenu(); return; }
     live.wantRematch = true;
     live.link.send({ t: 'again' });
     refreshLiveResult();
@@ -3064,9 +3128,9 @@ body {
     liveBegin(seed, sd, locs.active);
   });
   $('liveShareBtn').addEventListener('click', async () => {
-    const url = SHARE_BASE + '#live=' + live.room, text = `Fahr live gegen mich bei Mountain Ride! Raum-Code: ${live.room}`;
-    if (navigator.share) { try { await navigator.share({ title: 'Mountain Ride Live-Duell', text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(text + ' ' + url); $('liveStatus').textContent = 'Einladung kopiert! Schick sie deinem Gegner.'; } catch (e) { $('liveStatus').textContent = 'Schick deinem Gegner den Code ' + live.room; }
+    const url = SHARE_BASE + '#live=' + live.room, text = tx('live.shareText', { code: live.room });
+    if (navigator.share) { try { await navigator.share({ title: tx('live.shareTitle'), text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text + ' ' + url); $('liveStatus').textContent = tx('live.copied'); } catch (e) { $('liveStatus').textContent = tx('live.sendCode', { code: live.room }); }
   });
   $('liveLeaveBtn').addEventListener('click', () => { liveLeave(); refreshMenu(); showPanel('menu'); });
   // an invitation link opens the live screen with the code filled in
@@ -3077,7 +3141,7 @@ body {
     if (!liveAvailable || state !== 'menu') return;
     liveShowJoin(); showPanel('live');
     $('liveCode').value = m[1].toUpperCase();
-    if (lastName) liveJoin(m[1]); else { liveErr('Gib deinen Namen ein und tipp auf „Beitreten“.'); $('liveName').focus(); }
+    if (lastName) liveJoin(m[1]); else { liveErr(tx('live.enterName')); $('liveName').focus(); }
   }
   addEventListener('hashchange', checkLiveLink);
   checkLiveLink();
@@ -3166,8 +3230,8 @@ body {
       const stg = stageAt(P.d);
       if (stg !== curStage) {
         curStage = stg;
-        $('hudStage').textContent = `Etappe ${stg + 1}`;
-        popup(`Etappe ${stg + 1}: ${STAGES[stg].name}`, STAGES[stg].sub, true);
+        $('hudStage').textContent = tx('hud.stage', { n: stg + 1 });
+        popup(tx('stage.title', { n: stg + 1, name: STAGES[stg].name }), STAGES[stg].sub, true);
         if (stg > 0) Sound.power();
       }
     }
@@ -3435,10 +3499,10 @@ body {
     if (state !== 'play') return;
     updatePowerHud();
     const d = Math.floor(P.d - startD), s = Math.round(P.v * KMH), sc = Math.floor(score);
-    if (d !== hud.dist) { hud.dist = d; $('hudDist').innerHTML = d.toLocaleString('de-DE') + '<small>m</small>'; }
+    if (d !== hud.dist) { hud.dist = d; $('hudDist').innerHTML = fmt(d) + '<small>m</small>'; }
     if (s !== hud.speed) { hud.speed = s; $('hudSpeed').textContent = s + ' km/h'; }
     if (coinCount !== hud.coins) { hud.coins = coinCount; $('hudCoins').textContent = coinCount; }
-    if (sc !== hud.score) { hud.score = sc; $('hudScore').textContent = sc.toLocaleString('de-DE'); }
+    if (sc !== hud.score) { hud.score = sc; $('hudScore').textContent = fmt(sc); }
     if (duel) updateDuelHud(d); else if (live.next) updateLiveHud(d);
   }
 
