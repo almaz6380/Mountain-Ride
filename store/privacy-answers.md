@@ -21,6 +21,9 @@ Vorher in `assets/lib/legal.js` oben unter `CONTACT` deinen Namen, deine Anschri
 | Käufe → **Kaufhistorie** | App-Funktionalität | Nein | Nein | RevenueCat |
 | Nutzerinhalte → **Gameplay-Inhalte** | App-Funktionalität | Nein | Nein | Punkte/Strecke in Bestenliste, Tagesrennen, Duell |
 
+Erinnerungen (Push): nur **lokale** Benachrichtigungen, auf dem Gerät geplant – es werden dafür keine Daten erhoben,
+kein Push-Server, kein Token. Im Fragebogen nichts zusätzlich ankreuzen.
+
 Nicht erfasst: Kontaktdaten, Gesundheit, Finanzinfos (Zahlungsdaten sieht nur Apple), genauer Standort,
 sensible Daten, Kontakte, Browserverlauf, Suchverlauf.
 

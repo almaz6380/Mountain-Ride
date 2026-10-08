@@ -40,6 +40,8 @@ Fünf Spuren, ein Wischer = eine Spur.
 - Duell per Link (gleiche Strecke, Gegner als Geist), Live-Duell, Tagesrennen und weltweite Bestenliste über Supabase, siehe [docs/online-bestenliste.md](docs/online-bestenliste.md)
 - Musik und Effekte live per Web Audio; Ton, Lautstärke, Grafik-Qualität und mehr in den Einstellungen
 - Tutorial beim ersten Start, jederzeit über die Einstellungen wiederholbar
+- Pistenraupen, Bonus-Abfahrten und Lawinen weiter unten am Berg; Tagesbonus mit 7-Tage-Serie, abends eine Erinnerung ans Tagesrennen (Apps)
+- Echte Soundeffekte und Musik je Ort (CC0, Quellen in [assets/audio/CREDITS.md](assets/audio/CREDITS.md))
 
 ## Apps für iPhone und Android
 
