@@ -1,6 +1,6 @@
 // Offline cache for the Mountain Ride web app (bump CACHE to ship updates): cache-first for game files, network-first for the page itself.
-const CACHE = 'mountain-ride-v27';
-const CORE = ['./', './index.html', './manifest.webmanifest'];   // everything else is cached on first use
+const CACHE = 'mountain-ride-v29';
+const CORE = ['./', './index.html', './manifest.webmanifest', './assets/lib/three.min.js', './assets/lib/GLTFLoader.js', './assets/lib/i18n.js', './assets/lib/fonts/fonts.css', './assets/rider.glb'];   // the rest is cached on first use
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
