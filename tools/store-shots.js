@@ -35,10 +35,13 @@ async function shoot(browser, lang, device) {
       localStorage.setItem('mountain-ride-wallet', '2450');
       localStorage.setItem('mountain-ride-best-3d', '18420');
       localStorage.setItem('mountain-ride-locs', JSON.stringify({ owned: ['alpen', 'wald', 'nacht', 'gletscher'], active: loc }));
+      // daily bonus already collected today, so its window does not cover the menu
+      const t = new Date(), day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+      localStorage.setItem('mountain-ride-dailyBonus', JSON.stringify({ last: day, streak: 1 }));
     }, [lang, loc]);
     const p = await ctx.newPage();
     p.on('pageerror', e => console.log(lang, device, 'ERR', e.message));
-    await p.goto(BASE + 'store.html'); await p.waitForTimeout(4000);
+    await p.goto(BASE + 'store.html'); await p.waitForTimeout(5500);   // the rider model (~0.7 MB) must be in
     return { p, ctx };
   };
   const ride = async (p, secs) => {
