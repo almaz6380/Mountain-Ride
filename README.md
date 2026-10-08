@@ -23,22 +23,20 @@ Fünf Spuren, ein Wischer = eine Spur.
 | --- | --- |
 | Wischen links/rechts · ← → | Eine Spur wechseln, auch im Sprung |
 | Wischen hoch · Tippen · Leertaste · ↑ | Springen |
-| Wischen runter · ↓ | Ducken (unter Bannern durch); in der Luft: schnell runter |
-| In der Luft hoch wischen · Tippen · ↑ | 360°-Drehung |
+| Wischen runter · ↓ | Ducken (unter Bannern durch) |
+| In der Luft: Tippen · Leertaste | 360°-Drehung |
+| In der Luft: hoch wischen · ↑ | Backflip |
+| In der Luft: runter wischen · ↓ | Grab |
+| P · Esc | Pause |
 
 ## Inhalt
 
-- 3D mit three.js (per CDN geladen), gemalte Grafik aus `assets/` (Fahrer, Hindernisse, Himmel für Tag/Sonnenuntergang/Nacht/Morgen, Pisten-Textur)
-- Prozedural erzeugte, endlose Piste mit Kickern (Sprungschanzen)
-- Hindernisse: Bäume, Felsen, Schneemänner, Baumstämme (drüberspringen), Banner-Tore (drunter durchducken), Gletscherspalten (drüberspringen), Absperrungen (Spur wechseln) und rollende Schneekugeln
-- Power-ups: Magnet (10 s, zieht Münzen an), Schild (fängt einen Treffer ab), Turbo (5 s, schneller und unverwundbar), ×2 (15 s, doppelte Punkte), Super-Sprung (12 s, höhere Sprünge)
-- Münzen, Drehungen, Big Air und perfekte Landungen geben Punkte
-- Tempo steigt mit der Strecke, Sichtfeld weitet sich bei hoher Geschwindigkeit
-- Tageszeitenwechsel: Tag → Sonnenuntergang → Nacht → Morgen
-- Soundeffekte (Carven, Wind, Sprung, Landung, Münzen, Tricks, Sturz) und Musik, alles live per Web Audio erzeugt; die Musik wird mit dem Tempo dichter. Ton-Knopf unten rechts oder Taste M
-- Bestenliste (Top 10 auf dem Gerät), optional weltweit über Supabase, siehe [docs/online-bestenliste.md](docs/online-bestenliste.md)
-- Shop: Münzen sammeln und Power-ups verbessern, Start-Schild und Turbo-Start kaufen, Farbe der Schneespur wählen
-- Missionen: immer drei Aufgaben mit Münz-Belohnung, erledigte werden durch neue ersetzt
-- Pause (Knopf oben oder P/Esc) und Einstellungen für Musik, Effekte und Wisch-Empfindlichkeit
+- 3D mit three.js (per CDN), 3D-Fahrer (`assets/rider.glb`, Skelett wird beim Laden erzeugt), Hindernisse als Low-Poly-Modelle mit echten Schatten
+- Startbildschirm, Menü mit Orts-Auswahl: Alpen, Waldabfahrt, Fackel-Nacht, Gletscher (eigenes Licht, Deko und Musik)
+- Endlose Piste in Etappen: Aufwärmen → Baumstämme → Banner → Zäune & Schneekugeln → Gletscherspalten → Profi
+- Tricks und Kombos: 360°, Backflip, Grab; verschiedene Tricks und saubere Landungen hintereinander multiplizieren die Punkte
+- Power-ups: Magnet, Schild, Turbo, ×2, Super-Sprung; Münzen, Missionen, Shop (Upgrades, Start-Items, Snowboards, Schneespur)
+- Streckenabschnitte: Tiefschnee, Eisplatte, Schneetunnel, Steilhang
+- Duell per Link (gleiche Strecke, Gegner als Geist), Live-Duell, Tagesrennen und weltweite Bestenliste über Supabase, siehe [docs/online-bestenliste.md](docs/online-bestenliste.md)
+- Musik und Effekte live per Web Audio; Ton, Lautstärke, Grafik-Qualität und mehr in den Einstellungen
 - Tutorial beim ersten Start, jederzeit über die Einstellungen wiederholbar
-- Streckenabschnitte: Tiefschnee (langsamer), Eisplatte (schneller, rutschig), Schneetunnel, Steilhang (Vollgas)
