@@ -1,0 +1,12 @@
+{
+  "appId": "com.almaz6380.mountainride",
+  "appName": "Mountain Ride",
+  "webDir": "www",
+  "backgroundColor": "#2b3d63",
+  "android": { "backgroundColor": "#2b3d63" },
+  "ios": { "backgroundColor": "#2b3d63", "contentInset": "never" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "launchAutoHide": true, "backgroundColor": "#2b3d63", "showSpinner": false },
+    "StatusBar": { "overlaysWebView": true, "style": "DARK" }
+  }
+}

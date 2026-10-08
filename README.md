@@ -40,3 +40,18 @@ Fünf Spuren, ein Wischer = eine Spur.
 - Duell per Link (gleiche Strecke, Gegner als Geist), Live-Duell, Tagesrennen und weltweite Bestenliste über Supabase, siehe [docs/online-bestenliste.md](docs/online-bestenliste.md)
 - Musik und Effekte live per Web Audio; Ton, Lautstärke, Grafik-Qualität und mehr in den Einstellungen
 - Tutorial beim ersten Start, jederzeit über die Einstellungen wiederholbar
+
+## Apps für iPhone und Android
+
+Das Spiel ist mit [Capacitor](https://capacitorjs.com) als App verpackt (`android/`, `ios/`), mit Werbung (AdMob,
+nur belohnte Videos und seltene Zwischenwerbung) und In-App-Käufen (RevenueCat). Es ist in 10 Sprachen übersetzt.
+
+```bash
+npm install
+npm run sync      # Spiel nach www/ bauen und in beide App-Projekte kopieren
+npm run android   # Android Studio öffnen
+npm run ios       # Xcode öffnen (nur auf dem Mac)
+```
+
+Alles zu Konten, IDs, Bauen, Store-Einträgen und Einreichen: [docs/store-veroeffentlichen.md](docs/store-veroeffentlichen.md).
+Store-Texte, Screenshots und Fragebogen-Antworten liegen in `store/`.

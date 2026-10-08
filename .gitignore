@@ -1,2 +1,4 @@
 dist/
 .preview/
+node_modules/
+www/

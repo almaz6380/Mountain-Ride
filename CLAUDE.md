@@ -7,7 +7,10 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 - `assets/` – textures, sprites, sky images, icons, `rider.glb` (the 3D rider, static T-pose mesh; skeleton and skin weights are built in code at load time, see `buildRig` / `poseRig`). The painted `rider-*.png` / `spin-*.png` sprites are the fallback if the GLB fails to load.
 - **Texts / languages**: no hard-coded UI text. German lives in `index.html` as `I18N_DE`; the other 9 languages (en es pt fr it ru zh ja ar) in `assets/lib/i18n.js` (`window.I18N`). Use `tx('key', {vars})` in JS and `data-i18n` / `data-i18n-ph` / `data-i18n-aria` / `data-i18n-title` ('A|B' = two-tone title) in HTML; numbers via `fmt()`. **A new key must be added to all 10 languages.** Arabic switches the page to `dir=rtl`: wrap numbers-with-units in a bidi isolate (CSS `unicode-bidi: isolate` or `\u2066…\u2069`) and check screenshots.
 - `sw.js` – service worker (offline cache). **Bump `CACHE` (`mountain-ride-vNN`) on every release**, otherwise phones keep the old version. Supabase requests are never cached.
-- `manifest.webmanifest`, `tools/build-pages.py` (builds `dist/` for GitHub Pages), `docs/online-bestenliste.md` (Supabase setup: tables `scores` and `daily`).
+- `manifest.webmanifest`, `tools/build-pages.py` (builds `dist/` for GitHub Pages; with `--app` it builds `www/` for the store apps: no service worker, no manifest), `docs/online-bestenliste.md` (Supabase setup: tables `scores` and `daily`, plus the anti-cheat SQL).
+- `privacy.html`, `imprint.html` – legal pages (texts in `assets/lib/legal.js`, 10 languages, owner's contact in `CONTACT`), copied into both builds and linked from the settings with `?lang=`.
+- **Store apps (Capacitor 8)**: `package.json`, `capacitor.config.json` (app id `com.almaz6380.mountainride`), `android/`, `ios/` (both checked in; `www/` and `node_modules/` are not). `npm run sync` = build `www/` + `npx cap sync`. Icons/splash from `resources/` via `npm run assets`. Owner's build/release steps: `docs/store-veroeffentlichen.md`.
+- `store/` – listing texts per language (`listing/<lang>.json`), screenshots (`tools/store-shots.js`, needs the local server), feature graphic, product list, privacy/age-rating answers.
 
 ## Release workflow (every change)
 1. Bump `CACHE` in `sw.js`.
@@ -30,6 +33,9 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 - Places (`LOCS`): Alpen, Waldabfahrt, Fackel-Nacht, Gletscher – own light, scenery, favoured sections and music theme.
 - Online (Supabase, `ONLINE` config): worldwide leaderboard (`scores`), daily race (`daily`), live duel via Realtime broadcast + presence. Duel by link encodes seed, start, place and a ghost recording in the URL hash.
 - Sound and music are synthesised with Web Audio; sound is switched only in the settings (no in-game button).
+- Online safety: `cleanName()` filters swear words (all 10 languages) for every name entered or shown; scores carry an anonymous `PLAYER_ID` and are only posted when `plausible()`; the DB has matching constraints + a rate limit.
+- Money (store apps only, hidden on web/Artifact): `MONEY` config (AdMob unit ids – Google test ids until release –, RevenueCat keys), `PRODUCTS`. AdMob via `NATIVE.AdMob`: UMP consent + iOS ATT in `initMoney()`, rewarded „Weiterfahren“ (`revive()`, once per run, not in duel/live/daily/tutorial) and „Münzen ×2“, interstitial every 4th run via `startAfterAd()`. Purchases via `NATIVE.Purchases` (RevenueCat): coin packs, `no_ads`, `starter_pack`, restore button.
+- Economy: collected coins + 1 coin per 50 m (`COIN_PER_M`), missions 80–400, upgrades 150–1200 (see `store/products.md`).
 
 ## Owner preferences
 - Graphics matter a lot: check visual changes with screenshots before shipping.

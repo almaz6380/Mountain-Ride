@@ -46,8 +46,7 @@ Lesen und neue Einträge, kein Ändern oder Löschen.
 
 ## Hinweis
 
-Die Liste hat keinen Schutz gegen Schummeln: Wer sich auskennt, kann erfundene Punktzahlen eintragen.
-Für ein privates Spiel unter Freunden reicht das in der Regel.
+Ohne den Schutz unten (Abschnitt „Schutz gegen Schummeln“) kann jeder, der sich auskennt, erfundene Punktzahlen eintragen.
 
 ## Tagesrennen (Tages-Bestenliste)
 
@@ -70,3 +69,44 @@ grant select, insert on public.daily to anon;
 ```
 
 Die Strecke des Tages wird aus dem Datum berechnet: alle Spieler fahren am selben Tag dieselbe Strecke am selben Ort.
+
+## Schutz gegen Schummeln (für die Store-Version)
+
+Das Spiel schickt seit Version 30 eine anonyme Spieler-ID mit und trägt unrealistische Läufe gar nicht erst ein.
+Dieser Code sorgt dafür, dass die Datenbank das ebenfalls prüft. Im **SQL Editor** einfügen und **Run** drücken
+(einmalig, die bestehenden Einträge bleiben erhalten):
+
+```sql
+-- anonyme Spieler-ID (das Spiel funktioniert auch ohne diese Spalte)
+alter table public.scores add column if not exists player_id uuid;
+alter table public.daily  add column if not exists player_id uuid;
+
+-- Punkte passen zur Strecke (dieselbe Grenze wie im Spiel), Strecke nicht absurd
+alter table public.scores add constraint scores_plausible check (dist <= 200000 and score <= dist * 60 + 5000) not valid;
+alter table public.daily  add constraint daily_plausible  check (dist <= 200000 and score <= dist * 60 + 5000) not valid;
+
+-- höchstens ein Eintrag alle 20 Sekunden pro Spieler-ID und Tabelle
+create or replace function public.rate_limit_entries() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.player_id is not null then
+    if tg_table_name = 'scores' and exists (select 1 from public.scores where player_id = new.player_id and created_at > now() - interval '20 seconds')
+    or tg_table_name = 'daily'  and exists (select 1 from public.daily  where player_id = new.player_id and created_at > now() - interval '20 seconds') then
+      raise exception 'too many entries';
+    end if;
+  end if;
+  new.created_at := now();
+  return new;
+end $$;
+
+drop trigger if exists scores_rate_limit on public.scores;
+create trigger scores_rate_limit before insert on public.scores for each row execute function public.rate_limit_entries();
+drop trigger if exists daily_rate_limit on public.daily;
+create trigger daily_rate_limit before insert on public.daily for each row execute function public.rate_limit_entries();
+
+create index if not exists scores_player_idx on public.scores (player_id, created_at);
+create index if not exists daily_player_idx  on public.daily  (player_id, created_at);
+```
+
+Namen mit Schimpfwörtern (in allen 10 Sprachen) filtert das Spiel selbst: beim Eintragen und beim Anzeigen.
+Einen einzelnen Eintrag löschst du im **Table Editor** (Zeile anklicken → Delete).
