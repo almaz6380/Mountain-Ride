@@ -965,7 +965,7 @@ body {
   // stance), 'jump' (crouch, take-off, tuck, landing) and 'fall' (free fall, used for wipe-outs). The FBX came in
   // centimetres. Spins, flips, carving lean and the slope stay on the root (poseRider3d); the board is kept under
   // the feet every frame, so it follows the tuck in the air
-  const ANIM_SCALE = 1.4, DUCK_T = 0.68, BOARD_UNDER_ANKLE = 0.26;
+  const ANIM_SCALE = 1.4, DUCK_T = 0.68, BOARD_UNDER_ANKLE = 0.04;   // board top just under the soles
   function makeRiderAnim(g, ghost) {
     const model = g.scene;
     let skinned = null;
@@ -1001,10 +1001,16 @@ body {
     const duck = mixer.clipAction(jumpClip.clone());   // ducking = the deep crouch of the jump's landing, held
     duck.play(); duck.timeScale = 0; duck.time = DUCK_T; duck.setEffectiveWeight(0);
     const bone = n => model.getObjectByName('mixamorig' + n);
-    const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), rest: null, low: 0 };
+    // sole points: the lowest vertices of the boots in the bind pose, skinned every frame to find the real sole
+    const pos = skinned.geometry.attributes.position, low = [];
+    let minY = Infinity; for (let i = 0; i < pos.count; i++) minY = Math.min(minY, pos.getY(i));
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < minY + 0.0004) low.push(i);   // the FBX units are cm/100
+    const soles = low.filter((_, k) => k % Math.max(1, Math.floor(low.length / 60)) === 0);
+    const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), skinned, soles, rest: null, low: 0, yaw: null,
+      squat: { thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') } };
     return { root, pivot, boardMat, topMat, anim: A, st: { duck: 0, airT: 0 } };
   }
-  const AV1 = new THREE.Vector3(), AV2 = new THREE.Vector3();
+  const AV1 = new THREE.Vector3(), AV2 = new THREE.Vector3(), AV3 = new THREE.Vector3(), AV4 = new THREE.Vector3(), AX = new THREE.Vector3(1, 0, 0), AQ = new THREE.Quaternion();
   // o: { air, airT, crashed, duck 0..1 }
   function animateRider(r3, o, dt) {
     const A = r3.anim;
@@ -1024,10 +1030,21 @@ body {
     A.duck.setEffectiveWeight(dk);
     if (A.state === 'ride' && A.fade <= 0) A.act.ride.setEffectiveWeight(1 - dk);
     A.mixer.update(dt);
+    // ducking goes deeper than any clip: bend hips, knees and back on top of the crouch frame (the planted feet
+    // below keep the board on the snow, so the whole body sinks), head up to keep looking ahead
+    if (dk > 0.001) {
+      const S = A.squat, q = AQ;
+      for (const b of S.thighs) b.quaternion.multiply(q.setFromAxisAngle(AX, 0.45 * dk));
+      for (const b of S.knees) b.quaternion.multiply(q.setFromAxisAngle(AX, -0.9 * dk));
+      for (const b of S.spine) b.quaternion.multiply(q.setFromAxisAngle(AX, 0.15 * dk));
+      S.neck.quaternion.multiply(q.setFromAxisAngle(AX, -0.3 * dk));
+    }
     // feet: measure the ankles in the body's space
     A.model.updateMatrixWorld(true);
     const fl = A.body.worldToLocal(A.fl.getWorldPosition(AV1)), fr = A.body.worldToLocal(A.fr.getWorldPosition(AV2));
-    const ankle = Math.min(fl.y, fr.y);
+    // the real sole: the lowest skinned boot vertex
+    let ankle = Infinity;
+    for (const i of A.soles) { A.skinned.boneTransform(i, AV3); AV3.applyMatrix4(A.skinned.matrixWorld); A.body.worldToLocal(AV3); if (AV3.y < ankle) ankle = AV3.y; }
     if (A.rest === null && A.state === 'ride') A.rest = ankle;   // ankle height while riding: board on the snow
     const rest = A.rest === null ? ankle : A.rest;
     // on the snow the planted foot stays at riding height (the crouch does not push the board into the snow);
@@ -1038,8 +1055,14 @@ body {
     fl.y += A.low; fr.y += A.low;
     // the board under both feet, along the line between them
     const dx = fr.x - fl.x, dy = fr.y - fl.y, dz = fr.z - fl.z;
-    A.board.position.set((fl.x + fr.x) / 2, (fl.y + fr.y) / 2 - BOARD_UNDER_ANKLE - (A.rest !== null ? 0 : 0), (fl.z + fr.z) / 2);
-    A.board.rotation.set(0, Math.atan2(-dz, dx), Math.atan2(dy, Math.hypot(dx, dz)));
+    // on the snow the board lies flat under the lower foot; only in the air may it tilt with the feet
+    const flat = A.state === 'ride';
+    // board direction follows the feet while riding upright; in a crouch it keeps the riding direction
+    const yaw = Math.atan2(-dz, dx);
+    if (A.yaw === null || !flat) A.yaw = yaw;
+    else if (dk < 0.15) A.yaw += angDiff(yaw - A.yaw) * Math.min(1, dt * 10);
+    A.board.position.set((fl.x + fr.x) / 2, ankle + A.low - BOARD_UNDER_ANKLE, (fl.z + fr.z) / 2);
+    A.board.rotation.set(0, A.yaw, flat ? 0 : Math.atan2(dy, Math.hypot(dx, dz)));
     return rest - BOARD_UNDER_ANKLE;   // how high the board sits above the root while riding
   }
   function loadOldRider() {
