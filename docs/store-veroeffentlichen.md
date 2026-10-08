@@ -23,10 +23,10 @@ Wo was liegt:
 5. Bei Apple (App Store Connect → Business) und Google (Zahlungsprofil) **Steuer- und Bankdaten** eintragen –
    ohne das gibt es keine Käufe und keine Auszahlungen.
 
-## 2. Impressum und Datenschutz ausfüllen
+## 2. Impressum und Datenschutz ✔
 
-In `assets/lib/legal.js` ganz oben bei `CONTACT` Name, Anschrift und E-Mail eintragen. Danach mir Bescheid geben
-(oder selbst veröffentlichen). Die Seiten sind dann hier erreichbar:
+Erledigt, wie bei deinen anderen Apps: Josef Gallab (Einzelunternehmen), österreichisches Impressum (§ 5 ECG, § 25 MedienG,
+GISA 39801937), Kontakt kontakt@wellbooked.at (in `assets/lib/legal.js` bei `CONTACT` änderbar). Die Seiten:
 - https://almaz6380.github.io/Mountain-Ride/privacy.html
 - https://almaz6380.github.io/Mountain-Ride/imprint.html
 
@@ -86,6 +86,10 @@ Nach jeder Änderung am Spiel wieder `npm run sync`.
 6. Bei jedem Update in Xcode unter „General“ **Build** um 1 erhöhen.
 
 ## 6. Store-Einträge anlegen
+
+**Entwickler-Website in beiden Stores:** https://almaz6380.github.io/ – dort liegt schon `app-ads.txt` mit deinem
+AdMob-Konto (pub-8860791993288062). AdMob prüft die Datei auf der Website, die im Store-Eintrag steht.
+Support-E-Mail: kontakt@wellbooked.at.
 
 **App Store Connect** (https://appstoreconnect.apple.com → Meine Apps → +):
 - Name, Untertitel, Werbetext, Beschreibung, Keywords, „Neu“: aus `store/listing/<sprache>.json`

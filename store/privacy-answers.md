@@ -3,8 +3,7 @@
 Datenschutzerklärung (für beide Stores): https://almaz6380.github.io/Mountain-Ride/privacy.html
 Support-/Marketing-URL: https://almaz6380.github.io/Mountain-Ride/
 
-Vorher in `assets/lib/legal.js` oben unter `CONTACT` deinen Namen, deine Anschrift und deine E-Mail eintragen
-(Pflicht für Impressum und Datenschutzerklärung), dann neu veröffentlichen.
+Impressum: https://almaz6380.github.io/Mountain-Ride/imprint.html · Kontakt: kontakt@wellbooked.at
 
 ## Apple – App-Datenschutz (App Store Connect → App-Datenschutz)
 

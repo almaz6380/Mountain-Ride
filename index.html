@@ -910,9 +910,12 @@ body {
       B['thigh' + s].rotation.set(-bend, 0, sgn * spread, 'ZXY');
       B['shin' + s].rotation.set(bend * 1.9, 0, 0);
       B['foot' + s].rotation.set(-bend * 0.9, 0, -sgn * spread);
-      const down = lerp(1.15, 0.25, st.arms);
-      B['arm' + s].rotation.set(0, sgn * (0.35 + st.lean * 0.3), -sgn * down, 'YZX');
-      B['fore' + s].rotation.set(0, sgn * 0.35, -sgn * 0.15);
+      // riding: arms held out from the body for balance, elbows bent; the lead (downhill) arm a little higher
+      // towards the nose. Carving lifts one arm and drops the other; a slow sway keeps them alive
+      const lead = s === 'L';
+      const down = lerp(lead ? 0.62 : 0.7, 0.22, st.arms) + (st.bal || 0) * sgn * 0.32 + (st.sway || 0) * sgn;
+      B['arm' + s].rotation.set(0, sgn * ((lead ? 0.5 : 0.45) + st.lean * 0.3), -sgn * down, 'YZX');
+      B['fore' + s].rotation.set(0, sgn * lerp(0.8, 0.35, st.arms), -sgn * 0.12);
     }
     if (st.grab > 0) { B.armL.rotation.z = lerp(B.armL.rotation.z, -1.45, st.grab); B.armL.rotation.y = lerp(B.armL.rotation.y, 0.9, st.grab); B.foreL.rotation.y = lerp(0.35, 0.1, st.grab); }
     B.spine.rotation.set(st.lean * 0.55, st.twist * 0.45, 0);
@@ -948,7 +951,7 @@ body {
     part(1.0, 0.012, 0.22, topMat, 0, 0.042);
     body.add(board);
     scene.add(root);
-    return { root, pivot, rig, boardMat, topMat, st: { crouch: 0.5, lean: 0.3, arms: 0.25, grab: 0, twist: 0.9 } };
+    return { root, pivot, rig, boardMat, topMat, st: { crouch: 0.5, lean: 0.3, arms: 0.25, grab: 0, twist: 0.9, bal: 0, sway: 0 } };
   }
   if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/rider.glb', g => {
     let src = null; g.scene.traverse(o => { if (o.isMesh && !src) src = o; });
@@ -966,6 +969,8 @@ body {
     st.lean += ((P.crashed ? 0.3 : P.air ? lerp(0.35, 0.7, gk) : lerp(0.3, 0.9, dk)) - st.lean) * e(12);
     st.arms += ((P.crashed ? 0.95 : P.air ? (1 - gk) * (0.8 + Math.sin(P.airT * 4) * 0.08) : 0.25 - dk * 0.15) - st.arms) * e(10);
     st.grab += (gk - st.grab) * e(16);
+    st.bal += ((P.air || P.crashed ? 0 : clamp(P.leanS, -1, 1)) - st.bal) * e(7);
+    st.sway = P.air || P.crashed ? 0 : Math.sin(clock * 2.1) * 0.05 + Math.sin(clock * 3.3 + 1) * 0.03;
     st.twist = 0.9 - P.leanS * 0.25;
     poseRig(r3.rig, st);
     const R = r3.root;
