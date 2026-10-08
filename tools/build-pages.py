@@ -24,6 +24,18 @@ head = """<!doctype html>
 <link rel="manifest" href="manifest.webmanifest">
 """
 page = (root / 'index.html').read_text(encoding='utf-8')
+# the web app and the store apps run without any CDN: libraries and fonts come from assets/lib
+LOCAL = [
+    ('<link rel="preconnect" href="https://fonts.googleapis.com">\n', ''),
+    ('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n', ''),
+    ('https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap', 'assets/lib/fonts/fonts.css'),
+    ('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'assets/lib/three.min.js'),
+    ('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js', 'assets/lib/GLTFLoader.js'),
+    ('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js', 'assets/lib/supabase.min.js'),
+]
+for old, new in LOCAL:
+    assert old in page, 'missing in index.html: ' + old
+    page = page.replace(old, new)
 sw = """
 <script>
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

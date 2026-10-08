@@ -147,6 +147,10 @@ body {
 .note { margin: 0; font-size: 15px; opacity: 0.8; text-align: left; }
 .combo-chip { margin-top: 6px; display: inline-grid; gap: 3px; justify-items: end; font-weight: 800; font-size: 18px; color: var(--jacket); text-shadow: 0 2px 6px rgba(20, 35, 58, 0.45); }
 .combo-chip .pbar { width: 86px; }
+.loading { position: fixed; inset: 0; z-index: 5; display: grid; text-align: center; place-content: center; justify-items: center; gap: 28px; background: linear-gradient(180deg, #2b3d63 0%, #8fb6d8 100%); transition: opacity 0.5s ease; }
+.loading.done { opacity: 0; pointer-events: none; }
+.load-bar { width: min(260px, 70vw); height: 8px; border-radius: 4px; background: rgba(244, 248, 252, 0.25); overflow: hidden; }
+.load-bar i { display: block; height: 100%; width: 0; background: var(--jacket); border-radius: 4px; transition: width 0.2s ease; }
 .title-screen { place-items: stretch; grid-template-rows: 1fr auto; text-align: center; background: linear-gradient(180deg, rgba(20, 35, 58, 0.55) 0%, rgba(20, 35, 58, 0) 42%, rgba(20, 35, 58, 0) 70%, rgba(20, 35, 58, 0.55) 100%); }
 .title-wrap { align-self: start; padding-top: 6vh; }
 .logo { font-family: var(--display); font-weight: 400; margin: 0; font-size: clamp(54px, 17vw, 112px); line-height: 0.86; color: var(--snow); text-shadow: 0 4px 0 rgba(20, 35, 58, 0.35), 0 10px 30px rgba(20, 35, 58, 0.45); }
@@ -224,7 +228,12 @@ body {
   </div>
 </div>
 
-<div class="overlay title-screen" id="title">
+<div class="loading" id="loading" role="progressbar" aria-label="Lädt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <h1 class="logo">Mountain<span>Ride</span></h1>
+  <div class="load-bar"><i id="loadFill"></i></div>
+</div>
+
+<div class="overlay title-screen" id="title" hidden>
   <div class="title-wrap">
     <h1 class="logo">Mountain<span>Ride</span></h1>
     <p class="tagline">Snowboard · Tricks · Duelle</p>
@@ -410,6 +419,13 @@ body {
       </div>
     </div>
     <div class="setting">
+      <span class="lbl" id="fpsLabel">Bildrate anzeigen</span>
+      <div class="seg" role="group" aria-labelledby="fpsLabel">
+        <button type="button" data-opt="fps" data-val="1">An</button>
+        <button type="button" data-opt="fps" data-val="0">Aus</button>
+      </div>
+    </div>
+    <div class="setting">
       <span class="lbl" id="vibLabel">Vibration bei Sturz</span>
       <div class="seg" role="group" aria-labelledby="vibLabel">
         <button type="button" data-opt="vibrate" data-val="1">An</button>
@@ -476,6 +492,30 @@ body {
   const cvs = $('game');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!window.THREE) { $('menuBest').textContent = '3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.'; return; }
+  // store apps: the WebView's localStorage can be cleared by the system, so every 'mountain-ride-*' key is mirrored
+  // into Capacitor Preferences and restored from there if the local copy is gone
+  const PREFS = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.Preferences;
+  function backupSave() {
+    if (!PREFS) return;
+    try {
+      const dump = {};
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('mountain-ride-')) dump[k] = localStorage.getItem(k); }
+      PREFS.set({ key: 'backup', value: JSON.stringify(dump) });
+    } catch (e) {}
+  }
+  if (PREFS) {
+    let hasLocal = false;
+    try { hasLocal = localStorage.getItem('mountain-ride-wallet') != null || localStorage.getItem('mountain-ride-tutorialDone') != null; } catch (e) {}
+    if (!hasLocal) PREFS.get({ key: 'backup' }).then(r => {
+      if (!r || !r.value) return;
+      const dump = JSON.parse(r.value);
+      if (!Object.keys(dump).length) return;
+      for (const k of Object.keys(dump)) localStorage.setItem(k, dump[k]);
+      location.reload();
+    }).catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.hidden) backupSave(); });
+    setInterval(backupSave, 30000);
+  }
 
   // ---------- Tuning (units are metres) ----------
   const GRAV = 25;
@@ -532,6 +572,21 @@ body {
   resize();
 
   // ---------- Assets ----------
+  // loading screen: everything goes through the default manager (textures and the rider model)
+  let loadDone = false;
+  function finishLoading() {
+    if (loadDone) return;
+    loadDone = true;
+    $('loadFill').style.width = '100%';
+    const el = $('loading'); el.classList.add('done'); setTimeout(() => el.remove(), 600);
+    if (openPanel === 'loading') showPanel('title');
+  }
+  THREE.DefaultLoadingManager.onProgress = (url, done, total) => {
+    const pct = Math.round(100 * done / Math.max(1, total));
+    $('loadFill').style.width = pct + '%'; $('loading').setAttribute('aria-valuenow', pct);
+  };
+  THREE.DefaultLoadingManager.onLoad = () => setTimeout(finishLoading, 150);
+  setTimeout(finishLoading, 12000);   // never hang on a slow or broken file
   const loader = new THREE.TextureLoader();
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   function tex(name, opts = {}) {
@@ -1775,7 +1830,7 @@ body {
     set(k, v) { try { localStorage.setItem('mountain-ride-' + k, JSON.stringify(v)); } catch (e) {} },
   };
   const SENS = { niedrig: 0.075, mittel: 0.05, hoch: 0.032 };   // swipe distance as a share of the screen
-  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel', vibrate: 1, snow: 1, shake: 1, gfx: 1 }, store.get('settings', {}));
+  const settings = Object.assign({ music: 0.8, sfx: 1, sens: 'mittel', vibrate: 1, snow: 1, shake: 1, gfx: 1, fps: 0 }, store.get('settings', {}));
   flakes.visible = !!settings.snow;
   // graphics: 2 = high (shadows, full resolution), 0 = fast, 1 = auto (high until the phone struggles)
   let autoLow = !!store.get('autoLow', false), perfT = 0, perfN = 0, perfSum = 0;
@@ -2052,7 +2107,7 @@ body {
     $('setMusic').value = Math.round(settings.music * 100); $('setMusicVal').textContent = Math.round(settings.music * 100) + ' %';
     $('setSfx').value = Math.round(settings.sfx * 100); $('setSfxVal').textContent = Math.round(settings.sfx * 100) + ' %';
     document.querySelectorAll('[data-sens]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sens === settings.sens)));
-    const cur = { sound: Sound.isMuted() ? 0 : 1, vibrate: settings.vibrate, snow: settings.snow, shake: settings.shake, gfx: settings.gfx };
+    const cur = { sound: Sound.isMuted() ? 0 : 1, vibrate: settings.vibrate, snow: settings.snow, shake: settings.shake, gfx: settings.gfx, fps: settings.fps };
     document.querySelectorAll('[data-opt]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.val) === Number(cur[b.dataset.opt]))));
   }
   document.querySelectorAll('[data-opt]').forEach(b => b.addEventListener('click', () => {
@@ -2064,7 +2119,23 @@ body {
     if (k === 'vibrate' && v) buzz(40);
     saveSettings();
   }));
-  function buzz(ms) { if (settings.vibrate && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
+  // in the store apps Capacitor's Haptics plugin vibrates (iPhones ignore navigator.vibrate)
+  const NATIVE = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() ? window.Capacitor.Plugins : null;
+  function buzz(ms) {
+    if (!settings.vibrate) return;
+    try {
+      if (NATIVE && NATIVE.Haptics) NATIVE.Haptics.impact({ style: ms > 100 ? 'HEAVY' : 'MEDIUM' });
+      else if (navigator.vibrate) navigator.vibrate(ms);
+    } catch (e) {}
+  }
+  // keep the screen on while riding
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+      if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+    } catch (e) { wakeLock = null; }
+  }
   function saveSettings() { store.set('settings', settings); Sound.setVolumes(settings.music, settings.sfx); syncSettings(); }
   $('setMusic').addEventListener('input', e => { settings.music = e.target.value / 100; saveSettings(); });
   $('setSfx').addEventListener('input', e => { settings.sfx = e.target.value / 100; saveSettings(); });
@@ -2241,6 +2312,7 @@ body {
 
   // ---------- Game flow ----------
   function start() {
+    keepAwake(true);
     Sound.init();
     fillMissions();
     for (const m of missions) if (MISSION_POOL.find(t => t.type === m.type).run) m.progress = 0;
@@ -2308,6 +2380,7 @@ body {
   }
 
   function gameOver() {
+    keepAwake(false); setTimeout(backupSave, 500);
     state = 'over';
     $('tut').hidden = true; tut.active = false;
     wallet += coinCount; career.coins += coinCount; career.runs++;
@@ -2540,7 +2613,7 @@ body {
   $('settingsBtn').addEventListener('click', () => openSub('settings', 'menu'));
   $('toMenuBtn').addEventListener('click', toMenu);
   $('againBtn').addEventListener('click', () => { submitName(); if (live.next) liveRematch(); else start(); });
-  showPanel('title');
+  if (loadDone) showPanel('title'); else { showPanel(null); openPanel = 'loading'; }
   refreshMenu();
 
   // ---------- Duel by link: same seed, the challenger rides along as a ghost ----------
@@ -3372,6 +3445,10 @@ body {
   // ---------- Loop ----------
   resetRider(0);
   nextDeco = -30;
+  const fpsEl = document.createElement('div');
+  fpsEl.style.cssText = 'position:fixed;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);font:600 12px var(--ui);color:#fff;background:rgba(20,35,58,.55);padding:2px 6px;border-radius:6px;pointer-events:none;z-index:4';
+  fpsEl.hidden = true; document.body.appendChild(fpsEl);
+  let fpsN = 0, fpsT = 0;
   const STEP_DT = 1 / 120;
   let acc = 0, prevX = 0, prevY = 0, prevD = 0;
   let last = performance.now();
@@ -3389,6 +3466,13 @@ body {
     render(Math.max(dt, 0.001));
     P.x = cx; P.y = cy; P.d = cd;
     watchPerf(dt);
+    // optional frame-rate readout (settings) for checking phones
+    fpsN++; fpsT += dt;
+    if (fpsT >= 0.5) {
+      fpsEl.hidden = !settings.fps;
+      if (settings.fps) fpsEl.textContent = `${Math.round(fpsN / fpsT)} FPS · ${renderer.info.render.calls} Aufrufe · ${renderer.getPixelRatio().toFixed(1)}x`;
+      fpsN = 0; fpsT = 0;
+    }
     updateHud();
     requestAnimationFrame(frame);
   }
