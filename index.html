@@ -208,7 +208,7 @@ body {
 
 <div class="hud" id="hud" hidden>
   <div class="hud-block">
-    <span class="hud-label">Strecke</span>
+    <span class="hud-label" id="hudStage">Strecke</span>
     <span class="hud-big" id="hudDist">0<small>m</small></span>
     <div class="hud-row"><span id="hudSpeed">0 km/h</span><span><i class="coin-dot"></i><span id="hudCoins">0</span></span></div>
     <span class="duel-chip" id="duelHud" hidden></span>
@@ -1399,11 +1399,21 @@ body {
     }
   }
 
-  function difficulty() { return clamp(0.1 + (P.d - startD) / 2500, 0, 1); }   // rises evenly, full after about 2.2 km
+  // the run comes in stages: each one adds one new kind of obstacle, so nothing new arrives before the last one is learned
+  const STAGES = [
+    { from: 0,    name: 'Aufwärmen',            sub: 'Bäume und Felsen: wisch zur Seite' },
+    { from: 450,  name: 'Baumstämme',           sub: 'Neu: Baumstämme und Schanzen. Wisch hoch zum Springen' },
+    { from: 1000, name: 'Banner',               sub: 'Neu: Banner. Wisch runter zum Ducken' },
+    { from: 1650, name: 'Zäune & Schneekugeln', sub: 'Neu: Absperrungen und rollende Schneekugeln' },
+    { from: 2400, name: 'Gletscherspalten',     sub: 'Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt' },
+    { from: 3200, name: 'Profi',                sub: 'Alles, immer schneller' },
+  ];
+  function stageAt(d) { const m = d - startD; let i = 0; while (i + 1 < STAGES.length && m >= STAGES[i + 1].from) i++; return i; }
+  function difficulty() { return clamp(0.05 + (P.d - startD) / 4500, 0, 1); }   // rises slowly, full after about 4 km
   // the course is built 228 m ahead: difficulty and expected speed for a spot depend only on where it is,
   // never on how the rider is doing, so the same seed always gives the same course
-  function diffAt(d) { return clamp(0.1 + Math.max(0, d - 228 - startD) / 2500, 0, 1); }
-  function vAt(d) { return 21 + Math.min(32, Math.max(0, d - 228 - startD) * 0.011); }
+  function diffAt(d) { return clamp(0.05 + Math.max(0, d - startD) / 4500, 0, 1); }
+  function vAt(d) { return 19 + Math.min(32, Math.max(0, d - 228 - startD) * 0.008); }
 
   function pickLanes(k) {
     const a = shuffle([0, 1, 2, 3, 4]);
@@ -1429,13 +1439,21 @@ body {
     }
   }
   function spawnRow(d) {
-    const diff = diffAt(d);
+    const diff = diffAt(d), stage = stageAt(d);
+    // a short breather at the start of every stage: just a line of coins
+    if (stage > 0 && d - startD - STAGES[stage].from < 60) {
+      const x = laneX(Math.floor(rowRnd() * 5));
+      for (let i = 0; i < 6; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
+      return 30;
+    }
     const roll = rowRnd();
-    // 2 blocked lanes early, a third and fourth become steadily more likely
-    const blocked = () => 2 + (rowRnd() < diff * 0.85 ? 1 : 0) + (rowRnd() < diff - 0.55 ? 1 : 0);
-    if (roll >= 0.38 && roll < 0.6) {   // the newer obstacles
+    // blocked lanes per row: 1-2 while warming up, 2-3 in the middle stages, up to 4 at the end
+    const blocked = () => stage === 0 ? 1 + (rowRnd() < 0.55 ? 1 : 0)
+      : stage < 3 ? 2 + (stage === 2 && rowRnd() < diff * 0.6 ? 1 : 0)
+      : 2 + (rowRnd() < diff * 0.85 ? 1 : 0) + (rowRnd() < diff - 0.55 ? 1 : 0);
+    if (roll >= 0.38 && roll < 0.6 && stage >= 3) {   // the newer obstacles
       const kind = rowRnd();
-      if (kind < 0.36) {   // crevasse across neighbouring lanes: jump over it
+      if (kind < 0.36 && stage >= 4) {   // crevasse across neighbouring lanes: jump over it
         const n = 2 + Math.floor(rowRnd() * (diff > 0.2 ? 4 : 3));
         const l0 = Math.floor(rowRnd() * (6 - n)), used = [];
         for (let l = l0; l < l0 + n; l++) { used.push(l); addCoin(d, laneX(l), baseH(d, laneX(l)) + 1.6); }
@@ -1461,7 +1479,7 @@ body {
       if (diff > 0.4 && rowRnd() < 0.5) addEnt('snowball', d + 20, laneX(dir < 0 ? 0 : 4), { vx: -dir * rr(3.5, 5 + diff * 3) });
       return lerp(20, 13, diff);
     }
-    if (roll >= 0.6 && roll < 0.8 && rowRnd() < 0.2 + diff * 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
+    if (roll >= 0.6 && roll < 0.8 && stage >= 4 && rowRnd() < 0.2 + diff * 0.8) {   // no free lane: trees, plus one lane to jump and one to duck
       const order = shuffle([0, 1, 2, 3, 4]);
       addEnt('log', d, laneX(order[0]));
       addEnt('gate', d, laneX(order[1]));
@@ -1469,11 +1487,11 @@ body {
       for (const l of order.slice(2)) addEnt(rowRnd() < 0.7 ? 'tree' : 'snowman', d + rr(-0.5, 0.5), laneX(l), { s: 0.75 });
       return lerp(15, 9, diff);
     }
-    if (roll < 0.08) {
+    if (roll < 0.08 && stage >= 1) {
       const r = addRamp(d, laneX(Math.floor(rowRnd() * 5)));
       return r.d1 - d + lerp(20, 14, diff);
     }
-    if (roll < 0.2) {   // logs: jump over or switch lane
+    if (roll >= 0.08 && roll < 0.2 && stage >= 1) {   // logs: jump over or switch lane
       const used = pickLanes(blocked());
       for (const l of used) {
         addEnt('log', d, laneX(l));
@@ -1482,7 +1500,7 @@ body {
       maybePower(d, used);
       return lerp(15, 9, diff);
     }
-    if (roll < 0.32) {   // banner gates: duck under or switch lane
+    if (roll >= 0.2 && roll < 0.32 && stage >= 2) {   // banner gates: duck under or switch lane
       const used = pickLanes(blocked());
       for (const l of used) {
         addEnt('gate', d, laneX(l));
@@ -1491,10 +1509,10 @@ body {
       maybePower(d, used);
       return lerp(15, 9, diff);
     }
-    if (roll < 0.38) {   // coin line in one lane, later ending in a rock you have to jump
+    if (roll >= 0.32 && roll < 0.38) {   // coin line in one lane, later ending in a rock you have to jump
       const lane = Math.floor(rowRnd() * 5), x = laneX(lane);
       for (let i = 0; i < 7; i++) addCoin(d + i * 3, x, baseH(d + i * 3, x) + 0.9);
-      if (diff > 0.25) addEnt('rock', d + 22, x);
+      if (stage >= 1 && diff > 0.15) addEnt('rock', d + 22, x);
       maybePower(d + 10, [lane]);
       return 24;
     }
@@ -1505,7 +1523,7 @@ body {
       const type = types[Math.floor(rowRnd() * types.length)];
       addEnt(type, d + rr(-1, 1), laneX(l), type === 'tree' ? { s: rr(0.7, 0.85) } : {});
     }
-    if (rowRnd() < 0.06 + diff * 0.55) {   // quick follow-up row: two lane changes in a row
+    if (stage >= 3 && rowRnd() < 0.06 + diff * 0.55) {   // quick follow-up row: two lane changes in a row
       const gap = lerp(13, 10, diff) * Math.max(1, vAt(d) / 22);
       followRow(d + gap, used);
       return gap + lerp(12, 8, diff);
@@ -1571,10 +1589,12 @@ body {
   popEl.style.cssText = 'position:fixed;left:0;right:0;top:26%;text-align:center;pointer-events:none;font-family:var(--ui);color:#fff;text-shadow:0 2px 6px rgba(20,35,58,.45);transition:opacity .3s, transform .3s;opacity:0';
   document.body.appendChild(popEl);
   let popTimer = 0;
-  function popup(text, sub) {
-    popEl.innerHTML = `<div style="font-weight:800;font-size:clamp(26px,6vw,40px);line-height:1">${text}</div><div style="font-family:var(--display);color:var(--jacket);font-size:clamp(22px,5vw,32px);margin-top:4px">${sub}</div>`;
+  // long: a sentence to read (stage intros), shown smaller and longer
+  function popup(text, sub, long) {
+    const subStyle = long ? 'font-family:var(--ui);font-weight:700;color:var(--jacket);font-size:clamp(17px,4.4vw,22px);margin:6px auto 0;max-width:22em;padding:0 16px' : 'font-family:var(--display);color:var(--jacket);font-size:clamp(22px,5vw,32px);margin-top:4px';
+    popEl.innerHTML = `<div style="font-weight:800;font-size:clamp(26px,6vw,40px);line-height:1">${text}</div><div style="${subStyle}">${sub}</div>`;
     popEl.style.opacity = '1'; popEl.style.transform = 'translateY(-8px)';
-    popTimer = 1.4;
+    popTimer = long ? 3 : 1.4;
   }
 
   // ---------- Sound & music (synthesised with Web Audio, no files) ----------
@@ -2232,14 +2252,14 @@ body {
     runSeed = fixed ? fixed.seed : (Math.random() * 4294967296) >>> 0;
     rowRnd = seededRng(runSeed); secRnd = seededRng(runSeed ^ 0x9e3779b9); lastSectionType = '';
     resetRider(fixed ? fixed.sd : Math.round(P.d));
-    P.v = 21;
-    combo = 0; comboT = 0;
+    P.v = 19;
+    combo = 0; comboT = 0; curStage = -1;
     rec = { bytes: [], lastD: P.d, t: 0, tut: false }; ghostT = 0; duelPassed = false;
     startD = P.d; nextD = P.d + 70; nextDeco = P.d - 20;
     score = 0; bonus = 0; coinCount = 0; topSpeed = 0; shake = 0; lastScoreD = P.d;
     for (const k of Object.keys(PW)) PW[k] = 0;
     nextPowerD = P.d + rr(120, 200);
-    sections = []; curSection = null; nextSectionD = P.d + 400;
+    sections = []; curSection = null; nextSectionD = P.d + 1100;
     resetBody();
     applyTrail();
     // tutorial on the very first run, or when asked for in the settings
@@ -2401,7 +2421,7 @@ body {
   // one jump: spins, flips and a grab add up, and mixing different tricks multiplies them;
   // landing clean and going again within a few seconds builds a combo multiplier
   const COMBO_TIME = 4;
-  let combo = 0, comboT = 0;
+  let combo = 0, comboT = 0, curStage = -1;
   function comboBreak() { if (combo > 1) popup('Kombo vorbei', '×' + comboMult().toFixed(1).replace('.0', '')); combo = 0; comboT = 0; }
   function comboMult() { return Math.min(5, 1 + (combo - 1) * 0.5); }
   function land(gy) {
@@ -3019,7 +3039,7 @@ body {
     } else {
       const here = sectionAt(P.d);
       const secSpeed = here ? lerp(1, here.def.speed, here.w) : 1;
-      const target = (playing ? (tut.active ? 15 : (21 + Math.min(32, dist * 0.011)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
+      const target = (playing ? (tut.active ? 15 : (19 + Math.min(32, dist * 0.008)) * secSpeed) : 11) + (PW.turbo > 0 ? 12 : 0);
       if (!playing) { P.tx = Math.sin(clock * 0.5) * 6; }
       if (!P.air) {
         const s = slopeAt(P.d, P.x);
@@ -3069,6 +3089,15 @@ body {
     P.leanS += (leanT - P.leanS) * Math.min(1, dt * 16);
     P.poseT += dt;
     P.grabS = (P.grabS || 0) + (((P.grab && P.air) ? 1 : 0) - (P.grabS || 0)) * Math.min(1, dt * 14);
+    if (state === 'play' && !tut.active) {
+      const stg = stageAt(P.d);
+      if (stg !== curStage) {
+        curStage = stg;
+        $('hudStage').textContent = `Etappe ${stg + 1}`;
+        popup(`Etappe ${stg + 1}: ${STAGES[stg].name}`, STAGES[stg].sub, true);
+        if (stg > 0) Sound.power();
+      }
+    }
     updateCombo(dt);
     let want = P.pose;
     if (P.crashed) want = 'rider-crash';
