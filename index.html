@@ -999,8 +999,40 @@ body {
     for (let i = 0; i < pos.count; i++) if (pos.getY(i) < minY + 0.0004) low.push(i);   // the FBX units are cm/100
     const soles = low.filter((_, k) => k % Math.max(1, Math.floor(low.length / 60)) === 0);
     const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), skinned, soles, rest: null, low: 0, yaw: null,
-      squat: { thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') } };
+      squat: { hips: bone('Hips'), thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], feet: [bone('LeftFoot'), bone('RightFoot')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') } };
     return { root, pivot, boardMat, topMat, anim: A, st: { duck: 0, airT: 0 } };
+  }
+  const IK = { t: [new THREE.Vector3(), new THREE.Vector3()], h: new THREE.Vector3(), k: new THREE.Vector3(), f: new THREE.Vector3(),
+    a: new THREE.Vector3(), b: new THREE.Vector3(), n: new THREE.Vector3(), s: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), wq: new THREE.Quaternion() };
+  function rotateBoneWorld(bone, q) {   // turn a bone by a world-space rotation
+    bone.parent.getWorldQuaternion(IK.pq); bone.getWorldQuaternion(IK.wq);
+    IK.wq.premultiply(q);
+    bone.quaternion.copy(IK.pq.invert().multiply(IK.wq));
+    bone.updateMatrixWorld(true);
+  }
+  function squatIK(A, dk) {
+    const S = A.squat;
+    A.model.updateMatrixWorld(true);
+    S.feet.forEach((f, i) => f.getWorldPosition(IK.t[i]));   // where the feet must stay
+    for (const b of S.spine) b.quaternion.multiply(IK.q.setFromAxisAngle(AX, 0.17 * dk));
+    S.neck.quaternion.multiply(IK.q.setFromAxisAngle(AX, -0.35 * dk));
+    S.hips.parent.getWorldScale(IK.s);
+    S.hips.position.y -= 0.34 * dk / IK.s.y;   // hips 34 cm lower
+    S.hips.updateMatrixWorld(true);
+    for (let i = 0; i < 2; i++) {
+      const T = S.thighs[i], K = S.knees[i], F = S.feet[i], t = IK.t[i];
+      T.getWorldPosition(IK.h); K.getWorldPosition(IK.k); F.getWorldPosition(IK.f);
+      const a = IK.a.subVectors(IK.h, IK.k), b = IK.b.subVectors(IK.f, IK.k);
+      const L1 = a.length(), L2 = b.length(), D = clamp(IK.f.copy(t).sub(IK.h).length(), Math.abs(L1 - L2) + 0.01, L1 + L2 - 0.01);
+      const n = IK.n.crossVectors(a, b);
+      if (n.lengthSq() < 1e-10) continue;
+      n.normalize();
+      const cur = a.angleTo(b), want = Math.acos(clamp((L1 * L1 + L2 * L2 - D * D) / (2 * L1 * L2), -1, 1));
+      rotateBoneWorld(K, IK.q.setFromAxisAngle(n, want - cur));   // bend the knee to the needed leg length
+      F.getWorldPosition(IK.f);
+      IK.a.subVectors(IK.f, IK.h).normalize(); IK.b.subVectors(t, IK.h).normalize();
+      rotateBoneWorld(T, IK.q.setFromUnitVectors(IK.a, IK.b));    // then swing the thigh so the foot lands on its spot
+    }
   }
   const AV1 = new THREE.Vector3(), AV2 = new THREE.Vector3(), AV3 = new THREE.Vector3(), AV4 = new THREE.Vector3(), AX = new THREE.Vector3(1, 0, 0), AQ = new THREE.Quaternion();
   // o: { air, airT, crashed, duck 0..1 }
@@ -1019,18 +1051,10 @@ body {
     // in the air: hold the tuck until the landing
     if (A.state === 'jump') A.act.jump.time = Math.min(0.36, 0.28 + o.airT * 0.25);
     const dk = A.state === 'ride' ? o.duck : 0;
-    A.duck.setEffectiveWeight(dk);
-    if (A.state === 'ride' && A.fade <= 0) A.act.ride.setEffectiveWeight(1 - dk);
     A.mixer.update(dt);
-    // ducking goes deeper than any clip: bend hips, knees and back on top of the crouch frame (the planted feet
-    // below keep the board on the snow, so the whole body sinks), head up to keep looking ahead
-    if (dk > 0.001) {
-      const S = A.squat, q = AQ;
-      for (const b of S.thighs) b.quaternion.multiply(q.setFromAxisAngle(AX, 0.45 * dk));
-      for (const b of S.knees) b.quaternion.multiply(q.setFromAxisAngle(AX, -0.9 * dk));
-      for (const b of S.spine) b.quaternion.multiply(q.setFromAxisAngle(AX, 0.15 * dk));
-      S.neck.quaternion.multiply(q.setFromAxisAngle(AX, -0.3 * dk));
-    }
+    // ducking: the riding clip with the hips lowered and the back bent forward; the knees are solved (two-bone
+    // IK) so both feet stay exactly where the riding stance has them – on the board
+    if (dk > 0.001) squatIK(A, dk);
     // feet: measure the ankles in the body's space
     A.model.updateMatrixWorld(true);
     const fl = A.body.worldToLocal(A.fl.getWorldPosition(AV1)), fr = A.body.worldToLocal(A.fr.getWorldPosition(AV2));
