@@ -945,9 +945,15 @@ body {
     poseRig(r3.rig, st);
     const R = r3.root;
     R.position.set(P.x, P.y + 0.01, -P.d);
+    // the board lies flat on the slope: pitch with the fall line and roll with the cross slope under the rider
+    // (in the air it eases towards the slope it will land on)
+    const slope = Math.atan(slopeAt(P.d, P.x)), cross = Math.atan((baseH(P.d, P.x + 0.5) - baseH(P.d, P.x - 0.5)));
+    R.rotation.x += (slope - R.rotation.x) * e(P.air ? 3 : 14);
     // carve: lean into the turn around the board; a crash throws him onto his side
-    const tRoll = P.crashed ? 1.3 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) : -P.leanS * 0.3;
+    const tRoll = (P.crashed ? 1.3 : P.air ? clamp(P.vx * -0.02, -0.15, 0.15) : -P.leanS * 0.3) + (P.air ? 0 : cross);
     R.rotation.z += (tRoll - R.rotation.z) * e(P.crashed ? 6 : 12);
+    // leaning into a carve tips the board onto its edge: lift it so the edge stays on the snow instead of in it
+    if (!P.air && !P.crashed) R.position.y += 0.19 * Math.abs(Math.sin(R.rotation.z - cross));
     R.rotation.y = P.air ? 0 : -P.vx * 0.025;
     r3.pivot.rotation.y = P.yaw;
     r3.pivot.rotation.x = P.pitch || 0;
@@ -3690,10 +3696,14 @@ body {
       // on the title the rider stands in the lower middle under the logo; with the menu open he sits above the card
       const onTitle = openPanel === 'title', a = Math.sin(clock * 0.17) * 1.05, R = (portrait ? 8.5 : 6.5) * (onTitle ? 0.85 : 1);
       const ox = P.x + Math.sin(a) * R, od = P.d + Math.cos(a) * R;
-      orbitPos.set(ox, Math.max(baseH(od, ox) + 1.6, P.y + (onTitle ? 1.6 : 2.6)), -od);
       orbitLook.set(P.x, P.y + (onTitle ? 1.7 : portrait ? -1.9 : 0.2), -P.d);
       const m = camMix * camMix * (3 - 2 * camMix);
-      camera.position.lerpVectors(orbitPos, camPos, m);
+      // a new run swings round the rider on a circle to the chase view (a straight line would pass through him)
+      const ab = a + ((a >= 0 ? Math.PI : -Math.PI) - a) * m, rb = lerp(R, back, m);
+      const bx = P.x + Math.sin(ab) * rb, bd = P.d + Math.cos(ab) * rb;
+      const by = lerp(Math.max(baseH(od, ox) + 1.6, P.y + (onTitle ? 1.6 : 2.6)), Math.max(baseH(bd, bx) + 1.6, camPos.y), m);
+      orbitPos.set(bx, by, -bd);
+      camera.position.lerpVectors(orbitPos, camPos, m * m * m);
       lookAt.lerpVectors(orbitLook, camLook, m);
     }
     for (const pl of poles) if (pl.torch) {
