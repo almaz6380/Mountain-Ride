@@ -1507,13 +1507,13 @@ body {
     grp.userData.flame = f; grp.userData.glow = g;
     return grp;
   }
-  const LOG = merge([
+  let LOG = merge([
     part(new THREE.CylinderGeometry(0.36, 0.38, 2.75, 9), 0x6e4a32, 0, 0.36, 0, 0, 0, Math.PI / 2),
     part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 9), 0xd9b48a, -1.385, 0.36, 0, 0, 0, Math.PI / 2),
     part(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 9), 0xd9b48a, 1.385, 0.36, 0, 0, 0, Math.PI / 2),
     part(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 5), 0x5b3f2c, 0.5, 0.75, 0.05, 0, 0, -0.5),
   ], snowOn(0.8));
-  const SNOWMAN = merge([
+  let SNOWMAN = merge([
     part(new THREE.IcosahedronGeometry(0.78, 1), 0xf4f7fb, 0, 0.62, 0),
     part(new THREE.IcosahedronGeometry(0.58, 1), 0xf4f7fb, 0, 1.55, 0),
     part(new THREE.IcosahedronGeometry(0.42, 1), 0xf4f7fb, 0, 2.25, 0),
@@ -1531,6 +1531,43 @@ body {
   const SNOWBALL = merge([part(jitter(new THREE.IcosahedronGeometry(0.75, 1), 0.12, 7), 0xeef4fb, 0, 0, 0)], (pos, col) => {
     for (let i = 0; i < pos.length; i += 3) if (pos[i] > 0.3) { col[i] = 0.82; col[i + 1] = 0.88; col[i + 2] = 0.96; }   // a few grey-blue patches so the roll is visible
   });
+  // real models (CC0 packs by Quaternius and Kenney, prepared in Blender by tools/models.py: snow, baked ambient
+  // occlusion in the vertex colours, game sizes) replace the built ones above once loaded; those stay as the fallback
+  // swapped by the graphics setting: "Schnell" (and Auto on a slow phone) keeps the light built models
+  let STUMP = null, modelSet = null, modelsOn = true;
+  const builtSet = { FIR: FIR.slice(), FIR_ROUND: FIR_ROUND.slice(), ROCKS: ROCKS.slice(), ICE: ICE.slice(), LOG, SNOWMAN, STUMP: null };
+  function modelGeo(o) {
+    const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, n = src.attributes.position.count;
+    const c = src.attributes.color, col = new Float32Array(n * 3);
+    const k = !c.normalized ? 1 : c.array instanceof Uint16Array ? 1 / 65535 : c.array instanceof Uint8Array ? 1 / 255 : 1;   // r128 reads normalized colours raw
+    for (let i = 0; i < n; i++) { col[i * 3] = c.getX(i) * k; col[i * 3 + 1] = c.getY(i) * k; col[i * 3 + 2] = c.getZ(i) * k; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', src.attributes.position);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.computeVertexNormals();   // flat, faceted shading like the rest of the world
+    g.computeBoundingSphere();
+    return g;
+  }
+  function useModels(on) {
+    modelsOn = on;
+    const to = on && modelSet ? modelSet : builtSet, from = to === modelSet ? builtSet : modelSet;
+    if (!modelSet) return;
+    const swap = new Map();   // also for everything already standing in the world
+    for (const key of ['FIR', 'FIR_ROUND', 'ROCKS', 'ICE']) {
+      const list = { FIR, FIR_ROUND, ROCKS, ICE }[key];
+      list.forEach((g, i) => { swap.set(from[key][i], to[key][i]); list[i] = to[key][i]; });
+    }
+    swap.set(from.LOG, to.LOG); swap.set(from.SNOWMAN, to.SNOWMAN);
+    LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP;
+    scene.traverse(o => { if (o.isMesh && swap.has(o.geometry)) o.geometry = swap.get(o.geometry); });
+  }
+  if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/obstacles.glb', gl => {
+    const get = (name, fallback) => { const o = gl.scene.getObjectByName(name); return o && o.geometry ? modelGeo(o) : fallback; };
+    const list = (name, built) => built.map((g, i) => get(name + i, g));
+    modelSet = { FIR: list('fir_tall_', builtSet.FIR), FIR_ROUND: list('fir_round_', builtSet.FIR_ROUND), ROCKS: list('rock_', builtSet.ROCKS),
+      ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
+    if (modelsOn) useModels(true);
+  }, undefined, () => {});
   // snowcat: grooms the piste downhill in one lane, slower than the rider – overtake it beside
   const CAT = merge([
     part(new THREE.BoxGeometry(0.62, 0.78, 4.0), 0x2b2f3a, -1.08, 0.39, 0), part(new THREE.BoxGeometry(0.62, 0.78, 4.0), 0x2b2f3a, 1.08, 0.39, 0),   // tracks
@@ -1896,6 +1933,15 @@ body {
         addEnt('tree', d + rand(-2, 2), x, { s: rand(0.9, 1.6), deco: true });
       }
       if (LOC.ice && Math.random() < 0.35) addEnt('rock', d + rand(-2, 2), side * rand(TRACK + 3, 30), { deco: true });
+      // stumps, rocks and logs under the first trees give the edge of the piste some depth
+      else if (!LOC.ice && Math.random() < 0.3) {
+        const x = side * rand(TRACK + 2.2, TRACK + 14), dd = d + rand(-2, 2), k = Math.random();
+        if (STUMP && k < 0.45) {
+          const m = shadowed(new THREE.Mesh(STUMP, modelMat), Math.abs(x) < 30);
+          m.rotation.y = rand(0, TAU); m.scale.setScalar(rand(0.8, 1.2)); m.position.set(x, baseH(dd, x) - 0.08, -dd);
+          scene.add(m); poles.push({ d: dd, mesh: m });
+        } else addEnt(k < 0.8 ? 'rock' : 'log', dd, x, { deco: true });
+      }
     }
     if (++poleCount % (LOC.torches ? 2 : 3) === 0) {
       for (const side of [-1, 1]) {
@@ -2191,6 +2237,7 @@ body {
   function applyGfx() {
     const hq = settings.gfx === 2 || (settings.gfx === 1 && !autoLow);
     sun.castShadow = hq;
+    if (modelsOn !== hq) useModels(hq);
     pxCap = hq ? 3 : 2; pxBudget = hq ? 3.2e6 : 1.6e6;
     resize();
   }
@@ -4135,7 +4182,7 @@ body {
     // the shadow box is centred a little ahead of the rider, where the obstacles are
     const sd = P.d + 14, sy = baseH(sd, 0);
     sun.target.position.set(P.x * 0.5, sy, -sd);
-    sun.position.set(P.x * 0.5 - 40, sy + 60, -sd + 30);
+    sun.position.set(P.x * 0.5 - 60, sy + 48, -sd + 12);
 
     placeSky();
     renderer.render(scene, camera);
