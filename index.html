@@ -2070,23 +2070,10 @@ body {
     try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
     const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
-    // iPhones mute Web Audio in silent mode unless a media element is playing
-    function silentWav() {
-      const n = 4410, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
-      const s = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
-      s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); v.setUint32(16, 16, true);
-      v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
-      v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, n * 2, true);
-      let bin = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i++) bin += String.fromCharCode(u[i]);
-      return 'data:audio/wav;base64,' + btoa(bin);
-    }
-    let unlockEl = null;
+    // sound through the iPhone's mute switch: only via the Audio Session API. The old trick (a silent <audio> loop)
+    // made iOS show the game as "now playing" in the Dynamic Island the whole time, so it is gone
     function unlockSilentSwitch() {
       try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
-      try {
-        if (!unlockEl) { unlockEl = new Audio(silentWav()); unlockEl.loop = true; unlockEl.setAttribute('playsinline', ''); }
-        const p = unlockEl.play(); if (p && p.catch) p.catch(() => {});
-      } catch (e) {}
     }
 
     function loopNoise(type, freq, q) {
@@ -2266,22 +2253,19 @@ body {
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ac.currentTime, 0.05);
       if (!m) init();
     }
-    // the silent loop that lets sound play through the mute switch must stop in the background too,
-    // or iOS keeps showing the game as "now playing" (Dynamic Island / lock screen)
-    function silentLoop(on) { if (!unlockEl) return; try { if (on) { const p = unlockEl.play(); if (p && p.catch) p.catch(() => {}); } else unlockEl.pause(); } catch (e) {} }
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { silentLoop(false); if (ac) ac.suspend(); }
-      else if (state !== 'paused') { silentLoop(true); if (ac) { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
+      if (document.hidden) { if (ac) ac.suspend(); }
+      else if (state !== 'paused') { if (ac) { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     });
-    addEventListener('pagehide', () => { silentLoop(false); if (ac) ac.suspend(); });
+    addEventListener('pagehide', () => { if (ac) ac.suspend(); });
     function setVolumes(m, s) {
       musicVol = m; sfxVol = s;
       if (!ac) return;
       musicBus.gain.setTargetAtTime(0.3 * m, ac.currentTime, 0.05);
       sfx.gain.setTargetAtTime(0.8 * s, ac.currentTime, 0.05);
     }
-    function suspend() { silentLoop(false); if (ac && ac.state === 'running') ac.suspend(); }
-    function resume() { if (!document.hidden) silentLoop(true); if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
+    function suspend() { if (ac && ac.state === 'running') ac.suspend(); }
+    function resume() { if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     return { init, frame, setMuted, setVolumes, suspend, resume, setTheme, isMuted: () => muted, loaded: () => Object.keys(samples), track: () => trackKey, ...fx };
   })();
 
