@@ -27,6 +27,7 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 - Duel and live duel must keep identical courses: course generation only uses the seeded `rowRnd` / `secRnd` streams and values derived from the row's distance (`diffAt`, `vAt`, `stageAt`), never the rider's live state. Cosmetics may use `Math.random`.
 
 ## Game structure (index.html)
+- Screens: loading → **start screen** `#menu` (logo, coins, gear = settings, place, „Losfahren“, daily/live, nav Shop · Missionen · Bestenliste; no „tap to start“ step – sound starts on the first touch). **Settings only from the start screen** (`#settings` = full page with sections Ton · Haptik · Grafik · Steuerung · Allgemein · Rechtliches); the in-run pause has only „Weiter“ / „Lauf beenden“ (owner's wish). Haptics via `buzz(ms)`: crash, shield, landing, trick, power-up (<25 ms light, <100 medium).
 - Physics: fixed 120 Hz steps with render interpolation. Five lanes (`LANE_W` 3.2 m), one swipe = one lane.
 - Course: `spawnRow(d)` builds rows ~228 m ahead. Obstacles arrive in **stages** (`STAGES`): warm-up (trees/rocks) → logs and ramps → banners → fences and snowballs → crevasses and full rows → everything. Speed `19 + min(32, dist * 0.008)` m/s.
 - Track sections (deep snow, ice, tunnel, steep) start after ~1.1 km.

@@ -45,17 +45,17 @@ async function shoot(browser, lang, device) {
     return { p, ctx };
   };
   const ride = async (p, secs) => {
-    await p.click('#title', { force: true }); await p.waitForTimeout(500);
+    await p.waitForTimeout(500);
     await p.click('#startBtn'); await p.waitForTimeout(400);
     // keep the rider alive: obstacles directly ahead in the rider's lane are moved aside
     await p.evaluate(() => { setInterval(() => { const P = __dbg.P(); for (const e of __dbg.ents()) if (!e.deco && e.d > P.d - 2 && e.d < P.d + 12 && Math.abs(e.x - P.x) < 2.5) { e.d = -1e6; e.mesh.visible = false; } }, 40); });
     await p.waitForTimeout(secs * 1000);
   };
 
-  // 1 title screen, 2 menu
+  // 1 start screen, 2 shop
   let { p, ctx } = await page('alpen');
   await snap(p);
-  await p.click('#title', { force: true }); await p.waitForTimeout(1200); await snap(p);
+  await p.click('#shopBtn'); await p.waitForTimeout(800); await snap(p);
   await ctx.close();
   // 3 riding in the Alps (stage banner), 4 a trick in the air
   ({ p, ctx } = await page('alpen'));
