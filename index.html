@@ -1534,7 +1534,7 @@ body {
   // real models (CC0 packs by Quaternius and Kenney, prepared in Blender by tools/models.py: snow, baked ambient
   // occlusion in the vertex colours, game sizes) replace the built ones above once loaded; those stay as the fallback
   // swapped by the graphics setting: "Schnell" (and Auto on a slow phone) keeps the light built models
-  let STUMP = null, modelSet = null, modelsOn = true;
+  let STUMP = null, FIR_FAR = null, modelSet = null, modelsOn = true;   // FIR_FAR: lighter trees for the forest away from the piste
   const builtSet = { FIR: FIR.slice(), FIR_ROUND: FIR_ROUND.slice(), ROCKS: ROCKS.slice(), ICE: ICE.slice(), LOG, SNOWMAN, STUMP: null };
   function modelGeo(o) {
     const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, n = src.attributes.position.count;
@@ -1558,7 +1558,8 @@ body {
       list.forEach((g, i) => { swap.set(from[key][i], to[key][i]); list[i] = to[key][i]; });
     }
     swap.set(from.LOG, to.LOG); swap.set(from.SNOWMAN, to.SNOWMAN);
-    LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP;
+    if (modelSet.FIR_FAR) modelSet.FIR_FAR.forEach((g, i) => on ? swap.set(builtSet.FIR[i], to.FIR[i]) : swap.set(g, builtSet.FIR[i]));
+    LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP; FIR_FAR = on ? modelSet.FIR_FAR : null;
     scene.traverse(o => { if (o.isMesh && swap.has(o.geometry)) o.geometry = swap.get(o.geometry); });
   }
   if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/obstacles.glb', gl => {
@@ -1566,6 +1567,8 @@ body {
     const list = (name, built) => built.map((g, i) => get(name + i, g));
     modelSet = { FIR: list('fir_tall_', builtSet.FIR), FIR_ROUND: list('fir_round_', builtSet.FIR_ROUND), ROCKS: list('rock_', builtSet.ROCKS),
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
+    const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
+    if (far.every(Boolean)) modelSet.FIR_FAR = far;
     if (modelsOn) useModels(true);
   }, undefined, () => {});
   // snowcat: grooms the piste downhill in one lane, slower than the rider – overtake it beside
@@ -1680,7 +1683,7 @@ body {
       return e;
     }
     const v = Math.floor(Math.random() * 3);
-    const geo = type === 'tree' ? (LOC.ice ? ICE[v] : Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
+    const geo = type === 'tree' ? (LOC.ice ? ICE[v] : opts.deco && FIR_FAR && Math.abs(x) > TRACK + 6 ? FIR_FAR[v] : Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
     const hgt = type === 'tree' ? spec.size * s : spec.size;
     const mesh = shadowed(new THREE.Mesh(geo, modelMat), !opts.deco || Math.abs(x) < 30);
     if (type === 'tree') mesh.scale.setScalar(s * rand(0.92, 1.08));
@@ -2207,18 +2210,22 @@ body {
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ac.currentTime, 0.05);
       if (!m) init();
     }
+    // the silent loop that lets sound play through the mute switch must stop in the background too,
+    // or iOS keeps showing the game as "now playing" (Dynamic Island / lock screen)
+    function silentLoop(on) { if (!unlockEl) return; try { if (on) { const p = unlockEl.play(); if (p && p.catch) p.catch(() => {}); } else unlockEl.pause(); } catch (e) {} }
     document.addEventListener('visibilitychange', () => {
-      if (!ac) return;
-      if (document.hidden) ac.suspend(); else if (state !== 'paused') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); }
+      if (document.hidden) { silentLoop(false); if (ac) ac.suspend(); }
+      else if (state !== 'paused') { silentLoop(true); if (ac) { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     });
+    addEventListener('pagehide', () => { silentLoop(false); if (ac) ac.suspend(); });
     function setVolumes(m, s) {
       musicVol = m; sfxVol = s;
       if (!ac) return;
       musicBus.gain.setTargetAtTime(0.3 * m, ac.currentTime, 0.05);
       sfx.gain.setTargetAtTime(0.8 * s, ac.currentTime, 0.05);
     }
-    function suspend() { if (ac && ac.state === 'running') ac.suspend(); }
-    function resume() { if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
+    function suspend() { silentLoop(false); if (ac && ac.state === 'running') ac.suspend(); }
+    function resume() { if (!document.hidden) silentLoop(true); if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     return { init, frame, setMuted, setVolumes, suspend, resume, setTheme, isMuted: () => muted, loaded: () => Object.keys(samples), track: () => trackKey, ...fx };
   })();
 
