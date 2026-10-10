@@ -2202,18 +2202,22 @@ body {
       if (master) master.gain.setTargetAtTime(m ? 0 : 0.9, ac.currentTime, 0.05);
       if (!m) init();
     }
+    // the silent loop that lets sound play through the mute switch must stop in the background too,
+    // or iOS keeps showing the game as "now playing" (Dynamic Island / lock screen)
+    function silentLoop(on) { if (!unlockEl) return; try { if (on) { const p = unlockEl.play(); if (p && p.catch) p.catch(() => {}); } else unlockEl.pause(); } catch (e) {} }
     document.addEventListener('visibilitychange', () => {
-      if (!ac) return;
-      if (document.hidden) ac.suspend(); else if (state !== 'paused') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); }
+      if (document.hidden) { silentLoop(false); if (ac) ac.suspend(); }
+      else if (state !== 'paused') { silentLoop(true); if (ac) { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     });
+    addEventListener('pagehide', () => { silentLoop(false); if (ac) ac.suspend(); });
     function setVolumes(m, s) {
       musicVol = m; sfxVol = s;
       if (!ac) return;
       musicBus.gain.setTargetAtTime(0.3 * m, ac.currentTime, 0.05);
       sfx.gain.setTargetAtTime(0.8 * s, ac.currentTime, 0.05);
     }
-    function suspend() { if (ac && ac.state === 'running') ac.suspend(); }
-    function resume() { if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
+    function suspend() { silentLoop(false); if (ac && ac.state === 'running') ac.suspend(); }
+    function resume() { if (!document.hidden) silentLoop(true); if (ac && ac.state !== 'running') { ac.resume(); nextStep = Math.max(nextStep, ac.currentTime + 0.05); } }
     return { init, frame, setMuted, setVolumes, suspend, resume, setTheme, isMuted: () => muted, loaded: () => Object.keys(samples), track: () => trackKey, ...fx };
   })();
 
