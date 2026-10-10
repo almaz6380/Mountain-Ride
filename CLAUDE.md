@@ -18,7 +18,7 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 2. Commit and push `master`.
 3. `python3 tools/build-pages.py`, copy `dist/` into a `gh-pages` worktree (replace everything), commit, push `gh-pages`.
 4. Check `https://almaz6380.github.io/Mountain-Ride/sw.js` shows the new version (Pages can lag or get stuck; if a run sits queued for long, cancel it and push again).
-5. Republish the Artifact from `index.html`.
+5. Republish the Artifact from `index.html`. The Artifact serves no `.glb`: `loadGLB()` falls back to `<name>.glb.txt` (base64), so whenever a `.glb` changed publish `assets/obstacles.glb.txt` / `assets/rider-anim.glb.txt` too (`base64 -w0 assets/X.glb > X.glb.txt`, passed via `files`; not committed). Audio and images are already published files there.
 
 ## Testing
 - Serve the repo (`python3 -m http.server 8765`) and drive it with Playwright (Chromium with `--use-angle=swiftshader`).
