@@ -2070,11 +2070,12 @@ body {
     try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
     const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 
-    // sound through the iPhone's mute switch: only via the Audio Session API. The old trick (a silent <audio> loop)
-    // made iOS show the game as "now playing" in the Dynamic Island the whole time, so it is gone
+    // iPhone: 'ambient' like other games – the game's sound follows the mute switch and the game never appears as
+    // "now playing" (Dynamic Island / lock screen). 'playback' or a silent <audio> loop both made iOS show it there
     function unlockSilentSwitch() {
-      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+      try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) {}
     }
+    unlockSilentSwitch();   // set before any sound exists
 
     function loopNoise(type, freq, q) {
       const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
