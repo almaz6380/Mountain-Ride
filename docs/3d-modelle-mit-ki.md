@@ -28,3 +28,17 @@
 
 Claude macht den Rest: Größe, Schnee, weniger Flächen fürs Handy (`tools/models.py`), Einbau und Bilder aus dem Spiel
 zur Abnahme. Für den Wald reichen 3 Tannen; sie werden verschieden gedreht und skaliert.
+
+## Ganz kostenlos: TRELLIS (Microsoft) auf Hugging Face
+
+Keine Credits, MIT-Lizenz (auch für die Verkaufs-App, ohne Namensnennung), Download als GLB. Läuft im Browser.
+
+1. **huggingface.co/spaces/gokaygokay/Flux-TRELLIS** öffnen (kein Konto nötig).
+2. Satz eintippen, z. B. `grey mountain boulder with snow on top, stylized game asset` oder
+   `cute snowman with black top hat, carrot nose, red scarf, stylized game asset`.
+3. **„Generate“** → 1–3 Minuten warten (bei viel Andrang Warteschlange).
+4. **„Extract GLB“** → **„Download GLB“** → per Google Drive („Jeder mit dem Link“) an Claude schicken.
+
+Mit Bild statt Text: **huggingface.co/spaces/trellis-community/TRELLIS** (Foto hochladen).
+
+**Nicht verwenden:** Hunyuan3D (Tencent) – die Lizenz gilt nicht in der EU.
