@@ -237,6 +237,47 @@ body {
 @keyframes nudge { 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .tut .gesture { animation: none; } }
 .best-line { margin: 0; font-size: 16px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+/* start screen: logo on top, the rider in the snow in the middle, everything to tap at the bottom */
+.home { place-items: stretch; grid-template-rows: auto auto 1fr auto; gap: 8px; text-align: center;
+  background: linear-gradient(180deg, rgba(20, 35, 58, 0.55) 0%, rgba(20, 35, 58, 0) 30%, rgba(20, 35, 58, 0) 55%, rgba(20, 35, 58, 0.5) 100%); }
+.home-top { display: flex; justify-content: space-between; align-items: center; }
+.pill { margin: 0; font-weight: 800; font-size: 20px; background: var(--card); border-radius: 99px; padding: 8px 14px; font-variant-numeric: tabular-nums; }
+.icon-btn { width: 48px; height: 48px; border-radius: 50%; border: 0; display: grid; place-items: center; color: var(--snow); background: var(--card); cursor: pointer; }
+.icon-btn:focus-visible, .nav-btn:focus-visible { outline: 3px solid var(--jacket); outline-offset: 2px; }
+.home-logo .logo { font-size: clamp(42px, 12.5vw, 84px); }
+.home-logo .tagline { margin-top: 8px; font-size: clamp(13px, 3.6vw, 18px); }
+.home-bottom { grid-row: 4; justify-self: center; width: min(440px, 100%); box-sizing: border-box; display: grid; gap: 10px;
+  background: var(--card); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 20px; padding: 12px 12px 8px; box-shadow: 0 20px 60px rgba(10, 18, 34, 0.35); }
+.btn.big { font-size: clamp(24px, 7vw, 30px); padding: 18px 20px; }
+.home-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-top: 1px solid rgba(244, 248, 252, 0.14); padding-top: 6px; }
+.nav-btn { position: relative; display: grid; justify-items: center; gap: 3px; padding: 8px 2px; border: 0; border-radius: 12px; background: transparent; color: var(--snow);
+  font: 700 13px/1.1 var(--ui); letter-spacing: 0; cursor: pointer; min-width: 0; overflow-wrap: normal; hyphens: auto; }
+.nav-btn:active { background: rgba(244, 248, 252, 0.1); }
+.nav-btn svg { color: var(--jacket); }
+.nav-btn .badge { position: absolute; top: 2px; inset-inline-end: 10%; margin: 0; font-size: 11px; }
+.home .best-line { font-size: 13px; }
+/* short phones: less text, so the rider stays visible between logo and buttons */
+@media (max-height: 720px) {
+  .home .loc-sub, .home .best-line, .home-logo .tagline { display: none; }
+  .home-logo .logo { font-size: clamp(36px, 10.5vw, 60px); }
+  .home-bottom { gap: 8px; padding: 10px 10px 6px; }
+  .home .loc-pick { padding: 4px 6px; }
+  .home .loc-info strong { font-size: 20px; }
+  .btn.big { padding: 14px 16px; }
+  .home .menu-row .btn { padding: 9px 8px; font-size: 16px; }
+  .nav-btn { padding: 4px 2px; }
+}
+/* full-screen pages (settings) */
+.page { place-items: stretch; grid-template-rows: auto 1fr; gap: 10px; background: linear-gradient(180deg, #1b2c49 0%, #2b4470 100%); }
+.page-head { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; width: min(560px, 100%); justify-self: center; }
+.page-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(28px, 8vw, 40px); color: var(--snow); text-align: center; }
+.page-body { overflow-y: auto; display: grid; align-content: start; gap: 14px; width: min(560px, 100%); justify-self: center; padding-bottom: 12px; }
+.set-sec { display: grid; gap: 14px; background: rgba(244, 248, 252, 0.07); border-radius: 16px; padding: 14px; }
+.set-sec h3 { margin: 0; font-weight: 800; font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--jacket); text-align: start; }
+.page .setting:has(> .seg > button:nth-child(2):last-child) { grid-template-columns: 1fr minmax(140px, 46%); align-items: center; }
+.page .setting .lbl small { display: block; font-weight: 500; font-size: 13px; opacity: 0.75; }
+.page .setting .lbl { display: grid; justify-content: start; text-align: start; }
+.page .legal-links { margin: 0; }
 </style>
 
 <canvas id="game" aria-label="Mountain Ride Spielfeld"></canvas>
@@ -264,36 +305,31 @@ body {
   <div class="load-bar"><i id="loadFill"></i></div>
 </div>
 
-<div class="overlay title-screen" id="title" hidden>
-  <div class="title-wrap">
+<div class="overlay home" id="menu" hidden>
+  <div class="home-top">
+    <p class="wallet pill"><i class="coin-dot"></i><span id="menuWallet">0</span></p>
+    <button class="icon-btn" id="settingsBtn" type="button" aria-label="Einstellungen" data-i18n-aria="menu.settings"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .2.2.4.5.4h4c.3 0 .5-.2.5-.4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
+  </div>
+  <div class="home-logo">
     <h1 class="logo">Mountain<span>Ride</span></h1>
     <p class="tagline" data-i18n="title.tagline">Snowboard · Tricks · Duelle</p>
   </div>
-  <button class="tap-start" id="titleBtn" type="button" data-i18n="title.tap">Tippen zum Starten</button>
-</div>
-
-<div class="overlay menu-overlay" id="menu" hidden>
-  <div class="card menu-card">
-    <div class="menu-head">
-      <h1 class="title mini">Mountain<span>Ride</span></h1>
-      <p class="wallet"><i class="coin-dot"></i><span id="menuWallet">0</span></p>
-    </div>
+  <div class="home-bottom">
     <div class="loc-pick">
       <button class="loc-arrow" id="locPrev" type="button" aria-label="Vorheriger Ort" data-i18n-aria="menu.prevPlace">‹</button>
       <div class="loc-info"><span class="loc-label" data-i18n="menu.place">Ort</span><strong id="locName">Alpen</strong><span class="loc-sub" id="locSub"></span></div>
       <button class="loc-arrow" id="locNext" type="button" aria-label="Nächster Ort" data-i18n-aria="menu.nextPlace">›</button>
     </div>
-    <button class="btn" id="startBtn" type="button">Losfahren</button>
+    <button class="btn big" id="startBtn" type="button">Losfahren</button>
     <div class="menu-row">
       <button class="btn ghost" id="dailyBtn" type="button"><span data-i18n="menu.daily">Tagesrennen</span><small id="dailySub"></small></button>
       <button class="btn ghost" id="liveBtn" type="button" hidden><span data-i18n="menu.live">Live-Duell</span><small data-i18n="menu.liveSub">gegen Freunde</small></button>
     </div>
-    <div class="menu-grid">
-      <button class="btn ghost" id="shopBtn" type="button" data-i18n="menu.shop">Shop</button>
-      <button class="btn ghost" id="missionsBtn" type="button"><span data-i18n="menu.missions">Missionen</span><span class="badge" id="missionBadge" hidden></span></button>
-      <button class="btn ghost" id="boardBtn" type="button" data-i18n="menu.board">Bestenliste</button>
-      <button class="btn ghost" id="settingsBtn" type="button" data-i18n="menu.settings">Einstellungen</button>
-    </div>
+    <nav class="home-nav">
+      <button class="nav-btn" id="shopBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5.2 4l-.4-2H1v2h2.2l3.1 10.6-1.2 2.2A1 1 0 0 0 6 18h14v-2H7.6l1-1.9h7.6c.7 0 1.4-.4 1.7-1L22 6.5A1 1 0 0 0 21.1 5H5.6L5.2 4z"/></svg><span data-i18n="menu.shop">Shop</span></button>
+      <button class="nav-btn" id="missionsBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M5 2h2v20H5zM8 3h11l-2.5 4.5L19 12H8z"/></svg><span data-i18n="menu.missions">Missionen</span><span class="badge" id="missionBadge" hidden></span></button>
+      <button class="nav-btn" id="boardBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M18 3V2H6v1H2v3a5 5 0 0 0 4.3 4.9A6 6 0 0 0 11 14.9V18H8v2h8v-2h-3v-3.1a6 6 0 0 0 4.7-4A5 5 0 0 0 22 6V3h-4zM4 6V5h2v3.8A3 3 0 0 1 4 6zm16 0a3 3 0 0 1-2 2.8V5h2v1z"/></svg><span data-i18n="menu.board">Bestenliste</span></button>
+    </nav>
     <p class="best-line" id="menuBest"></p>
   </div>
 </div>
@@ -437,17 +473,19 @@ body {
   </div>
 </div>
 
-<div class="overlay" id="settings" hidden>
-  <div class="card">
-    <h2 class="title" data-i18n-title="set.title">Einstel<span>lungen</span></h2>
+<div class="overlay page" id="settings" hidden>
+  <div class="page-head">
+    <button class="icon-btn" data-back type="button" aria-label="Zurück" data-i18n-aria="common.back"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M15.4 4.6 14 3.2 5.2 12l8.8 8.8 1.4-1.4L8 12z"/></svg></button>
+    <h2 class="page-title" data-i18n="menu.settings">Einstellungen</h2>
+  </div>
+  <div class="page-body">
+    <section class="set-sec"><h3 data-i18n="set.secSound">Ton</h3>
     <div class="setting">
-      <label for="setLang" data-i18n="set.lang">Sprache</label>
-      <select id="setLang" class="lang-select">
-        <option value="auto" data-i18n="set.langAuto">Automatisch</option>
-        <option value="de">Deutsch</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option>
-        <option value="fr">Français</option><option value="it">Italiano</option><option value="ru">Русский</option><option value="zh">中文</option>
-        <option value="ja">日本語</option><option value="ar">العربية</option>
-      </select>
+      <span class="lbl" id="soundLabel" data-i18n="set.sound">Ton</span>
+      <div class="seg" role="group" aria-labelledby="soundLabel">
+        <button type="button" data-opt="sound" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="sound" data-val="0" data-i18n="set.off">Aus</button>
+      </div>
     </div>
     <div class="setting">
       <label for="setMusic"><span data-i18n="set.music">Musik</span> <span id="setMusicVal"></span></label>
@@ -457,40 +495,23 @@ body {
       <label for="setSfx"><span data-i18n="set.sfx">Effekte</span> <span id="setSfxVal"></span></label>
       <input type="range" id="setSfx" min="0" max="100" step="5">
     </div>
+    </section>
+    <section class="set-sec"><h3 data-i18n="set.secHaptics">Haptik</h3>
     <div class="setting">
-      <span class="lbl" id="soundLabel" data-i18n="set.sound">Ton</span>
-      <div class="seg" role="group" aria-labelledby="soundLabel">
-        <button type="button" data-opt="sound" data-val="1" data-i18n="set.on">An</button>
-        <button type="button" data-opt="sound" data-val="0" data-i18n="set.off">Aus</button>
-      </div>
-    </div>
-    <div class="setting">
-      <span class="lbl" id="gfxLabel" data-i18n="set.gfx">Grafik</span>
-      <div class="seg" role="group" aria-labelledby="gfxLabel">
-        <button type="button" data-opt="gfx" data-val="2" data-i18n="set.high">Hoch</button>
-        <button type="button" data-opt="gfx" data-val="1" data-i18n="set.auto">Auto</button>
-        <button type="button" data-opt="gfx" data-val="0" data-i18n="set.fast">Schnell</button>
-      </div>
-    </div>
-    <div class="setting">
-      <span class="lbl" id="fpsLabel" data-i18n="set.fps">Bildrate anzeigen</span>
-      <div class="seg" role="group" aria-labelledby="fpsLabel">
-        <button type="button" data-opt="fps" data-val="1" data-i18n="set.on">An</button>
-        <button type="button" data-opt="fps" data-val="0" data-i18n="set.off">Aus</button>
-      </div>
-    </div>
-    <div class="setting">
-      <span class="lbl" id="vibLabel" data-i18n="set.vibrate">Vibration bei Sturz</span>
+      <span class="lbl" id="vibLabel"><span data-i18n="set.vibrate">Vibration</span><small data-i18n="set.vibrateSub">bei Sturz, Landung und Tricks</small></span>
       <div class="seg" role="group" aria-labelledby="vibLabel">
         <button type="button" data-opt="vibrate" data-val="1" data-i18n="set.on">An</button>
         <button type="button" data-opt="vibrate" data-val="0" data-i18n="set.off">Aus</button>
       </div>
     </div>
-    <div class="setting" id="remindRow" hidden>
-      <span class="lbl" id="remindLabel" data-i18n="set.remind">Erinnerung ans Tagesrennen</span>
-      <div class="seg" role="group" aria-labelledby="remindLabel">
-        <button type="button" data-opt="remind" data-val="1" data-i18n="set.on">An</button>
-        <button type="button" data-opt="remind" data-val="0" data-i18n="set.off">Aus</button>
+    </section>
+    <section class="set-sec"><h3 data-i18n="set.secGfx">Grafik</h3>
+    <div class="setting">
+      <span class="lbl" id="gfxLabel" data-i18n="set.quality">Qualität</span>
+      <div class="seg" role="group" aria-labelledby="gfxLabel">
+        <button type="button" data-opt="gfx" data-val="2" data-i18n="set.high">Hoch</button>
+        <button type="button" data-opt="gfx" data-val="1" data-i18n="set.auto">Auto</button>
+        <button type="button" data-opt="gfx" data-val="0" data-i18n="set.fast">Schnell</button>
       </div>
     </div>
     <div class="setting">
@@ -508,6 +529,15 @@ body {
       </div>
     </div>
     <div class="setting">
+      <span class="lbl" id="fpsLabel" data-i18n="set.fps">Bildrate anzeigen</span>
+      <div class="seg" role="group" aria-labelledby="fpsLabel">
+        <button type="button" data-opt="fps" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="fps" data-val="0" data-i18n="set.off">Aus</button>
+      </div>
+    </div>
+    </section>
+    <section class="set-sec"><h3 data-i18n="set.controls">Steuerung</h3>
+    <div class="setting">
       <span class="lbl" id="sensLabel" data-i18n="set.sens">Wisch-Empfindlichkeit</span>
       <div class="seg" role="group" aria-labelledby="sensLabel">
         <button type="button" data-sens="niedrig" data-i18n="set.low">Niedrig</button>
@@ -515,7 +545,6 @@ body {
         <button type="button" data-sens="hoch" data-i18n="set.high">Hoch</button>
       </div>
     </div>
-    <p class="list-title" data-i18n="set.controls">Steuerung</p>
     <ul class="controls">
       <li><span class="key">← →</span><span data-i18n="set.c1">Wischen: eine Spur nach links oder rechts</span></li>
       <li><span class="key">↑</span><span data-i18n="set.c2">Wischen oder Tippen: springen</span></li>
@@ -525,9 +554,29 @@ body {
       <li><span class="key">P · Esc</span><span data-i18n="set.cPause">Pause</span></li>
     </ul>
     <button class="btn ghost" id="tutorialBtn" type="button" data-i18n="set.tutorial">Tutorial nochmal spielen</button>
+    </section>
+    <section class="set-sec"><h3 data-i18n="set.secGeneral">Allgemein</h3>
+    <div class="setting">
+      <label for="setLang" data-i18n="set.lang">Sprache</label>
+      <select id="setLang" class="lang-select">
+        <option value="auto" data-i18n="set.langAuto">Automatisch</option>
+        <option value="de">Deutsch</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option>
+        <option value="fr">Français</option><option value="it">Italiano</option><option value="ru">Русский</option><option value="zh">中文</option>
+        <option value="ja">日本語</option><option value="ar">العربية</option>
+      </select>
+    </div>
+    <div class="setting" id="remindRow" hidden>
+      <span class="lbl" id="remindLabel" data-i18n="set.remind">Erinnerung ans Tagesrennen</span>
+      <div class="seg" role="group" aria-labelledby="remindLabel">
+        <button type="button" data-opt="remind" data-val="1" data-i18n="set.on">An</button>
+        <button type="button" data-opt="remind" data-val="0" data-i18n="set.off">Aus</button>
+      </div>
+    </div>
+    </section>
+    <section class="set-sec"><h3 data-i18n="set.secLegal">Rechtliches</h3>
     <button class="btn ghost" id="adPrivacyBtn" type="button" hidden data-i18n="set.adPrivacy">Werbe-Einstellungen</button>
     <p class="legal-links"><a id="privacyLink" href="https://almaz6380.github.io/Mountain-Ride/privacy.html" target="_blank" rel="noopener" data-i18n="set.privacy">Datenschutz</a> · <a id="imprintLink" href="https://almaz6380.github.io/Mountain-Ride/imprint.html" target="_blank" rel="noopener" data-i18n="set.imprint">Impressum</a></p>
-    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
+    </section>
   </div>
 </div>
 
@@ -535,7 +584,6 @@ body {
   <div class="card">
     <h2 class="title" data-i18n="pause.title">Pause</h2>
     <button class="btn" id="resumeBtn" type="button" data-i18n="pause.resume">Weiter</button>
-    <button class="btn ghost" id="pauseSettingsBtn" type="button" data-i18n="pause.settings">Einstellungen</button>
     <button class="btn ghost" id="quitBtn" type="button" data-i18n="pause.quit">Lauf beenden</button>
   </div>
 </div>
@@ -557,7 +605,7 @@ body {
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- Languages: German is built in, the others come from assets/lib/i18n.js (window.I18N) ----------
-  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration bei Sturz","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!"};
+  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!","set.secSound":"Ton","set.secHaptics":"Haptik","set.secGfx":"Grafik","set.secGeneral":"Allgemein","set.secLegal":"Rechtliches","set.quality":"Qualität","set.vibrateSub":"bei Sturz, Landung und Tricks"};
   const LANGS = ['de', 'en', 'es', 'pt', 'fr', 'it', 'ru', 'zh', 'ja', 'ar'];
   const LOCALES = { de: 'de-DE', en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', it: 'it-IT', ru: 'ru-RU', zh: 'zh-CN', ja: 'ja-JP', ar: 'ar-u-nu-latn' };
   let langPref = 'auto';
@@ -680,7 +728,7 @@ body {
     loadDone = true;
     $('loadFill').style.width = '100%';
     const el = $('loading'); el.classList.add('done'); setTimeout(() => el.remove(), 600);
-    if (openPanel === 'loading') showPanel('title');
+    if (openPanel === 'loading') { refreshMenu(); showPanel('menu'); maybeDailyBonus(); }
   }
   THREE.DefaultLoadingManager.onProgress = (url, done, total) => {
     const pct = Math.round(100 * done / Math.max(1, total));
@@ -1762,7 +1810,7 @@ body {
     if (type === 'shield') PW.shield = 1; else PW[type] = powerTime(type);
     popup(POWERS[type].name, type === 'shield' ? tx('pw.shieldSub') : tx('pw.seconds', { n: powerTime(type) }));
     progressMission('powers', 1);
-    Sound.power();
+    Sound.power(); buzz(20);
   }
   // returns true if the rider is out of the run
   let lastTurboMsg = -9;
@@ -2406,7 +2454,7 @@ body {
   fillMissions();
 
   // ---------- Panels (shop, missions, settings, high scores, pause) ----------
-  const PANELS = ['title', 'menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge', 'live', 'bonus'];
+  const PANELS = ['menu', 'over', 'board', 'shop', 'missions', 'settings', 'pause', 'duel', 'challenge', 'live', 'bonus'];
   let panelReturn = 'menu', openPanel = 'menu';
   function showPanel(id) {
     for (const p of PANELS) $(p).hidden = p !== id;
@@ -2565,7 +2613,7 @@ body {
   function buzz(ms) {
     if (!settings.vibrate) return;
     try {
-      if (NATIVE && NATIVE.Haptics) NATIVE.Haptics.impact({ style: ms > 100 ? 'HEAVY' : 'MEDIUM' });
+      if (NATIVE && NATIVE.Haptics) NATIVE.Haptics.impact({ style: ms > 100 ? 'HEAVY' : ms > 25 ? 'MEDIUM' : 'LIGHT' });
       else if (navigator.vibrate) navigator.vibrate(ms);
     } catch (e) {}
   }
@@ -3026,7 +3074,6 @@ body {
   $('pauseBtn').addEventListener('click', e => { e.stopPropagation(); pauseGame(); });
   $('pauseBtn').addEventListener('pointerdown', e => e.stopPropagation());
   $('resumeBtn').addEventListener('click', resumeGame);
-  $('pauseSettingsBtn').addEventListener('click', () => openSub('settings', 'pause'));
   $('quitBtn').addEventListener('click', () => { showPanel(null); state = 'play'; Sound.resume(); crashReason = tx('over.quit'); P.crashed = false; gameOver(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 
@@ -3261,7 +3308,7 @@ body {
     const clean = Math.max(diff, pdiff) < 0.22;
     if (pts > 0 && clean) { pts = Math.round(pts * 1.5) + 100; names.push(tx('trick.perfect')); P.v += 2; }
     else if (Math.max(diff, pdiff) > 0.4) { P.v *= 0.85; if (pts) names.push(tx('trick.wobbly')); }
-    Sound.land(P.airT > 1);
+    Sound.land(P.airT > 1); buzz(P.airT > 1 ? 30 : 12);
     P.sq = 0; P.sqv = -2.2 - Math.min(2.5, P.airT * 1.8);   // absorb the landing
     if (pts) {
       if (Math.max(diff, pdiff) > 0.4) comboBreak();
@@ -3270,7 +3317,7 @@ body {
       const m = (PW.double > 0 ? 2 : 1) * cm;
       pts = Math.round(pts * m);
       bonus += pts; score += pts;
-      popup(names.join(' · '), '+' + fmt(pts) + (combo > 1 ? '  ' + tx('trick.combo', { n: cm.toFixed(1).replace('.0', '') }) : '')); Sound.trick();
+      popup(names.join(' · '), '+' + fmt(pts) + (combo > 1 ? '  ' + tx('trick.combo', { n: cm.toFixed(1).replace('.0', '') }) : '')); Sound.trick(); buzz(40);
     }
     P.yaw = angDiff(P.yaw); P.spin = 0; P.pitch = 0; P.pitchTarget = 0;
     emit(P.x, gy + 0.1, -P.d, 22, 2.5, 0, 2, -P.v * 0.3);
@@ -3327,7 +3374,7 @@ body {
       if (state === 'play') { pauseGame(); return; }
       if (state === 'paused' && openPanel === 'pause') { resumeGame(); return; }
     }
-    if (state === 'paused' || (openPanel && openPanel !== 'menu' && openPanel !== 'over' && openPanel !== 'title')) return;
+    if (state === 'paused' || (openPanel && openPanel !== 'menu' && openPanel !== 'over')) return;
     if (KEYS[e.code]) {
       input[KEYS[e.code]] = true; e.preventDefault();
       if (!e.repeat) changeLane(KEYS[e.code] === 'right' ? 1 : -1);
@@ -3338,7 +3385,6 @@ body {
     e.preventDefault();
     if (e.repeat) return;
     if (state === 'play') jump(e.code !== 'Space');   // in the air: Space spins, ↑ / W flips
-    else if (openPanel === 'title') { Sound.init(); refreshMenu(); showPanel('menu'); maybeDailyBonus(); }
     else if (state === 'menu' && openPanel === 'menu' && locs.owned.includes(menuLoc)) start();
     else if (state === 'over' && !$('againBtn').disabled) { submitName(); start(); }
   });
@@ -3352,9 +3398,11 @@ body {
     Sound.init(); Sound.buy(); popup(L.name, tx('menu.unlocked'));
     refreshMenu();
   });
-  $('title').addEventListener('click', () => { Sound.init(); refreshMenu(); showPanel('menu'); maybeDailyBonus(); });   // tap anywhere
+  // sound may only start after a touch: the first tap or key anywhere switches it on (menu music included)
+  const firstTouch = () => { Sound.init(); removeEventListener('pointerdown', firstTouch, true); removeEventListener('keydown', firstTouch, true); };
+  addEventListener('pointerdown', firstTouch, true); addEventListener('keydown', firstTouch, true);
   // a soft click for every button in the menus
-  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn, .swatch, .tab, .icon-btn')) Sound.click(); }, true);
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn, .swatch, .tab, .icon-btn, .nav-btn')) Sound.click(); }, true);
   $('dailyBtn').addEventListener('click', () => { daily = dailyInfo(); startAfterAd(); });
   $('boardBtn').addEventListener('click', () => openSub('board', 'menu'));
   $('shopBtn').addEventListener('click', () => openSub('shop', 'menu'));
@@ -3369,7 +3417,7 @@ body {
     adGate = true;
     maybeInterstitial().finally(() => { adGate = false; if (state === 'menu' || state === 'over') start(); });
   }
-  if (loadDone) showPanel('title'); else { showPanel(null); openPanel = 'loading'; }
+  if (loadDone) showPanel('menu'); else { showPanel(null); openPanel = 'loading'; }
   refreshMenu();
 
   // ---------- Duel by link: same seed, the challenger rides along as a ghost ----------
@@ -4162,15 +4210,14 @@ body {
     camMix = state === 'menu' ? 0 : Math.min(1, camMix + dt * 1.1);
     const lookAt = TV4.copy(camLook);
     if (camMix < 1) {
-      // on the title the rider stands in the lower middle under the logo; with the menu open he sits above the card
-      const onTitle = openPanel === 'title', a = Math.sin(clock * 0.17) * 1.05, R = (portrait ? 8.5 : 6.5) * (onTitle ? 0.85 : 1);
+      const a = Math.sin(clock * 0.17) * 1.05, R = portrait ? 9.5 : 6.5;
       const ox = P.x + Math.sin(a) * R, od = P.d + Math.cos(a) * R;
-      orbitLook.set(P.x, P.y + (onTitle ? 1.7 : portrait ? -1.9 : 0.2), -P.d);
+      orbitLook.set(P.x, P.y + (portrait ? -0.9 : 0.2), -P.d);   // portrait: the rider stands between the logo and the buttons
       const m = camMix * camMix * (3 - 2 * camMix);
       // a new run swings round the rider on a circle to the chase view (a straight line would pass through him)
       const ab = a + ((a >= 0 ? Math.PI : -Math.PI) - a) * m, rb = lerp(R, back, m);
       const bx = P.x + Math.sin(ab) * rb, bd = P.d + Math.cos(ab) * rb;
-      const by = lerp(Math.max(baseH(od, ox) + 1.6, P.y + (onTitle ? 1.6 : 2.6)), Math.max(baseH(bd, bx) + 1.6, camPos.y), m);
+      const by = lerp(Math.max(baseH(od, ox) + 1.6, P.y + 2.6), Math.max(baseH(bd, bx) + 1.6, camPos.y), m);
       orbitPos.set(bx, by, -bd);
       camera.position.lerpVectors(orbitPos, camPos, m * m * m);
       lookAt.lerpVectors(orbitLook, camLook, m);
