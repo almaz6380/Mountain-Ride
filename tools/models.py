@@ -9,6 +9,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 
 QN, KH = sys.argv[-2], sys.argv[-1]
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')   # trees prepared by tools/meshy_tree.py
 TMP = os.environ.get('TMPDIR', '/tmp'); os.makedirs(TMP, exist_ok=True)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'obstacles.glb')
 
@@ -215,11 +216,26 @@ def snowman():
     fit(o, height=2.8); o.data.transform(Matrix.Diagonal((0.8, 1, 1, 1)))   # arms a little shorter: the hitbox is narrow
     bake_ao(o, 0.3); flat(o); return o
 
+def meshy(n, h, widen=1.0, faces=None):
+    """one of the Meshy trees (already coloured, AO baked): height, width, optionally fewer faces for far away"""
+    def f():
+        bpy.ops.import_scene.gltf(filepath=os.path.join(SRC, f'meshy-tree-{n}.glb'))
+        o = join([x for x in bpy.data.objects if x.type == 'MESH'])
+        ca = o.data.color_attributes[0]; ca.name = 'Col'; o.data.color_attributes.active_color = ca
+        fit(o, height=h)
+        if widen != 1: o.data.transform(Matrix.Diagonal((widen, widen, 1, 1)))
+        if faces: decimate(o, faces)
+        flat(o); return o
+    return f
+
 TREE_FACES = int(os.environ.get('TREE_FACES', 600))
+FAR_FACES = int(os.environ.get('FAR_FACES', 600)); NEAR_FACES = int(os.environ.get('NEAR_FACES', 2200))
 
 JOBS = [
-    ('fir_tall_0', pine('PineTree_1', 0, 6.5)), ('fir_tall_1', pine('PineTree_2', 1, 6.5)), ('fir_tall_2', pine('PineTree_3', 2, 6.5)),
-    ('fir_round_0', pine('PineTree_1', 1, 4.9, 1.2)), ('fir_round_1', pine('PineTree_2', 2, 4.9, 1.2)), ('fir_round_2', pine('PineTree_5', 0, 4.9, 1.25)),
+    # the owner's trees from meshy.ai; *_far: the same with fewer faces for the forest away from the piste
+    ('fir_tall_0', meshy(1, 6.5, faces=NEAR_FACES)), ('fir_tall_1', meshy(2, 6.5, faces=NEAR_FACES)), ('fir_tall_2', meshy(3, 6.5, faces=NEAR_FACES)),
+    ('fir_round_0', meshy(2, 4.9, 1.12, NEAR_FACES)), ('fir_round_1', meshy(3, 4.9, 1.12, NEAR_FACES)), ('fir_round_2', meshy(1, 4.9, 1.12, NEAR_FACES)),
+    ('fir_far_0', meshy(1, 6.5, faces=FAR_FACES)), ('fir_far_1', meshy(2, 6.5, faces=FAR_FACES)), ('fir_far_2', meshy(3, 6.5, faces=FAR_FACES)),
     ('rock_0', rock('Rock_Snow_6', 1.2, 0)), ('rock_1', rock('Rock_Snow_7', 1.15, 0)), ('rock_2', rock('Rock_Snow_4', 1.25, 0)),
     ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
     ('log', log), ('stump', stump), ('snowman', snowman),
@@ -230,7 +246,8 @@ paths = [build(n, f) for n, f in JOBS if not only or n in only.split(',')]
 reset()
 for p in paths:
     with bpy.data.libraries.load(p) as (src, dst): dst.objects = list(src.objects)
-    for o in dst.objects: bpy.context.scene.collection.objects.link(o)
+    for o in dst.objects:
+        if o and o.type == 'MESH': o.parent = None; bpy.context.scene.collection.objects.link(o)
 for i, o in enumerate(bpy.context.scene.objects): o.location.x = i * 8   # spread out (the game reads the node's mesh only)
 for o in bpy.context.scene.objects:
     print(f'{o.name:12s} {len(o.data.polygons):5d} faces  size', ' × '.join(f'{d:.2f}' for d in o.dimensions))
