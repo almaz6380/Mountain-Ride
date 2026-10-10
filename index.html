@@ -2252,7 +2252,8 @@ body {
   function applyGfx() {
     const hq = settings.gfx === 2 || (settings.gfx === 1 && !autoLow);
     sun.castShadow = hq;
-    if (modelsOn !== hq) useModels(hq);
+    const models = settings.gfx !== 0;   // the real 3D models stay on Auto too (a 30 fps phone would otherwise lose them); only "Schnell" turns them off
+    if (modelsOn !== models) useModels(models);
     pxCap = hq ? 3 : 2; pxBudget = hq ? 3.2e6 : 1.6e6;
     resize();
   }
