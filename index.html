@@ -1089,20 +1089,28 @@ body {
     A.board.rotation.set(0, A.yaw, flat ? 0 : Math.atan2(dy, Math.hypot(dx, dz)));
     return rest - BOARD_UNDER_ANKLE;   // how high the board sits above the root while riding
   }
+  // .glb models; where .glb files are not served (the Artifact) the same file comes base64-encoded as <name>.glb.txt
+  function loadGLB(url, onLoad, onError = () => {}) {
+    if (!THREE.GLTFLoader) { onError(); return; }
+    const L = new THREE.GLTFLoader();
+    L.load(url, onLoad, undefined, () => fetch(url + '.txt').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(t => { const b = atob(t.trim()), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); L.parse(u.buffer, '', onLoad, onError); })
+      .catch(onError));
+  }
   function loadOldRider() {
-    if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/rider.glb', g => {
+    loadGLB('assets/rider.glb', g => {
       let src = null; g.scene.traverse(o => { if (o.isMesh && !src) src = o; });
       if (!src) return;
       rider3d = makeRider3d(src, false);
       ghost3d = makeRider3d(src, true); ghost3d.root.visible = false;
       applyGear();
-    }, undefined, () => {});
+    });
   }
-  if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/rider-anim.glb', g => {
+  loadGLB('assets/rider-anim.glb', g => {
     try { rider3d = makeRiderAnim(g, false); } catch (e) { loadOldRider(); return; }
     applyGear();
-    new THREE.GLTFLoader().load('assets/rider-anim.glb', g2 => { ghost3d = makeRiderAnim(g2, true); ghost3d.root.visible = false; });
-  }, undefined, () => loadOldRider());
+    loadGLB('assets/rider-anim.glb', g2 => { ghost3d = makeRiderAnim(g2, true); ghost3d.root.visible = false; });
+  }, () => loadOldRider());
   function poseRider3d(dt) {
     const r3 = rider3d, st = r3.st, e = k => Math.min(1, dt * k);
     if (r3.anim) {
@@ -1562,7 +1570,7 @@ body {
     LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP; FIR_FAR = on ? modelSet.FIR_FAR : null;
     scene.traverse(o => { if (o.isMesh && swap.has(o.geometry)) o.geometry = swap.get(o.geometry); });
   }
-  if (THREE.GLTFLoader) new THREE.GLTFLoader().load('assets/obstacles.glb', gl => {
+  loadGLB('assets/obstacles.glb', gl => {
     const get = (name, fallback) => { const o = gl.scene.getObjectByName(name); return o && o.geometry ? modelGeo(o) : fallback; };
     const list = (name, built) => built.map((g, i) => get(name + i, g));
     modelSet = { FIR: list('fir_tall_', builtSet.FIR), FIR_ROUND: list('fir_round_', builtSet.FIR_ROUND), ROCKS: list('rock_', builtSet.ROCKS),
@@ -1570,7 +1578,7 @@ body {
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
     if (modelsOn) useModels(true);
-  }, undefined, () => {});
+  });
   // snowcat: grooms the piste downhill in one lane, slower than the rider – overtake it beside
   const CAT = merge([
     part(new THREE.BoxGeometry(0.62, 0.78, 4.0), 0x2b2f3a, -1.08, 0.39, 0), part(new THREE.BoxGeometry(0.62, 0.78, 4.0), 0x2b2f3a, 1.08, 0.39, 0),   // tracks
