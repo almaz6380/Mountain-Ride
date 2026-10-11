@@ -30,14 +30,14 @@
   --ui: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   color-scheme: dark;
 }
-html, body { height: 100%; margin: 0; background: var(--dusk); overflow: hidden; }
+html, body { height: var(--app-h, 100%); margin: 0; background: var(--dusk); overflow: hidden; }
 body {
   font-family: var(--ui); color: var(--snow);
   -webkit-user-select: none; user-select: none; touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
 [hidden] { display: none !important; }
-#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#game { position: fixed; inset: 0; width: 100%; height: var(--app-h, 100%); display: block; }
 
 .hud {
   position: fixed; left: 16px; right: 16px;
@@ -55,7 +55,7 @@ body {
 .coin-dot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--jacket); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.18); margin-right: 5px; vertical-align: 0.02em; }
 
 .overlay {
-  position: fixed; inset: 0; display: grid; place-items: center;
+  position: fixed; inset: 0; height: var(--app-h, auto); box-sizing: border-box; display: grid; place-items: center;
   padding-inline: 16px;
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
@@ -176,7 +176,7 @@ body {
 .note { margin: 0; font-size: 15px; opacity: 0.8; text-align: left; }
 .combo-chip { margin-top: 6px; display: inline-grid; gap: 3px; justify-items: end; font-weight: 800; font-size: 18px; color: var(--jacket); text-shadow: 0 2px 6px rgba(20, 35, 58, 0.45); }
 .combo-chip .pbar { width: 86px; }
-.loading { position: fixed; inset: 0; z-index: 5; display: grid; text-align: center; place-content: center; justify-items: center; gap: 28px; background: linear-gradient(180deg, #2b3d63 0%, #8fb6d8 100%); transition: opacity 0.5s ease; }
+.loading { position: fixed; inset: 0; height: var(--app-h, auto); z-index: 5; display: grid; text-align: center; place-content: center; justify-items: center; gap: 28px; background: linear-gradient(180deg, #2b3d63 0%, #8fb6d8 100%); transition: opacity 0.5s ease; }
 .loading.done { opacity: 0; pointer-events: none; }
 .load-bar { width: min(260px, 70vw); height: 8px; border-radius: 4px; background: rgba(244, 248, 252, 0.25); overflow: hidden; }
 .load-bar i { display: block; height: 100%; width: 0; background: var(--jacket); border-radius: 4px; transition: width 0.2s ease; }
@@ -711,8 +711,19 @@ body {
   let pxCap = 3, pxBudget = 3.2e6;   // graphics quality (see settings): resolution limits
 
   let W = 1, H = 1;
+  // iPhone home-screen app: the page starts under the see-through status bar but iOS only gives it the screen height
+  // minus that bar, which left an empty strip at the bottom. There the full screen height is used.
+  function appHeight() {
+    if (!navigator.standalone || !window.screen) return 0;
+    const portrait = innerHeight >= innerWidth, a = screen.width, b = screen.height;
+    const h = portrait ? Math.max(a, b) : Math.min(a, b);
+    return h > innerHeight ? h : 0;
+  }
   function resize() {
-    W = innerWidth; H = innerHeight;
+    const ah = appHeight();
+    document.documentElement.style.setProperty('--app-h', ah ? ah + 'px' : '');
+    if (!ah) document.documentElement.style.removeProperty('--app-h');
+    W = innerWidth; H = ah || innerHeight;
     // full device resolution on phones (crisp sprites), capped at about 3.2 million pixels for big screens
     renderer.setPixelRatio(Math.max(1, Math.min(window.devicePixelRatio || 1, pxCap, Math.sqrt(pxBudget / (W * H)))));
     renderer.setSize(W, H, false);
@@ -720,6 +731,7 @@ body {
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', resize);
+  addEventListener('orientationchange', () => setTimeout(resize, 300));
   resize();
 
   // ---------- Assets ----------
