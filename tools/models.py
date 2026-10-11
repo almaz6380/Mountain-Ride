@@ -277,6 +277,8 @@ JOBS = [
     ('log', gen('log-2', 0.85)), ('stump', gen('stump', 0.8)), ('snowman', gen('snowman-2', 2.6, 0.85)),
     # snowcat: blade towards +y in Blender = downhill (-z) in the game
     ('cat', gen('cat', 2.6, rot_z=-math.pi / 2)),
+    # kicker: rises towards +y (= the lip downhill); the game stretches it onto every ramp
+    ('ramp', gen('ramp', 1.0, rot_z=math.pi / 2)),
 ]
 
 only = os.environ.get('ONLY')

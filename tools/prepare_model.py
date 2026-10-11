@@ -1,6 +1,6 @@
 # Prepares a generated model (TRELLIS on Hugging Face, MIT; or any textured GLB) for the game, with headless Blender:
 #   PYTHONPATH=<bpy dir> python3 tools/prepare_model.py <in.glb> <out.glb> <faces> <height> [x,y,z size] [--long-x]
-#     [--gain=<brighter>] [--snow=<normal z: snow above>] [--bark=<normal z: bark below>] [--vox=<remesh detail>]
+#     [--cut-ground] [--gain=<brighter>] [--snow=<normal z: snow above>] [--bark=<normal z: bark below>] [--vox=<remesh detail>]
 # The texture is baked into one colour per face (the game draws everything with one vertex-colour material), ambient
 # occlusion is baked on top, the model stands on z=0 centred, is reduced to about <faces> faces and scaled to <height>
 # metres (or to exact x,y,z metres). --long-x turns the longest side along x (logs lie across the lane).
@@ -10,6 +10,7 @@ from mathutils import Vector, Matrix
 
 args = sys.argv[1:]
 LONG_X = '--long-x' in args
+CUT_GROUND = '--cut-ground' in args   # generated models sometimes stand on a slab of snow: cut it off
 opt = lambda name, d: next((float(a.split('=')[1]) for a in args if a.startswith('--' + name + '=')), d)
 GAIN, SNOW, VOX = opt('gain', 1.0), opt('snow', 0), opt('vox', 140)   # brighter colours, snow on faces looking up (normal z > SNOW), remesh detail
 BARK = opt('bark', None)   # faces looking sideways/down (normal z < BARK) get bark colour (snow-covered logs come out all white)
@@ -68,6 +69,28 @@ t.layers_vcol_loop_select_src = 'ALL'; t.layers_vcol_loop_select_dst = 'NAME'
 bpy.ops.object.modifier_apply(modifier='t')
 bpy.data.objects.remove(src_o)
 me = o.data; col = me.color_attributes['Col']; me.color_attributes.active_color = col
+if CUT_GROUND:   # (on the remeshed copy: cutting the source first leaves an open shell the remesh loses) flat faces in the lowest few cm, then loose bits left low down
+    import bmesh
+    zs = [v.co.z for v in me.vertices]; z0 = min(zs); H = max(zs) - z0
+    bm = bmesh.new(); bm.from_mesh(me)
+    # flat faces in the lowest few cm, and everything outside the footprint of what stands up (lumps of the slab)
+    cen = {f: f.calc_center_median().copy() for f in bm.faces}
+    body = [c for c in cen.values() if c.z > z0 + 0.2 * H]; m = 0.02 * H
+    bx0, bx1 = min(c.x for c in body) - m, max(c.x for c in body) + m; by0, by1 = min(c.y for c in body) - m, max(c.y for c in body) + m
+    cut = [f for f, c in cen.items() if (c.z < z0 + 0.06 * H and abs(f.normal.z) > 0.6) or not (bx0 < c.x < bx1 and by0 < c.y < by1)]
+    bmesh.ops.delete(bm, geom=cut, context='FACES'); bm.to_mesh(me); bm.free(); me.update()
+    bm = bmesh.new(); bm.from_mesh(me)
+    bm.faces.ensure_lookup_table(); bm.faces.index_update(); seen, drop = set(), []
+    for f0 in bm.faces:
+        if f0.index in seen: continue
+        isl, stack = [], [f0]; seen.add(f0.index)
+        while stack:
+            f = stack.pop(); isl.append(f)
+            for e in f.edges:
+                for g in e.link_faces:
+                    if g.index not in seen: seen.add(g.index); stack.append(g)
+        if max(f.calc_center_median().z for f in isl) < z0 + 0.15 * H: drop += isl
+    bmesh.ops.delete(bm, geom=drop, context='FACES'); bm.to_mesh(me); bm.free(); me.update()
 # generated textures come out dark and without snow: brighten, then snow on what faces up
 SNOWC = (0.93, 0.95, 0.98)
 BARKC = (0.36, 0.25, 0.17)
