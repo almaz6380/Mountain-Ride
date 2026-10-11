@@ -279,6 +279,8 @@ JOBS = [
     ('cat', gen('cat', 2.6, rot_z=-math.pi / 2)),
     # kicker: rises towards +y (= the lip downhill); the game stretches it onto every ramp
     ('ramp', gen('ramp', 1.0, rot_z=math.pi / 2)),
+    # one fence section per lane (3.15 m wide, the game puts them side by side)
+    ('fence', gen('fence', 1.75)),
 ]
 
 only = os.environ.get('ONLY')
