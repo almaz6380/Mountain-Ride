@@ -274,7 +274,7 @@ JOBS = [
     ('rock_0', gen('rock-2', 1.25)), ('rock_1', gen('rock-3', 0.95, 0.8, 0.8)), ('rock_2', gen('rock-3', 1.15, 0.75, 0.85)),
     ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-3-far', 0.95, 0.8, 0.8)), ('rock_far_2', gen('rock-3-far', 1.15, 0.75, 0.85)),
     ('ice_0', gen_ice(0)), ('ice_1', gen_ice(1.3)), ('ice_2', gen_ice(2.6)),
-    ('log', gen('log-2', 0.85)), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
+    ('log', gen('log-2', 0.85)), ('stump', gen('stump', 0.8)), ('snowman', gen('snowman-2', 2.6, 0.85)),
     # snowcat: blade towards +y in Blender = downhill (-z) in the game
     ('cat', gen('cat', 2.6, rot_z=-math.pi / 2)),
 ]
