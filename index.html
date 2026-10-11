@@ -1674,6 +1674,7 @@ body {
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
     const cat = get('cat', null); modelSet.CAT = cat ? catModel(cat) : builtSet.CAT;
     const ramp = get('ramp', null); if (ramp) RAMP_MODEL = prepRampModel(ramp);
+    modelSet.FENCE = get('fence', null);
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
     const rfar = [0, 1, 2].map(i => get('rock_far_' + i, null));
@@ -1743,6 +1744,10 @@ body {
   }
   function fenceMesh(lanes) {
     const grp = new THREE.Group();
+    if (modelsOn && modelSet && modelSet.FENCE) {   // the owner's wooden fence, one section per lane
+      for (let i = 0; i < lanes; i++) { const f = shadowed(new THREE.Mesh(modelSet.FENCE, modelMat)); f.position.x = (i - (lanes - 1) / 2) * LANE_W; grp.add(f); }
+      return grp;
+    }
     for (let i = 0; i <= lanes; i++) { const p = shadowed(new THREE.Mesh(shortPostGeo, modelMat)); p.position.x = (i - lanes / 2) * LANE_W; grp.add(p); }
     for (let i = 0; i < lanes; i++) { const n = shadowed(new THREE.Mesh(netGeo, netMat)); n.position.set((i - (lanes - 1) / 2) * LANE_W, 1.0, 0); grp.add(n); }
     return grp;
