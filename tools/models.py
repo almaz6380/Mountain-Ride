@@ -248,12 +248,12 @@ JOBS = [
     ('fir_tall_0', meshy(1, 6.5, faces=NEAR_FACES)), ('fir_tall_1', meshy(2, 6.5, faces=NEAR_FACES)), ('fir_tall_2', meshy(3, 6.5, faces=NEAR_FACES)),
     ('fir_round_0', meshy(2, 4.9, 1.12, NEAR_FACES)), ('fir_round_1', meshy(3, 4.9, 1.12, NEAR_FACES)), ('fir_round_2', meshy(1, 4.9, 1.12, NEAR_FACES)),
     ('fir_far_0', meshy(1, 6.5, faces=FAR_FACES)), ('fir_far_1', meshy(2, 6.5, faces=FAR_FACES)), ('fir_far_2', meshy(3, 6.5, faces=FAR_FACES)),
-    # rocks: the Tripo rock in three proportions
+    # rocks: the owner's two Tripo rocks (a craggy block and a round boulder) in three proportions
     # (sources already reduced by prepare_model.py: reducing them again here leaves slivers and holes)
-    ('rock_0', gen('rock-2', 1.25)), ('rock_1', gen('rock-2', 1.05, 1.15, 0.95)), ('rock_2', gen('rock-2', 1.3, 0.9, 1.1)),
-    ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-2-far', 1.05, 1.15, 0.95)), ('rock_far_2', gen('rock-2-far', 1.3, 0.9, 1.1)),
+    ('rock_0', gen('rock-2', 1.25)), ('rock_1', gen('rock-3', 0.95, 0.8, 0.8)), ('rock_2', gen('rock-3', 1.15, 0.75, 0.85)),
+    ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-3-far', 0.95, 0.8, 0.8)), ('rock_far_2', gen('rock-3-far', 1.15, 0.75, 0.85)),
     ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
-    ('log', log), ('stump', stump), ('snowman', gen('snowman', 2.8, 0.8)),
+    ('log', log), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
 ]
 
 only = os.environ.get('ONLY')
