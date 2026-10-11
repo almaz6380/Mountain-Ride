@@ -228,12 +228,13 @@ def meshy(n, h, widen=1.0, faces=None):
         flat(o); return o
     return f
 
-def gen(name, h, wx=1.0, wy=1.0, faces=None):
+def gen(name, h, wx=1.0, wy=1.0, faces=None, rot_z=0):
     """a generated model (TRELLIS, MIT, or Tripo Pro) prepared by tools/prepare_model.py (coloured, AO baked)"""
     def f():
         bpy.ops.import_scene.gltf(filepath=os.path.join(SRC, f'gen-{name}.glb'))
         o = join([x for x in bpy.data.objects if x.type == 'MESH'])
         ca = o.data.color_attributes[0]; ca.name = 'Col'; o.data.color_attributes.active_color = ca
+        if rot_z: o.data.transform(Matrix.Rotation(rot_z, 4, 'Z'))
         fit(o, height=h)
         if wx != 1 or wy != 1: o.data.transform(Matrix.Diagonal((wx, wy, 1, 1)))
         if faces: decimate(o, faces)
@@ -254,6 +255,8 @@ JOBS = [
     ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-3-far', 0.95, 0.8, 0.8)), ('rock_far_2', gen('rock-3-far', 1.15, 0.75, 0.85)),
     ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
     ('log', gen('log-2', 0.85)), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
+    # snowcat: blade towards +y in Blender = downhill (-z) in the game
+    ('cat', gen('cat', 2.6, rot_z=-math.pi / 2)),
 ]
 
 only = os.environ.get('ONLY')

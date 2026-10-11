@@ -56,7 +56,8 @@ src_o = o
 bpy.ops.object.select_all(action='DESELECT'); src_o.select_set(True); bpy.context.view_layer.objects.active = src_o
 bpy.ops.object.duplicate(); o = bpy.context.view_layer.objects.active
 vs = [v.co for v in src_o.data.vertices]; H0 = max(max(v.x for v in vs) - min(v.x for v in vs), max(v.y for v in vs) - min(v.y for v in vs), max(v.z for v in vs) - min(v.z for v in vs))
-r = o.modifiers.new('r', 'REMESH'); r.mode = 'VOXEL'; r.voxel_size = H0 / VOX; bpy.ops.object.modifier_apply(modifier='r')
+if VOX:   # --vox=0: no remesh (hard-surface models like vehicles keep their edges better)
+    r = o.modifiers.new('r', 'REMESH'); r.mode = 'VOXEL'; r.voxel_size = H0 / VOX; bpy.ops.object.modifier_apply(modifier='r')
 n = len(o.data.polygons)
 if n > faces:
     d = o.modifiers.new('d', 'DECIMATE'); d.ratio = faces / n; bpy.ops.object.modifier_apply(modifier='d')
