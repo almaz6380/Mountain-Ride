@@ -1604,7 +1604,7 @@ body {
   // real models (CC0 packs by Quaternius and Kenney, prepared in Blender by tools/models.py: snow, baked ambient
   // occlusion in the vertex colours, game sizes) replace the built ones above once loaded; those stay as the fallback
   // swapped by the graphics setting: "Schnell" (and Auto on a slow phone) keeps the light built models
-  let STUMP = null, FIR_FAR = null, modelSet = null, modelsOn = true;   // FIR_FAR: lighter trees for the forest away from the piste
+  let STUMP = null, FIR_FAR = null, ROCK_FAR = null, modelSet = null, modelsOn = true;   // FIR_FAR: lighter trees for the forest away from the piste
   const builtSet = { FIR: FIR.slice(), FIR_ROUND: FIR_ROUND.slice(), ROCKS: ROCKS.slice(), ICE: ICE.slice(), LOG, SNOWMAN, STUMP: null };
   function modelGeo(o) {
     const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, n = src.attributes.position.count;
@@ -1629,7 +1629,8 @@ body {
     }
     swap.set(from.LOG, to.LOG); swap.set(from.SNOWMAN, to.SNOWMAN);
     if (modelSet.FIR_FAR) modelSet.FIR_FAR.forEach((g, i) => on ? swap.set(builtSet.FIR[i], to.FIR[i]) : swap.set(g, builtSet.FIR[i]));
-    LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP; FIR_FAR = on ? modelSet.FIR_FAR : null;
+    if (modelSet.ROCK_FAR && !on) modelSet.ROCK_FAR.forEach((g, i) => swap.set(g, builtSet.ROCKS[i]));
+    LOG = to.LOG; SNOWMAN = to.SNOWMAN; STUMP = to.STUMP; FIR_FAR = on ? modelSet.FIR_FAR : null; ROCK_FAR = on ? modelSet.ROCK_FAR || null : null;
     scene.traverse(o => { if (o.isMesh && swap.has(o.geometry)) o.geometry = swap.get(o.geometry); });
   }
   loadGLB('assets/obstacles.glb', gl => {
@@ -1639,6 +1640,8 @@ body {
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
+    const rfar = [0, 1, 2].map(i => get('rock_far_' + i, null));
+    if (rfar.every(Boolean)) modelSet.ROCK_FAR = rfar;
     if (modelsOn) useModels(true);
   });
   // snowcat: grooms the piste downhill in one lane, slower than the rider – overtake it beside
@@ -1753,7 +1756,7 @@ body {
       return e;
     }
     const v = Math.floor(Math.random() * 3);
-    const geo = type === 'tree' ? (LOC.ice ? ICE[v] : opts.deco && FIR_FAR && Math.abs(x) > TRACK + 6 ? FIR_FAR[v] : Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? ROCKS[v] : type === 'log' ? LOG : SNOWMAN;
+    const geo = type === 'tree' ? (LOC.ice ? ICE[v] : opts.deco && FIR_FAR && Math.abs(x) > TRACK + 6 ? FIR_FAR[v] : Math.random() < 0.45 ? FIR_ROUND[v] : FIR[v]) : type === 'rock' ? (opts.deco && ROCK_FAR ? ROCK_FAR[v] : ROCKS[v]) : type === 'log' ? LOG : SNOWMAN;
     const hgt = type === 'tree' ? spec.size * s : spec.size;
     const mesh = shadowed(new THREE.Mesh(geo, modelMat), !opts.deco || Math.abs(x) < 30);
     if (type === 'tree') mesh.scale.setScalar(s * rand(0.92, 1.08));
