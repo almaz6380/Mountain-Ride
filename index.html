@@ -869,7 +869,41 @@ body {
     groundGeo.computeBoundingSphere();
   }
 
+  // the owner's wooden kicker (obstacles.glb 'ramp'), stored as u (across), v (along, 1 = lip) and t (0 = snow,
+  // 1 = riding surface at that v), so every ramp can lay it onto the slope with exactly the profile the physics uses
+  let RAMP_MODEL = null;
+  function prepRampModel(g) {
+    const p = g.attributes.position, n = p.count, B = 24, top = new Float32Array(B);
+    g.computeBoundingBox(); const bb = g.boundingBox, sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+    const u = new Float32Array(n), v = new Float32Array(n), t = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      u[i] = (p.getX(i) - bb.min.x) / sx; v[i] = (bb.max.z - p.getZ(i)) / sz; t[i] = (p.getY(i) - bb.min.y) / sy;
+      const b = Math.min(B - 1, v[i] * B | 0); top[b] = Math.max(top[b], t[i]);
+    }
+    for (let i = 0; i < n; i++) t[i] = Math.min(1.05, t[i] / Math.max(0.08, top[Math.min(B - 1, v[i] * B | 0)]));
+    // the riding surface: clean snow, and the pink lip like the built ramps so the jump edge reads at speed
+    const col = g.attributes.color.array.slice(), snow = new THREE.Color(0xf4f8fd), lip = new THREE.Color(0xe5396f);
+    const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), c0 = new THREE.Vector3();
+    for (let f = 0; f < n; f += 3) {
+      e1.fromBufferAttribute(p, f + 1).sub(c0.fromBufferAttribute(p, f)); e2.fromBufferAttribute(p, f + 2).sub(c0);
+      const ny = e1.cross(e2).normalize().y, up = Math.abs(ny) > 0.45 && t[f] + t[f + 1] + t[f + 2] > 1.5; if (!up) continue;
+      const c = (v[f] + v[f + 1] + v[f + 2]) / 3 > 0.93 ? lip : snow;
+      for (let k = f; k < f + 3; k++) { col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b; }
+    }
+    return { u, v, t, col };
+  }
   function buildRampMesh(r) {
+    if (RAMP_MODEL && modelsOn) {
+      const m = RAMP_MODEL, n = m.u.length, pos = new Float32Array(n * 3), len = r.d1 - r.d0, x0 = r.x - r.w / 2;
+      for (let i = 0; i < n; i++) {
+        const x = x0 + m.u[i] * r.w, d = r.d0 + m.v[i] * len;
+        pos[i * 3] = x; pos[i * 3 + 1] = baseH(d, x) + m.t[i] * (rampH(r, d) + 0.03); pos[i * 3 + 2] = -d;
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(m.col, 3));
+      g.computeVertexNormals();
+      return new THREE.Mesh(g, vcMatDouble);
+    }
     const nx = 4, nz = 10, pos = [], col = [];
     const top = new THREE.Color(0xf4f8fd), wall = new THREE.Color(0xc5d6ea), lip = new THREE.Color(0xe5396f);
     const P = (x, d, lift) => [x, baseH(d, x) + lift, -d];
@@ -1639,6 +1673,7 @@ body {
     modelSet = { FIR: list('fir_tall_', builtSet.FIR), FIR_ROUND: list('fir_round_', builtSet.FIR_ROUND), ROCKS: list('rock_', builtSet.ROCKS),
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
     const cat = get('cat', null); modelSet.CAT = cat ? catModel(cat) : builtSet.CAT;
+    const ramp = get('ramp', null); if (ramp) RAMP_MODEL = prepRampModel(ramp);
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
     const rfar = [0, 1, 2].map(i => get('rock_far_' + i, null));
