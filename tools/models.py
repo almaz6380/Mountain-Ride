@@ -203,6 +203,26 @@ def ice(v):
         o = join(parts); colour_by_material(o, ICE); bake_ao(o, 0.35); flat(o); return o
     return f
 
+def gen_ice(v):
+    """an ice tower for the glacier: the owner's Tripo ice block three times, stretched into pillars"""
+    def f():
+        parts = []
+        for (h, w, x, y, rz) in [(5.4, 2.3, 0, 0, v), (3.4, 1.8, 1.25, 0.35, v + 2), (2.6, 2.0, -1.15, -0.25, v + 4)]:
+            bpy.ops.import_scene.gltf(filepath=os.path.join(SRC, 'gen-ice.glb'))
+            o = join([x_ for x_ in bpy.context.selected_objects if x_.type == 'MESH'])
+            ca = o.data.color_attributes[0]; ca.name = 'Col'; o.data.color_attributes.active_color = ca
+            fit(o, size=(w, w, h))
+            o.data.transform(Matrix.Translation((x, y, 0)) @ Matrix.Rotation(rz, 4, 'Z'))
+            parts.append(o)
+        o = join(parts)
+        # the Tripo texture is grey-blue: keep its light and shade, but in the glacier's ice blue
+        ib, col = srgb(ICE['Rock']), o.data.color_attributes['Col']
+        for d in col.data:
+            l = 0.3 * d.color[0] + 0.6 * d.color[1] + 0.1 * d.color[2]; k = 0.45 + 0.85 * l
+            d.color = (min(1, ib[0] * k), min(1, ib[1] * k), min(1, ib[2] * k), 1)
+        flat(o); return o
+    return f
+
 def log():
     o = append_blend('WoodLog_Snow'); fit(o, size=(2.75, 0.74, 0.76), rot_z=math.pi / 2)
     colour_by_material(o, PAL); bake_ao(o, 0.5); flat(o); return o
@@ -253,7 +273,7 @@ JOBS = [
     # (sources already reduced by prepare_model.py: reducing them again here leaves slivers and holes)
     ('rock_0', gen('rock-2', 1.25)), ('rock_1', gen('rock-3', 0.95, 0.8, 0.8)), ('rock_2', gen('rock-3', 1.15, 0.75, 0.85)),
     ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-3-far', 0.95, 0.8, 0.8)), ('rock_far_2', gen('rock-3-far', 1.15, 0.75, 0.85)),
-    ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
+    ('ice_0', gen_ice(0)), ('ice_1', gen_ice(1.3)), ('ice_2', gen_ice(2.6)),
     ('log', gen('log-2', 0.85)), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
     # snowcat: blade towards +y in Blender = downhill (-z) in the game
     ('cat', gen('cat', 2.6, rot_z=-math.pi / 2)),
