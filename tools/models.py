@@ -253,7 +253,7 @@ JOBS = [
     ('rock_0', gen('rock-2', 1.25)), ('rock_1', gen('rock-3', 0.95, 0.8, 0.8)), ('rock_2', gen('rock-3', 1.15, 0.75, 0.85)),
     ('rock_far_0', gen('rock-2-far', 1.25)), ('rock_far_1', gen('rock-3-far', 0.95, 0.8, 0.8)), ('rock_far_2', gen('rock-3-far', 1.15, 0.75, 0.85)),
     ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
-    ('log', log), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
+    ('log', gen('log-2', 0.85)), ('stump', stump), ('snowman', gen('snowman-2', 2.6, 0.85)),
 ]
 
 only = os.environ.get('ONLY')
