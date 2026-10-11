@@ -18,7 +18,8 @@ und können für die Store-Produktseiten übernommen werden.
 
 - Ein Lauf bringt die eingesammelten Münzen plus **1 Münze pro 50 m** (Streckenbonus). Ein normaler Lauf von 1–2 km bringt so etwa 50–100 Münzen.
 - Missionen geben 80 / 150 / 250 / 400 Münzen.
-- Power-up-Stufen kosten 150 / 300 / 500 / 800 / 1.200 Münzen, Boards 300–1.200, Orte 800–1.500.
+- Power-up-Stufen kosten 150 / 300 / 500 / 800 / 1.200 Münzen, Boards 300–1.200, Outfits 500–1.500, Orte 800–1.500.
+- Tagesangebot im Shop: jeden Tag ein Outfit, Board oder eine Spur 40 % billiger (für alle Spieler gleich, nur Münzen).
 - Damit kostet die erste Upgrade-Stufe 2–3 Läufe, die letzte etwa 15–20. Alles ist ohne Kauf erreichbar;
   Münzpakete sind eine Abkürzung, „Werbefrei“ der wichtigste Kauf.
 - Belohnte Videos (freiwillig): „Weiterfahren“ (einmal pro Lauf) und „Münzen ×2“ am Rundenende.
