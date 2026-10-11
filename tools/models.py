@@ -228,6 +228,18 @@ def meshy(n, h, widen=1.0, faces=None):
         flat(o); return o
     return f
 
+def gen(name, h, wx=1.0, wy=1.0, faces=None):
+    """a model generated with TRELLIS (MIT) and prepared by tools/prepare_model.py (coloured, AO baked)"""
+    def f():
+        bpy.ops.import_scene.gltf(filepath=os.path.join(SRC, f'gen-{name}.glb'))
+        o = join([x for x in bpy.data.objects if x.type == 'MESH'])
+        ca = o.data.color_attributes[0]; ca.name = 'Col'; o.data.color_attributes.active_color = ca
+        fit(o, height=h)
+        if wx != 1 or wy != 1: o.data.transform(Matrix.Diagonal((wx, wy, 1, 1)))
+        if faces: decimate(o, faces)
+        flat(o); return o
+    return f
+
 TREE_FACES = int(os.environ.get('TREE_FACES', 600))
 FAR_FACES = int(os.environ.get('FAR_FACES', 600)); NEAR_FACES = int(os.environ.get('NEAR_FACES', 2200))
 
@@ -236,9 +248,11 @@ JOBS = [
     ('fir_tall_0', meshy(1, 6.5, faces=NEAR_FACES)), ('fir_tall_1', meshy(2, 6.5, faces=NEAR_FACES)), ('fir_tall_2', meshy(3, 6.5, faces=NEAR_FACES)),
     ('fir_round_0', meshy(2, 4.9, 1.12, NEAR_FACES)), ('fir_round_1', meshy(3, 4.9, 1.12, NEAR_FACES)), ('fir_round_2', meshy(1, 4.9, 1.12, NEAR_FACES)),
     ('fir_far_0', meshy(1, 6.5, faces=FAR_FACES)), ('fir_far_1', meshy(2, 6.5, faces=FAR_FACES)), ('fir_far_2', meshy(3, 6.5, faces=FAR_FACES)),
-    ('rock_0', rock('Rock_Snow_6', 1.2, 0)), ('rock_1', rock('Rock_Snow_7', 1.15, 0)), ('rock_2', rock('Rock_Snow_4', 1.25, 0)),
+    # rocks: one generated rock in three proportions (more to come)
+    ('rock_0', gen('rock-1', 1.25)), ('rock_1', gen('rock-1', 1.05, 1.15, 0.95)), ('rock_2', gen('rock-1', 1.3, 0.9, 1.1)),
+    ('rock_far_0', gen('rock-1', 1.25, faces=300)), ('rock_far_1', gen('rock-1', 1.05, 1.15, 0.95, 300)), ('rock_far_2', gen('rock-1', 1.3, 0.9, 1.1, 300)),
     ('ice_0', ice(0)), ('ice_1', ice(1.3)), ('ice_2', ice(2.6)),
-    ('log', log), ('stump', stump), ('snowman', snowman),
+    ('log', log), ('stump', stump), ('snowman', gen('snowman', 2.8, 0.8)),
 ]
 
 only = os.environ.get('ONLY')
