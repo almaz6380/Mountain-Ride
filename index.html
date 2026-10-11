@@ -279,6 +279,30 @@ body {
 .page .setting .lbl small { display: block; font-weight: 500; font-size: 13px; opacity: 0.75; }
 .page .setting .lbl { display: grid; justify-content: start; text-align: start; }
 .page .legal-links { margin: 0; }
+/* shop: the rider turns in the snow on top (the 3D scene shows through), the card with tabs below */
+.shop-page { grid-template-rows: auto 1fr; gap: 8px; background: linear-gradient(180deg, rgba(20, 35, 58, 0.6) 0%, rgba(20, 35, 58, 0) 22%, rgba(20, 35, 58, 0) 40%, rgba(20, 35, 58, 0.45) 100%); }
+.shop-page .page-head { grid-template-columns: 48px 1fr auto; }
+.shop-page .pill { font-size: 18px; padding: 7px 12px; }
+.shop-card { align-self: end; width: min(560px, 100%); justify-self: center; box-sizing: border-box; max-height: 100%; min-height: 0;
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 10px;
+  background: var(--card); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 20px; padding: 12px; box-shadow: 0 20px 60px rgba(10, 18, 34, 0.35); }
+.shop-card .shop { overflow-y: auto; min-height: 0; max-height: calc(var(--app-h, 100vh) * 0.42); align-content: start; padding-bottom: 2px; }
+.shop-tabs button { font-size: 13px; letter-spacing: 0.02em; padding: 9px 2px; min-width: 0; overflow-wrap: anywhere; }
+.shop-tabs button[hidden] { display: none; }
+.shop .swatch { width: 74px; }
+.shop .swatch span { font-size: 12px; text-align: center; line-height: 1.15; }
+.shop .swatch.locked i { opacity: 0.75; }
+.shop .swatch.trying i { outline: 3px dashed var(--snow); outline-offset: 2px; }
+.try-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; background: rgba(244, 248, 252, 0.1); border-radius: 12px; padding: 8px 10px; text-align: start; font-weight: 800; }
+.try-bar span { overflow: hidden; text-overflow: ellipsis; }
+.offer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; text-align: start;
+  background: linear-gradient(90deg, rgba(255, 197, 49, 0.28), rgba(229, 57, 111, 0.22)); box-shadow: inset 0 0 0 2px rgba(255, 197, 49, 0.55); }
+.offer .tag { font-weight: 800; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); background: var(--jacket); border-radius: 8px; padding: 4px 7px; }
+.offer .what { display: grid; gap: 1px; }
+.offer .what b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.offer .what small { font-size: 12px; opacity: 0.8; }
+.offer .btn { font-size: 16px; padding: 9px 11px; white-space: nowrap; }
+@media (max-height: 720px) { .shop-card .shop { max-height: calc(var(--app-h, 100vh) * 0.36); } .offer .what small { display: none; } }
 </style>
 
 <canvas id="game" aria-label="Mountain Ride Spielfeld"></canvas>
@@ -331,7 +355,7 @@ body {
       <button class="btn ghost" id="liveBtn" type="button" hidden><span data-i18n="menu.live">Live-Duell</span><small data-i18n="menu.liveSub">gegen Freunde</small></button>
     </div>
     <nav class="home-nav">
-      <button class="nav-btn" id="shopBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5.2 4l-.4-2H1v2h2.2l3.1 10.6-1.2 2.2A1 1 0 0 0 6 18h14v-2H7.6l1-1.9h7.6c.7 0 1.4-.4 1.7-1L22 6.5A1 1 0 0 0 21.1 5H5.6L5.2 4z"/></svg><span data-i18n="menu.shop">Shop</span></button>
+      <button class="nav-btn" id="shopBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5.2 4l-.4-2H1v2h2.2l3.1 10.6-1.2 2.2A1 1 0 0 0 6 18h14v-2H7.6l1-1.9h7.6c.7 0 1.4-.4 1.7-1L22 6.5A1 1 0 0 0 21.1 5H5.6L5.2 4z"/></svg><span data-i18n="menu.shop">Shop</span><span class="badge" id="shopBadge" hidden>%</span></button>
       <button class="nav-btn" id="missionsBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M5 2h2v20H5zM8 3h11l-2.5 4.5L19 12H8z"/></svg><span data-i18n="menu.missions">Missionen</span><span class="badge" id="missionBadge" hidden></span></button>
       <button class="nav-btn" id="boardBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M18 3V2H6v1H2v3a5 5 0 0 0 4.3 4.9A6 6 0 0 0 11 14.9V18H8v2h8v-2h-3v-3.1a6 6 0 0 0 4.7-4A5 5 0 0 0 22 6V3h-4zM4 6V5h2v3.8A3 3 0 0 1 4 6zm16 0a3 3 0 0 1-2 2.8V5h2v1z"/></svg><span data-i18n="menu.board">Bestenliste</span></button>
     </nav>
@@ -441,12 +465,22 @@ body {
   </div>
 </div>
 
-<div class="overlay" id="shop" hidden>
-  <div class="card">
-    <h2 class="title" data-i18n="shop.title">Shop</h2>
-    <p class="wallet"><i class="coin-dot"></i><span id="shopWallet">0</span> <span data-i18n="shop.coins">Münzen</span></p>
+<div class="overlay page shop-page" id="shop" hidden>
+  <div class="page-head">
+    <button class="icon-btn" data-back type="button" aria-label="Zurück" data-i18n-aria="common.back"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M15.4 4.6 14 3.2 5.2 12l8.8 8.8 1.4-1.4L8 12z"/></svg></button>
+    <h2 class="page-title" data-i18n="shop.title">Shop</h2>
+    <p class="pill"><i class="coin-dot"></i><span id="shopWallet">0</span></p>
+  </div>
+  <div class="shop-card">
+    <div class="offer" id="shopOffer" hidden></div>
+    <div class="seg shop-tabs" id="shopTabs" role="tablist">
+      <button type="button" role="tab" data-tab="power" data-i18n="shop.tabPower">Power-ups</button>
+      <button type="button" role="tab" data-tab="rider" data-i18n="shop.tabRider">Fahrer</button>
+      <button type="button" role="tab" data-tab="board" data-i18n="shop.tabBoard">Board</button>
+      <button type="button" role="tab" data-tab="coins" data-i18n="shop.tabCoins">Münzen</button>
+    </div>
     <div class="shop" id="shopList"></div>
-    <button class="btn" data-back type="button" data-i18n="common.back">Zurück</button>
+    <div class="try-bar" id="tryBar" hidden><span id="tryName"></span><button class="btn small" id="tryBuy" type="button"></button></div>
   </div>
 </div>
 
@@ -607,7 +641,7 @@ body {
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- Languages: German is built in, the others come from assets/lib/i18n.js (window.I18N) ----------
-  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!","set.secSound":"Ton","set.secHaptics":"Haptik","set.secGfx":"Grafik","set.secGeneral":"Allgemein","set.secLegal":"Rechtliches","set.quality":"Qualität","set.vibrateSub":"bei Sturz, Landung und Tricks","set.name":"Spielername"};
+  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!","set.secSound":"Ton","set.secHaptics":"Haptik","set.secGfx":"Grafik","set.secGeneral":"Allgemein","set.secLegal":"Rechtliches","set.quality":"Qualität","set.vibrateSub":"bei Sturz, Landung und Tricks","set.name":"Spielername","shop.tabPower":"Power-ups","shop.tabRider":"Fahrer","shop.tabBoard":"Board","shop.tabCoins":"Münzen","shop.outfit":"Outfit","shop.offer":"Tagesangebot","shop.offerEnds":"noch {n} Std.","shop.shieldPack":"{n}× Start-Schild","outfit.klassik":"Klassik","outfit.feuer":"Feuer","outfit.gletscher":"Gletscher","outfit.wald":"Förster","outfit.nacht":"Nachtfalke","outfit.bonbon":"Bonbon","outfit.gold":"Champion"};
   const LANGS = ['de', 'en', 'es', 'pt', 'fr', 'it', 'ru', 'zh', 'ja', 'ar'];
   const LOCALES = { de: 'de-DE', en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', it: 'it-IT', ru: 'ru-RU', zh: 'zh-CN', ja: 'ja-JP', ar: 'ar-u-nu-latn' };
   let langPref = 'auto';
@@ -1104,7 +1138,7 @@ body {
     const soles = low.filter((_, k) => k % Math.max(1, Math.floor(low.length / 60)) === 0);
     const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), skinned, soles, rest: null, low: 0, yaw: null,
       squat: { hips: bone('Hips'), thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], feet: [bone('LeftFoot'), bone('RightFoot')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') } };
-    return { root, pivot, boardMat, topMat, anim: A, st: { duck: 0, airT: 0 } };
+    return { root, pivot, boardMat, topMat, skinMat: mat, anim: A, st: { duck: 0, airT: 0 } };
   }
   const IK = { t: [new THREE.Vector3(), new THREE.Vector3()], h: new THREE.Vector3(), k: new THREE.Vector3(), f: new THREE.Vector3(),
     a: new THREE.Vector3(), b: new THREE.Vector3(), n: new THREE.Vector3(), s: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), wq: new THREE.Quaternion() };
@@ -1503,7 +1537,7 @@ body {
   const COIN_PER_M = 50;   // wall clock at the start of a run, for the plausibility check of online scores
   let score = 0, bonus = 0, coinCount = 0, topSpeed = 0, crashT = 0, crashReason = '', clock = 0, shake = 0;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), orbitPos = new THREE.Vector3(), orbitLook = new THREE.Vector3(), TV4 = new THREE.Vector3();
-  let camMix = 0;
+  let camMix = 0, shopMix = 0, shopAng = 0;   // shopMix: 0 start screen → 1 shop (closer camera turning round the rider)
 
   function resetRider(d) {
     P = { d, x: 0, tx: 0, y: groundAt(d, 0), vy: 0, v: 12, vxAir: 0, air: false, airT: 0, yaw: 0, spin: 0, carve: 0, lean: 0, onRamp: null, crashed: false, lastX: 0,
@@ -2391,16 +2425,46 @@ body {
     eis:        { get name() { return tx('trail.eis'); }, color: '#7fe3ff', cost: 400 },
     regenbogen: { get name() { return tx('trail.regenbogen'); }, color: 'conic-gradient(#ff5d5d, #ffd34d, #6fe38a, #6fc7ff, #b07cff, #ff5d5d)', cost: 900 },
   };
-  // outfits and boards for the 3D rider
+  // outfits for the rider: the yellow jacket, navy trousers, pink scarf and teal goggles of the texture are recoloured
   const OUTFITS = {
-    klassik: { name: 'Klassik', cost: 0,    jacket: '#f2b632', pants: '#283a5c', helmet: '#1d2633', goggles: '#2ec4b6', scarf: '#e5396f' },
-    feuer:   { name: 'Feuer',   cost: 500,  jacket: '#e5432f', pants: '#2b2b2b', helmet: '#f4f6fa', goggles: '#ffb000', scarf: '#ffd34d' },
-    gletscher:{ name: 'Gletscher', cost: 500, jacket: '#7fd3ff', pants: '#f4f6fa', helmet: '#1d4e89', goggles: '#ff6fa8', scarf: '#f4f6fa' },
-    wald:    { name: 'Förster', cost: 600,  jacket: '#3f8f4f', pants: '#6b4a32', helmet: '#f2b632', goggles: '#ff8a1f', scarf: '#f2b632' },
-    nacht:   { name: 'Nachtfalke', cost: 800, jacket: '#23262e', pants: '#3a3f4b', helmet: '#e5396f', goggles: '#c7f464', scarf: '#c7f464' },
-    bonbon:  { name: 'Bonbon',  cost: 900,  jacket: '#ff8fc4', pants: '#8e7dff', helmet: '#f4f6fa', goggles: '#2ec4b6', scarf: '#8e7dff' },
-    gold:    { name: 'Champion', cost: 1500, jacket: '#ffd34d', pants: '#f4f6fa', helmet: '#ffd34d', goggles: '#2ec4b6', scarf: '#e5396f' },
+    klassik:   { get name() { return tx('outfit.klassik'); }, cost: 0 },
+    feuer:     { get name() { return tx('outfit.feuer'); }, cost: 500,  jacket: '#e5432f', pants: '#2b2b2b', scarf: '#ffd34d', goggles: '#ffb000' },
+    gletscher: { get name() { return tx('outfit.gletscher'); }, cost: 500, jacket: '#7fd3ff', pants: '#f4f6fa', scarf: '#1d4e89', goggles: '#ff6fa8' },
+    wald:      { get name() { return tx('outfit.wald'); }, cost: 600,  jacket: '#3f8f4f', pants: '#6b4a32', scarf: '#f2b632', goggles: '#ff8a1f' },
+    nacht:     { get name() { return tx('outfit.nacht'); }, cost: 800,  jacket: '#2a2e38', pants: '#4a505e', scarf: '#c7f464', goggles: '#c7f464' },
+    bonbon:    { get name() { return tx('outfit.bonbon'); }, cost: 900,  jacket: '#ff8fc4', pants: '#8e7dff', scarf: '#f4f6fa', goggles: '#2ec4b6' },
+    gold:      { get name() { return tx('outfit.gold'); }, cost: 1500, jacket: '#ffd34d', pants: '#f4f6fa', scarf: '#e5396f', goggles: '#2ec4b6' },
   };
+  const outfitTexCache = {};
+  // hue (0–360), saturation and value of the texture decide the zone; the new colour keeps the cloth's light and shade
+  function outfitTexture(key) {
+    const o = OUTFITS[key], base = rider3d && rider3d.skinMat.userData.base;
+    if (!o || !o.jacket || !base || !base.image) return base;
+    if (outfitTexCache[key]) return outfitTexCache[key];
+    const img = base.image, w = img.width, h = img.height;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const id = x.getImageData(0, 0, w, h), d = id.data;
+    const rgb = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16));
+    const zone = { jacket: [rgb(o.jacket), 0.86], pants: [rgb(o.pants), 0.34], scarf: [rgb(o.scarf), 0.78], goggles: [rgb(o.goggles), 0.72] };
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), s = mx ? (mx - mn) / mx : 0;
+      if (s < 0.22 || mx < 0.08) continue;   // greys, black, white: helmet, gloves, boots stay
+      let hu = mx === mn ? 0 : mx === r ? 60 * (((g - b) / (mx - mn)) % 6) : mx === g ? 60 * ((b - r) / (mx - mn) + 2) : 60 * ((r - g) / (mx - mn) + 4);
+      if (hu < 0) hu += 360;
+      const z = hu >= 34 && hu <= 64 && s > 0.42 && mx > 0.3 ? zone.jacket
+        : hu >= 205 && hu <= 250 && mx < 0.6 ? zone.pants
+        : hu >= 300 && hu <= 352 && s > 0.25 ? zone.scarf
+        : hu >= 165 && hu <= 200 && s > 0.35 ? zone.goggles : null;
+      if (!z) continue;
+      const k = Math.min(1.25, mx / z[1]);
+      d[i] = Math.min(255, z[0][0] * k); d[i + 1] = Math.min(255, z[0][1] * k); d[i + 2] = Math.min(255, z[0][2] * k);
+    }
+    x.putImageData(id, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.flipY = base.flipY; t.encoding = base.encoding; t.wrapS = base.wrapS; t.wrapT = base.wrapT; t.anisotropy = base.anisotropy;
+    return (outfitTexCache[key] = t);
+  }
   const BOARDS = {
     pink:   { get name() { return tx('board.pink'); }, cost: 0,    board: '#e5396f', boardTop: '#2b2f3a' },
     blau:   { get name() { return tx('board.blau'); }, cost: 300,  board: '#2f8fe0', boardTop: '#f4f6fa' },
@@ -2424,13 +2488,20 @@ body {
     });
     return boardTexCache[key];
   }
-  function applyGear() {
+  // look: what the rider wears – normally the gear, in the shop also something tried on
+  function applyGear(look = gear) {
     if (!rider3d) return;
-    const b = BOARDS[gear.board] || BOARDS.pink;
+    const b = BOARDS[look.board] || BOARDS.pink;
     rider3d.boardMat.color.set(b.board);
     rider3d.topMat.map = b.pattern ? boardPatternTex(b.pattern) : null;
     rider3d.topMat.color.set(b.pattern ? '#ffffff' : b.boardTop);
     rider3d.topMat.needsUpdate = true;
+    const m = rider3d.skinMat;
+    if (m) {
+      if (!m.userData.base) m.userData.base = m.map;
+      const t = outfitTexture(look.outfit) || m.userData.base;
+      if (m.map !== t) { m.map = t; m.needsUpdate = true; }
+    }
   }
   function applyTrail() { if (trails.active !== 'regenbogen') sprayMat.color.set(TRAILS[trails.active].color); }
 
@@ -2511,7 +2582,7 @@ body {
   }
   function openSub(id, from) {
     panelReturn = from;
-    if (id === 'shop') renderShop();
+    if (id === 'shop') { tryOn = null; renderShop(); const off = dailyOffer(); if (off) store.set('offerSeen', off.day); }
     if (id === 'missions') renderMissions($('missionList'));
     if (id === 'settings') syncSettings();
     if (id === 'board') showBoard(boardTab);
@@ -2550,6 +2621,7 @@ body {
     const done = missions.filter(m => m.done).length;
     $('missionBadge').hidden = !done;
     $('missionBadge').textContent = done ? '✓' + done : '';
+    const off = dailyOffer(); $('shopBadge').hidden = !off || store.get('offerSeen', '') === off.day;   // today's offer not looked at yet
     $('menuBest').textContent = best ? tx('menu.best', { n: fmt(best) }) : tx('menu.hint');
   }
 
@@ -2574,67 +2646,132 @@ body {
     b.addEventListener('click', () => { if (wallet < cost) return; wallet -= cost; onBuy(); saveMeta(); Sound.init(); Sound.buy(); renderShop(); });
     return b;
   }
-  // a row of colour swatches: tap an owned one to wear it, a locked one to buy it
-  function swatchGroup(list, title, defs, owned, active, choose, paint) {
+  // things to wear: outfits, boards, snow trails
+  const SHOP_ITEMS = {
+    outfit: { defs: OUTFITS, owned: () => gear.outfits, wear: k => { gear.outfit = k; }, group: () => tx('shop.outfit'), tab: 'rider' },
+    board:  { defs: BOARDS,  owned: () => gear.boards,  wear: k => { gear.board = k; },  group: () => tx('shop.board'),  tab: 'board' },
+    trail:  { defs: TRAILS,  owned: () => trails.owned, wear: k => { trails.active = k; applyTrail(); }, group: () => tx('shop.trail'), tab: 'board' },
+  };
+  let shopTab = store.get('shopTab', 'power'), tryOn = null;   // tryOn: { kind, key } shown on the rider before buying
+  const lookNow = () => ({ board: tryOn && tryOn.kind === 'board' ? tryOn.key : gear.board, outfit: tryOn && tryOn.kind === 'outfit' ? tryOn.key : gear.outfit });
+  // today's offer: one thing 40 % cheaper, the same on every phone; once bought it is gone until tomorrow
+  function dailyOffer() {
+    const dy = dailyInfo();
+    if (store.get('offerBought', '') === dy.day) return null;
+    const all = [];
+    for (const kind of Object.keys(SHOP_ITEMS)) for (const key of Object.keys(SHOP_ITEMS[kind].defs)) if (SHOP_ITEMS[kind].defs[key].cost > 0) all.push({ kind, key });
+    for (let i = 0; i < all.length; i++) {
+      const o = all[(dy.seed + i) % all.length];
+      if (SHOP_ITEMS[o.kind].owned().includes(o.key)) continue;
+      const cost = SHOP_ITEMS[o.kind].defs[o.key].cost;
+      return { ...o, day: dy.day, cost, price: Math.round(cost * 0.6 / 10) * 10, get name() { return SHOP_ITEMS[o.kind].defs[o.key].name; } };
+    }
+    const cost = CONSUMABLES.shield.cost * 3;   // everything owned: a pack of start shields
+    return { kind: 'stock', key: 'shield', day: dy.day, cost, price: Math.round(cost * 0.6 / 10) * 10, get name() { return tx('shop.shieldPack', { n: 3 }); } };
+  }
+  function itemPrice(kind, key) { const o = dailyOffer(); return o && o.kind === kind && o.key === key ? o.price : SHOP_ITEMS[kind].defs[key].cost; }
+  function buyItem(kind, key) {
+    const o = dailyOffer(), isOffer = o && o.kind === kind && o.key === key, price = isOffer ? o.price : itemPrice(kind, key);
+    if (wallet < price) return;
+    wallet -= price;
+    if (kind === 'stock') stock[key] += 3;
+    else { SHOP_ITEMS[kind].owned().push(key); SHOP_ITEMS[kind].wear(key); }
+    if (isOffer) store.set('offerBought', o.day);
+    tryOn = null; saveMeta(); Sound.init(); Sound.buy(); buzz(20); applyGear(); renderShop();
+  }
+  function tryItem(kind, key) { tryOn = { kind, key }; applyGear(lookNow()); renderShop(); }
+  // a row of swatches: tap an owned one to wear it, a locked one to try it on (the buy bar below the list buys it)
+  function swatchGroup(list, kind, paint) {
+    const S = SHOP_ITEMS[kind], title = S.group(), owned = S.owned();
+    const worn = kind === 'outfit' ? gear.outfit : kind === 'board' ? gear.board : trails.active;
     const h = document.createElement('h3'); h.textContent = title; list.appendChild(h);
     const sw = document.createElement('div'); sw.className = 'swatches';
-    for (const k of Object.keys(defs)) {
-      const d = defs[k], has = owned.includes(k);
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch';
-      b.setAttribute('aria-pressed', String(active === k));
+    for (const k of Object.keys(S.defs)) {
+      const d = S.defs[k], has = owned.includes(k), trying = tryOn && tryOn.kind === kind && tryOn.key === k;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch' + (has ? '' : ' locked') + (trying ? ' trying' : '');
+      b.setAttribute('aria-pressed', String(trying || (!(tryOn && tryOn.kind === kind) && worn === k)));
       const dot = document.createElement('i'); dot.style.background = paint(d);
-      const lab = document.createElement('span'); lab.textContent = has ? d.name : tx('shop.price', { n: fmt(d.cost) });
+      const lab = document.createElement('span'); lab.textContent = has ? d.name : '🔒 ' + fmt(itemPrice(kind, k));
       b.append(dot, lab);
-      b.setAttribute('aria-label', has ? tx('shop.choose', { group: title, name: d.name }) : tx('shop.buyItem', { group: title, name: d.name, n: fmt(d.cost) }));
-      if (!has && wallet < d.cost) { b.disabled = true; b.style.opacity = '0.5'; }
+      b.setAttribute('aria-label', has ? tx('shop.choose', { group: title, name: d.name }) : tx('shop.buyItem', { group: title, name: d.name, n: fmt(itemPrice(kind, k)) }));
       b.addEventListener('click', () => {
-        if (!has) { if (wallet < d.cost) return; wallet -= d.cost; owned.push(k); Sound.init(); Sound.buy(); }
-        choose(k); saveMeta(); renderShop();
+        if (has) { S.wear(k); tryOn = null; saveMeta(); applyGear(); renderShop(); }
+        else tryItem(kind, k);
       });
       sw.appendChild(b);
     }
     list.appendChild(sw);
+  }
+  function renderOffer() {
+    const el = $('shopOffer'), o = dailyOffer();
+    el.hidden = !o; el.replaceChildren();
+    if (!o) return;
+    const tag = document.createElement('span'); tag.className = 'tag'; tag.dir = 'ltr'; tag.textContent = '−40 %';
+    const what = document.createElement('div'); what.className = 'what';
+    const nm = document.createElement('b'); nm.textContent = o.kind === 'stock' ? o.name : o.name + ' · ' + SHOP_ITEMS[o.kind].group();
+    const sm = document.createElement('small');
+    sm.textContent = tx('shop.offer') + ' · ' + tx('shop.offerEnds', { n: Math.max(1, 24 - new Date().getHours()) });
+    what.append(nm, sm);
+    if (o.kind === 'outfit' || o.kind === 'board') { what.style.cursor = 'pointer'; what.addEventListener('click', () => { shopTab = SHOP_ITEMS[o.kind].tab; tryItem(o.kind, o.key); }); }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small';
+    b.insertAdjacentHTML('beforeend', '<i class="coin-dot"></i>'); b.append(fmt(o.price));   // the tag shows the discount
+    b.disabled = wallet < o.price;
+    b.setAttribute('aria-label', tx('shop.buyItem', { group: tx('shop.offer'), name: o.name, n: fmt(o.price) }));
+    b.addEventListener('click', () => buyItem(o.kind, o.key));
+    el.append(tag, what, b);
   }
   function renderShop() {
     $('shopWallet').textContent = fmt(wallet);
+    if (shopTab === 'coins' && !IAP) shopTab = 'power';
+    document.querySelectorAll('#shopTabs [data-tab]').forEach(b => {
+      b.hidden = b.dataset.tab === 'coins' && !IAP;
+      b.setAttribute('aria-selected', String(b.dataset.tab === shopTab)); b.setAttribute('aria-pressed', String(b.dataset.tab === shopTab));
+    });
+    renderOffer();
     const list = $('shopList'); list.replaceChildren();
-    renderIapShop(list);
-    const h1 = document.createElement('h3'); h1.textContent = tx('shop.upgrades'); list.appendChild(h1);
-    for (const t of Object.keys(UPGRADES)) {
-      const lvl = upgrades[t];
-      const pips = document.createElement('div'); pips.className = 'pips';
-      for (let i = 0; i < UP_MAX; i++) { const p = document.createElement('i'); if (i < lvl) p.className = 'on'; pips.appendChild(p); }
-      const row = shopRow(t, UPGRADES[t].name, tx('shop.lasts', { n: powerTime(t) }) + (lvl < UP_MAX ? tx('shop.next', { n: powerTime(t) + UPGRADES[t].per }) : ''), pips);
-      row.appendChild(lvl < UP_MAX ? buyButton(UP_COST[lvl], UPGRADES[t].name, () => { upgrades[t]++; }) : buyButton(null, tx('shop.max')));
-      list.appendChild(row);
+    if (shopTab === 'coins') renderIapShop(list);
+    if (shopTab === 'power') {
+      const h1 = document.createElement('h3'); h1.textContent = tx('shop.upgrades'); list.appendChild(h1);
+      for (const t of Object.keys(UPGRADES)) {
+        const lvl = upgrades[t];
+        const pips = document.createElement('div'); pips.className = 'pips';
+        for (let i = 0; i < UP_MAX; i++) { const p = document.createElement('i'); if (i < lvl) p.className = 'on'; pips.appendChild(p); }
+        const row = shopRow(t, UPGRADES[t].name, tx('shop.lasts', { n: powerTime(t) }) + (lvl < UP_MAX ? tx('shop.next', { n: powerTime(t) + UPGRADES[t].per }) : ''), pips);
+        row.appendChild(lvl < UP_MAX ? buyButton(UP_COST[lvl], UPGRADES[t].name, () => { upgrades[t]++; }) : buyButton(null, tx('shop.max')));
+        list.appendChild(row);
+      }
+      const h2 = document.createElement('h3'); h2.textContent = tx('shop.nextRun'); list.appendChild(h2);
+      for (const k of Object.keys(CONSUMABLES)) {
+        const c = CONSUMABLES[k];
+        const row = shopRow(c.icon, c.name, c.desc + (stock[k] ? tx('shop.stock', { n: stock[k] }) : ''));
+        row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
+        list.appendChild(row);
+      }
     }
-    const h2 = document.createElement('h3'); h2.textContent = tx('shop.nextRun'); list.appendChild(h2);
-    for (const k of Object.keys(CONSUMABLES)) {
-      const c = CONSUMABLES[k];
-      const row = shopRow(c.icon, c.name, c.desc + (stock[k] ? tx('shop.stock', { n: stock[k] }) : ''));
-      row.appendChild(buyButton(c.cost, c.name, () => { stock[k]++; }));
-      list.appendChild(row);
+    if (shopTab === 'rider') swatchGroup(list, 'outfit', o => o.jacket ? `linear-gradient(180deg, ${o.jacket} 0 58%, ${o.scarf} 58% 68%, ${o.pants} 68%)` : 'linear-gradient(180deg, #f2b632 0 58%, #e5396f 58% 68%, #283a5c 68%)');
+    if (shopTab === 'board') {
+      swatchGroup(list, 'board', b => b.css || `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
+      swatchGroup(list, 'trail', t => t.color);
     }
-    swatchGroup(list, tx('shop.board'), BOARDS, gear.boards, gear.board, k => { gear.board = k; applyGear(); }, b => b.css || `linear-gradient(90deg, ${b.board} 0 35%, ${b.boardTop} 35% 65%, ${b.board} 65%)`);
-    const h3 = document.createElement('h3'); h3.textContent = tx('shop.trail'); list.appendChild(h3);
-    const sw = document.createElement('div'); sw.className = 'swatches';
-    for (const k of Object.keys(TRAILS)) {
-      const tr = TRAILS[k], owned = trails.owned.includes(k);
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'swatch';
-      b.setAttribute('aria-pressed', String(trails.active === k));
-      const dot = document.createElement('i'); dot.style.background = tr.color;
-      const lab = document.createElement('span'); lab.textContent = owned ? tr.name : tx('shop.price', { n: fmt(tr.cost) });
-      b.append(dot, lab);
-      b.setAttribute('aria-label', owned ? tx('shop.choose', { group: tx('shop.trail'), name: tr.name }) : tx('shop.buyItem', { group: tx('shop.trail'), name: tr.name, n: fmt(tr.cost) }));
-      if (!owned && wallet < tr.cost) b.disabled = true, b.style.opacity = '0.5';
-      b.addEventListener('click', () => {
-        if (!owned) { if (wallet < tr.cost) return; wallet -= tr.cost; trails.owned.push(k); Sound.init(); Sound.buy(); }
-        trails.active = k; applyTrail(); saveMeta(); renderShop();
-      });
-      sw.appendChild(b);
+    // buy bar for what is being tried on
+    const bar = $('tryBar');
+    bar.hidden = !tryOn;
+    if (tryOn) {
+      const d = SHOP_ITEMS[tryOn.kind].defs[tryOn.key], price = itemPrice(tryOn.kind, tryOn.key);
+      $('tryName').textContent = d.name;
+      const b = $('tryBuy'); b.replaceChildren(); b.insertAdjacentHTML('beforeend', '<i class="coin-dot"></i>'); b.append(fmt(price));
+      b.disabled = wallet < price;
+      b.setAttribute('aria-label', tx('shop.buyItem', { group: SHOP_ITEMS[tryOn.kind].group(), name: d.name, n: fmt(price) }));
     }
-    list.appendChild(sw);
   }
+  $('tryBuy').addEventListener('click', () => { if (tryOn) buyItem(tryOn.kind, tryOn.key); });
+  document.querySelectorAll('#shopTabs [data-tab]').forEach(b => b.addEventListener('click', () => {
+    shopTab = b.dataset.tab; store.set('shopTab', shopTab);
+    if (tryOn && SHOP_ITEMS[tryOn.kind].tab !== shopTab) { tryOn = null; applyGear(); }
+    renderShop();
+  }));
+  // leaving the shop puts the rider's own things back on
+  $('shop').querySelector('[data-back]').addEventListener('click', () => { if (tryOn) { tryOn = null; applyGear(); } });
 
   // ---------- Settings ----------
   function syncSettings() {
@@ -4257,14 +4394,19 @@ body {
     camMix = state === 'menu' ? 0 : Math.min(1, camMix + dt * 1.1);
     const lookAt = TV4.copy(camLook);
     if (camMix < 1) {
-      const a = Math.sin(clock * 0.17) * 1.05, R = portrait ? 9.5 : 6.5;
+      // shop: closer, the camera circles the rider all the way round, the rider in the free space above the card
+      const inShop = state === 'menu' && openPanel === 'shop';
+      shopMix += ((inShop ? 1 : 0) - shopMix) * (1 - Math.exp(-dt * 3));
+      const menuA = Math.sin(clock * 0.17) * 1.05;
+      if (inShop) shopAng += dt * 0.45; else { shopAng = menuA + angDiff(shopAng - menuA); shopAng += (menuA - shopAng) * (1 - Math.exp(-dt * 3)); }
+      const a = lerp(menuA, shopAng, shopMix), R = lerp(portrait ? 9.5 : 6.5, portrait ? 5.6 : 4.6, shopMix);
       const ox = P.x + Math.sin(a) * R, od = P.d + Math.cos(a) * R;
-      orbitLook.set(P.x, P.y + (portrait ? -0.9 : 0.2), -P.d);   // portrait: the rider stands between the logo and the buttons
+      orbitLook.set(P.x, P.y + lerp(portrait ? -0.9 : 0.2, portrait ? -1.75 : -0.6, shopMix), -P.d);   // portrait: the rider stands between the logo and the buttons
       const m = camMix * camMix * (3 - 2 * camMix);
       // a new run swings round the rider on a circle to the chase view (a straight line would pass through him)
       const ab = a + ((a >= 0 ? Math.PI : -Math.PI) - a) * m, rb = lerp(R, back, m);
       const bx = P.x + Math.sin(ab) * rb, bd = P.d + Math.cos(ab) * rb;
-      const by = lerp(Math.max(baseH(od, ox) + 1.6, P.y + 2.6), Math.max(baseH(bd, bx) + 1.6, camPos.y), m);
+      const by = lerp(Math.max(baseH(od, ox) + 1.6, P.y + lerp(2.6, 1.7, shopMix)), Math.max(baseH(bd, bx) + 1.6, camPos.y), m);
       orbitPos.set(bx, by, -bd);
       camera.position.lerpVectors(orbitPos, camPos, m * m * m);
       lookAt.lerpVectors(orbitLook, camLook, m);
