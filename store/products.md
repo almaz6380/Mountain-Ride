@@ -6,6 +6,7 @@ Danach trägst du sie in RevenueCat ein (Products, ohne Entitlements nötig; das
 | Produkt-ID      | Typ (Apple)            | Typ (Google)      | Preis (Vorschlag) | Inhalt                                          |
 |-----------------|------------------------|-------------------|-------------------|-------------------------------------------------|
 | `starter_pack`  | Nicht-Verbrauchsartikel | Einmalkauf        | 4,99 €            | Werbefrei + goldenes Board + 3.000 Münzen        |
+| `coin_doubler`  | Nicht-Verbrauchsartikel | Einmalkauf        | 2,99 €            | Alle Münzen aus Läufen doppelt, für immer        |
 | `no_ads`        | Nicht-Verbrauchsartikel | Einmalkauf        | 2,99 €            | Keine Zwischenwerbung mehr                      |
 | `coins_small`   | Verbrauchsartikel      | Verbrauchsartikel | 0,99 €            | 1.000 Münzen                                    |
 | `coins_medium`  | Verbrauchsartikel      | Verbrauchsartikel | 4,99 €            | 5.500 Münzen                                    |
@@ -19,6 +20,7 @@ und können für die Store-Produktseiten übernommen werden.
 - Ein Lauf bringt die eingesammelten Münzen plus **1 Münze pro 50 m** (Streckenbonus). Ein normaler Lauf von 1–2 km bringt so etwa 50–100 Münzen.
 - Missionen geben 80 / 150 / 250 / 400 Münzen.
 - Power-up-Stufen kosten 150 / 300 / 500 / 800 / 1.200 Münzen, Boards 300–1.200, Outfits 500–1.500, Orte 800–1.500.
+- Zweite Chance (Herz) für 400 Münzen: nach einem Sturz einmal weiterfahren, ohne Video.
 - Tagesangebot im Shop: jeden Tag ein Outfit, Board oder eine Spur 40 % billiger (für alle Spieler gleich, nur Münzen).
 - Damit kostet die erste Upgrade-Stufe 2–3 Läufe, die letzte etwa 15–20. Alles ist ohne Kauf erreichbar;
   Münzpakete sind eine Abkürzung, „Werbefrei“ der wichtigste Kauf.
