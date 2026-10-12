@@ -285,6 +285,8 @@ JOBS = [
     ('hut', gen('hut', 6.0)), ('chalet', gen('chalet', 9.0)), ('church', gen('church', 12.0)),
     # Bergdorf street lamp (the game puts the glow into its lantern head at 2.5 m)
     ('lantern', gen('lantern', 3.0)),
+    # ski lift mast (obstacle, bull wheel turns the rope across the piste along x) and the snowpark grind box (long side along x)
+    ('lift_mast', gen('lift-mast', 8.0)), ('rail', gen('rail', 0.9)),
 ]
 
 only = os.environ.get('ONLY')
