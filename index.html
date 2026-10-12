@@ -1215,31 +1215,35 @@ body {
     const soles = low.filter((_, k) => k % Math.max(1, Math.floor(low.length / 60)) === 0);
     const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), skinned, soles, rest: null, low: 0, yaw: null,
       squat: { hips: bone('Hips'), thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], feet: [bone('LeftFoot'), bone('RightFoot')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') },
-      arms: [[bone('LeftArm'), bone('LeftForeArm')], [bone('RightArm'), bone('RightForeArm')]], chest: bone('Spine2'), steer: 0, balance: 0 };
+      arms: [[bone('LeftArm'), bone('LeftForeArm')], [bone('RightArm'), bone('RightForeArm')]], chest: bone('Spine2'), steer: 0, balance: 0, pivot };
     return { root, pivot, boardMat, topMat, skinMat: mat, anim: A, st: { duck: 0, airT: 0 } };
   }
   const IK = { t: [new THREE.Vector3(), new THREE.Vector3()], h: new THREE.Vector3(), k: new THREE.Vector3(), f: new THREE.Vector3(),
     a: new THREE.Vector3(), b: new THREE.Vector3(), n: new THREE.Vector3(), s: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), wq: new THREE.Quaternion() };
   // steering and flying: the clip keeps the arms still, so they are swung on top of it – the shoulders turn into the
   // turn, the arms lift out for balance (the outer one more), in the air both open up a little
-  const ARM = { up: new THREE.Vector3(0, 1, 0), a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion() };
+  const ARM = { up: new THREE.Vector3(), right: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion(), bq: new THREE.Quaternion() };
   function steerArms(A, o, dt) {
     if (!A.arms || !A.arms[0][0]) return;
-    A.steer += (clamp(o.steer || 0, -1, 1) - A.steer) * Math.min(1, dt * 9);
-    A.balance += ((o.air && !o.crashed ? 1 : 0) - A.balance) * Math.min(1, dt * 6);
+    A.steer += (clamp(o.air ? 0 : o.steer || 0, -1, 1) - A.steer) * Math.min(1, dt * 9);
+    A.balance += ((o.air && !o.crashed ? 1 : 0) - A.balance) * Math.min(1, dt * 4);
     if (o.crashed) return;
     const s = A.steer, k = Math.abs(s);
     if (k < 0.01 && A.balance < 0.01) return;
     A.model.updateMatrixWorld(true);
+    // the body's own up and sideways (they turn with spins and flips, so the arms keep still relative to the body)
+    (A.pivot || A.model).getWorldQuaternion(ARM.bq);
+    ARM.up.set(0, 1, 0).applyQuaternion(ARM.bq); ARM.right.set(1, 0, 0).applyQuaternion(ARM.bq);
     rotateBoneWorld(A.chest, ARM.q.setFromAxisAngle(ARM.up, -s * 0.28));
-    for (const [arm, fore] of A.arms) {
+    A.armAxis = A.armAxis || [new THREE.Vector3(1, 0, 0), new THREE.Vector3(1, 0, 0)];
+    A.arms.forEach(([arm, fore], i) => {
       arm.getWorldPosition(ARM.a); fore.getWorldPosition(ARM.b);
       const dir = ARM.b.sub(ARM.a).normalize(), axis = ARM.a.crossVectors(dir, ARM.up);
-      if (axis.lengthSq() < 1e-6) continue;
-      const outer = clamp(0.5 - dir.x * Math.sign(s || 1) * 1.5, 0, 1);   // the arm away from the turn reaches out further
-      rotateBoneWorld(arm, ARM.q.setFromAxisAngle(axis.normalize(), k * (0.35 + 0.55 * outer) + A.balance * 0.25));
-      rotateBoneWorld(fore, ARM.q.setFromAxisAngle(axis, -k * 0.25));
-    }
+      if (axis.lengthSq() > 1e-4) A.armAxis[i].copy(axis.normalize());   // arm along the body axis: keep the last axis
+      const outer = clamp(0.5 - dir.dot(ARM.right) * Math.sign(s || 1) * 1.5, 0, 1);   // the arm away from the turn reaches out further
+      rotateBoneWorld(arm, ARM.q.setFromAxisAngle(A.armAxis[i], k * (0.35 + 0.55 * outer) + A.balance * 0.25));
+      rotateBoneWorld(fore, ARM.q.setFromAxisAngle(A.armAxis[i], -k * 0.25));
+    });
   }
   function rotateBoneWorld(bone, q) {   // turn a bone by a world-space rotation
     bone.parent.getWorldQuaternion(IK.pq); bone.getWorldQuaternion(IK.wq);
