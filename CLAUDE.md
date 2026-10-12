@@ -34,7 +34,7 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 - Course: `spawnRow(d)` builds rows ~228 m ahead. Obstacles arrive in **stages** (`STAGES`): warm-up (trees/rocks) → logs and ramps → banners → fences and snowballs → crevasses and full rows → everything. Speed `19 + min(32, dist * 0.008)` m/s.
 - Track sections (deep snow, ice, tunnel, steep) start after ~1.1 km.
 - Tricks in the air: tap = 360°, swipe up = backflip, swipe down = grab; mixing tricks and chaining clean landings builds a combo.
-- Places (`LOCS`): Alpen, Waldabfahrt, Fackel-Nacht, Gletscher – own light, scenery, favoured sections and music theme.
+- Places (`LOCS`): Alpen, Waldabfahrt, Fackel-Nacht, Gletscher, Abendrot (`sunset`, low sun `sunH`), Snowpark (`park`: colourful flags, ramp roll up to 0.17 instead of 0.08 – place-dependent but deterministic), Polarlicht (`aurora`: shader `auroraSky` over the sky image, glowing crystals, frozen lakes), Bergdorf (`dorf`: `lightString` lamp posts with twinkling bulbs, wooden fences) – own light (`PAL`), scenery, favoured sections and music theme (new places borrow a recorded loop via `THEMES[k].file`).
 - Online (Supabase, `ONLINE` config): worldwide leaderboard (`scores`), daily race (`daily`), live duel via Realtime broadcast + presence. Duel by link encodes seed, start, place and a ghost recording in the URL hash.
 - Sound and music are synthesised with Web Audio; sound is switched only in the settings (no in-game button).
 - Online safety: `cleanName()` filters swear words (all 10 languages) for every name entered or shown; scores carry an anonymous `PLAYER_ID` and are only posted when `plausible()`; the DB has matching constraints + a rate limit.
