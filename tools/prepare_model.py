@@ -1,6 +1,6 @@
 # Prepares a generated model (TRELLIS on Hugging Face, MIT; or any textured GLB) for the game, with headless Blender:
 #   PYTHONPATH=<bpy dir> python3 tools/prepare_model.py <in.glb> <out.glb> <faces> <height> [x,y,z size] [--long-x]
-#     [--cut-ground] [--gain=<brighter>] [--snow=<normal z: snow above>] [--bark=<normal z: bark below>] [--vox=<remesh detail>]
+#     [--cut-ground] [--gain=<brighter>] [--snow=<normal z: snow above>] [--bark=<normal z: bark below>] [--vox=<remesh detail>] [--sat=<saturation>]
 # The texture is baked into one colour per face (the game draws everything with one vertex-colour material), ambient
 # occlusion is baked on top, the model stands on z=0 centred, is reduced to about <faces> faces and scaled to <height>
 # metres (or to exact x,y,z metres). --long-x turns the longest side along x (logs lie across the lane).
@@ -13,6 +13,7 @@ LONG_X = '--long-x' in args
 CUT_GROUND = '--cut-ground' in args   # generated models sometimes stand on a slab of snow: cut it off
 opt = lambda name, d: next((float(a.split('=')[1]) for a in args if a.startswith('--' + name + '=')), d)
 GAIN, SNOW, VOX = opt('gain', 1.0), opt('snow', 0), opt('vox', 140)   # brighter colours, snow on faces looking up (normal z > SNOW), remesh detail
+SAT = opt('sat', 1.0)   # stronger colours (remeshing averages wood and dark gaps into grey)
 BARK = opt('bark', None)   # faces looking sideways/down (normal z < BARK) get bark colour (snow-covered logs come out all white)
 args = [a for a in args if not a.startswith('--')]
 src, out, faces, height = args[0], args[1], int(args[2]), float(args[3])
@@ -101,7 +102,10 @@ for p in me.polygons:
         c = col.data[li].color
         if bk:   # keep the texture's light and dark as a little variation in the bark
             l = 0.75 + 0.5 * (0.3 * c[0] + 0.6 * c[1] + 0.1 * c[2]); col.data[li].color = (*(min(1, b * l) for b in BARKC), 1)
-        else: col.data[li].color = (*SNOWC, 1) if sn else (min(1, c[0] * GAIN), min(1, c[1] * GAIN), min(1, c[2] * GAIN), 1)
+        elif sn: col.data[li].color = (*SNOWC, 1)
+        else:
+            m = (c[0] + c[1] + c[2]) / 3
+            col.data[li].color = (*(max(0, min(1, (m + (c[k] - m) * SAT) * GAIN)) for k in range(3)), 1)
 
 # orientation, base on z=0, size
 if LONG_X:
