@@ -1654,7 +1654,7 @@ body {
 
   // ---------- World state ----------
   let state = 'menu';
-  let poleCount = 0;
+  let poleCount = 0, hutD = 0, hutSpot = null;   // next mountain hut beside the piste (Abendrot, Bergdorf)
   let P, ents = [], coins = [], poles = [], nextD = 0, nextDeco = 0, startD = 0;
   let lastScoreD = 0;
   let runStartT = 0, runBonus = 0, runBooked = 0;   // runBooked: coins the run put in the wallet (doubled with the coin doubler)
@@ -1832,7 +1832,7 @@ body {
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
     const cat = get('cat', null); modelSet.CAT = cat ? catModel(cat) : builtSet.CAT;
     const ramp = get('ramp', null); if (ramp) RAMP_MODEL = prepRampModel(ramp);
-    modelSet.FENCE = get('fence', null);
+    modelSet.FENCE = get('fence', null); modelSet.HUT = get('hut', null);
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
     const rfar = [0, 1, 2].map(i => get('rock_far_' + i, null));
@@ -2235,12 +2235,24 @@ body {
     return lerp(12, 8.5, diff) + rr(0, 3);
   }
 
+  function spawnHut(d) {   // the owner's mountain hut: far out at sunset, closer and more often in the village
+    if (hutD - d > 300) hutD = d;   // the world was reset behind the last hut
+    if (d < hutD) return;
+    const v = LOC.village, side = Math.random() < 0.5 ? -1 : 1, x = side * rand(v ? TRACK + 8 : 17, v ? 24 : 34), dd = d + rand(-2, 2);
+    const m = shadowed(new THREE.Mesh(modelSet.HUT, modelMat), Math.abs(x) < 32);
+    m.rotation.y = -side * rand(0.15, 0.7); m.scale.setScalar(rand(1.25, 1.6));   // the door looks uphill, turned a bit towards the piste
+    m.position.set(x, baseH(dd, x) - 0.35, -dd); scene.add(m); poles.push({ d: dd, mesh: m });
+    hutSpot = { d: dd, x }; hutD = d + (v ? rand(30, 48) : rand(55, 90));
+  }
+
   function spawnDeco(d) {
+    if ((LOC.sunH || LOC.village) && modelsOn && modelSet && modelSet.HUT) spawnHut(d);
     // forest beside the piste: thick in the wood, sparse ice towers on the glacier
     for (const side of [-1, 1]) {
       const n = LOC.dense ? 3 + (Math.random() < 0.5 ? 1 : 0) : LOC.ice ? (Math.random() < 0.5 ? 1 : 0) : Math.random() < 0.7 ? 2 : 1;
       for (let k = 0; k < n; k++) {
         const x = side * rand(TRACK + (LOC.dense ? 2.6 : 3.5), LOC.dense ? 42 : 55);
+        if (hutSpot && Math.abs(hutSpot.x - x) < 7.5 && Math.abs(hutSpot.d - d) < 9) continue;   // no trees through the hut
         addEnt('tree', d + rand(-2, 2), x, { s: rand(0.9, 1.6), deco: true });
       }
       if (LOC.ice && Math.random() < 0.35) addEnt('rock', d + rand(-2, 2), side * rand(TRACK + 3, 30), { deco: true });
