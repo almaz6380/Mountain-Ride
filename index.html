@@ -111,6 +111,9 @@ body {
 .btn.ad:active { box-shadow: 0 1px 0 #2f9a52; }
 .btn.ad small { font: 700 12px var(--ui); letter-spacing: 0; text-transform: none; opacity: 0.8; }
 .btn.ad small::before { content: '▶ '; }
+.btn.ad.heart { background: #ff8fb1; color: #3a0f22; box-shadow: 0 4px 0 #c94f7a; }
+.btn.ad.heart small::before { content: '❤ '; }
+.ad-row > :nth-child(3):not([hidden]) { grid-column: 1 / -1; }
 .legal-links { margin: 10px 0 0; text-align: center; font-size: 14px; }
 /* daily bonus: seven tiles, today's highlighted */
 .bonus-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 14px; }
@@ -376,6 +379,7 @@ body {
       <div><dt data-i18n="over.coins">Münzen</dt><dd id="stCoins">0</dd></div>
     </dl>
     <div class="ad-row" id="adRow" hidden>
+      <button class="btn ad heart" id="heartBtn" type="button" hidden><span data-i18n="ad.revive">Weiterfahren</span><small id="heartSub"></small></button>
       <button class="btn ad" id="reviveBtn" type="button"><span data-i18n="ad.revive">Weiterfahren</span><small data-i18n="ad.video">Video ansehen</small></button>
       <button class="btn ad" id="doubleBtn" type="button"><span data-i18n="ad.double">Münzen ×2</span><small data-i18n="ad.video">Video ansehen</small></button>
     </div>
@@ -641,7 +645,7 @@ body {
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- Languages: German is built in, the others come from assets/lib/i18n.js (window.I18N) ----------
-  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!","set.secSound":"Ton","set.secHaptics":"Haptik","set.secGfx":"Grafik","set.secGeneral":"Allgemein","set.secLegal":"Rechtliches","set.quality":"Qualität","set.vibrateSub":"bei Sturz, Landung und Tricks","set.name":"Spielername","shop.tabPower":"Power-ups","shop.tabRider":"Fahrer","shop.tabBoard":"Board","shop.tabCoins":"Münzen","shop.outfit":"Outfit","shop.offer":"Tagesangebot","shop.offerEnds":"noch {n} Std.","shop.shieldPack":"{n}× Start-Schild","outfit.klassik":"Klassik","outfit.feuer":"Feuer","outfit.gletscher":"Gletscher","outfit.wald":"Förster","outfit.nacht":"Nachtfalke","outfit.bonbon":"Bonbon","outfit.gold":"Champion"};
+  const I18N_DE = {"err.three":"3D-Grafik konnte nicht geladen werden. Bitte Seite neu laden.","err.webgl":"Dein Browser unterstützt kein WebGL.","title.tagline":"Snowboard · Tricks · Duelle","title.tap":"Tippen zum Starten","menu.place":"Ort","menu.prevPlace":"Vorheriger Ort","menu.nextPlace":"Nächster Ort","menu.start":"Losfahren","menu.unlock":"Freischalten · {n}","menu.daily":"Tagesrennen","menu.live":"Live-Duell","menu.liveSub":"gegen Freunde","menu.shop":"Shop","menu.missions":"Missionen","menu.board":"Bestenliste","menu.settings":"Einstellungen","menu.best":"Bestwert: {n} Punkte","menu.hint":"Sammle Münzen und kauf dir im Shop stärkere Power-ups.","menu.dailyBest":"{place} · dein Bestwert {n} m","menu.dailyNew":"{place} · heute neu","menu.unlocked":"freigeschaltet!","loc.alpen":"Alpen","loc.alpen.sub":"Sonne, Tannen und der Lauf der Tageszeiten","loc.wald":"Waldabfahrt","loc.wald.sub":"Dichter Tannenwald und viel Tiefschnee","loc.nacht":"Fackel-Nacht","loc.nacht.sub":"Nachtfahrt zwischen brennenden Fackeln","loc.gletscher":"Gletscher","loc.gletscher.sub":"Blaue Eistürme, Spalten und Eisplatten","hud.distance":"Strecke","hud.points":"Punkte","hud.stage":"Etappe {n}","hud.pause":"Pause","hud.combo":"Kombo ×{n}","over.title":"Gestürzt","over.record":"Neuer Rekord","over.points":"Punkte","over.distance":"Strecke","over.topSpeed":"Top-Speed","over.coins":"Münzen","over.nameLabel":"Du kommst in die Bestenliste! Dein Name:","over.rankLabel":"Platz {n} in der Bestenliste! Dein Name:","over.enter":"Eintragen","over.missions":"Missionen","over.board":"Bestenliste","over.again":"Nochmal","over.challenge":"Freund herausfordern","over.menu":"Menü","over.best":"Bestwert: {n} Punkte","over.wallet":"+{n} Münzen · Konto: {w}","over.quit":"Lauf beendet.","name.placeholder":"Name","name.default":"Fahrer","name.you":"Du","crash.tree":"Gegen einen Baum gefahren.","crash.rock":"Gegen einen Felsen gekracht.","crash.snowman":"Einen Schneemann umgefahren.","crash.log":"Über den Baumstamm gestolpert. Spring drüber!","crash.gate":"Gegen das Banner gefahren. Wisch nach unten zum Ducken!","crash.fence":"In die Absperrung gefahren. Wechsel rechtzeitig die Spur!","crash.snowball":"Von einer rollenden Schneekugel erwischt.","crash.crevasse":"In eine Gletscherspalte gestürzt. Spring drüber!","crash.flip":"Salto nicht geschafft. Starte ihn früher oder springe höher.","crash.edge":"Verkantet gelandet. Lande mit dem Brett in Fahrtrichtung.","pw.magnet":"Magnet","pw.shield":"Schild","pw.turbo":"Turbo","pw.double":"Doppelte Punkte","pw.spring":"Super-Sprung","pw.shieldSub":"schützt vor einem Treffer","pw.seconds":"{n} Sekunden","hit.tut":"Getroffen!","hit.tutSub":"Im Tutorial darfst du es nochmal versuchen","hit.turbo":"Turbo!","hit.turboSub":"Du bist gerade unverwundbar","hit.shield":"Schild hat dich gerettet!","hit.shieldSub":"Jetzt ist es weg","stage.0":"Aufwärmen","stage.0.sub":"Bäume und Felsen: wisch zur Seite","stage.1":"Baumstämme","stage.1.sub":"Neu: Baumstämme und Schanzen. Wisch hoch zum Springen","stage.2":"Banner","stage.2.sub":"Neu: Banner. Wisch runter zum Ducken","stage.3":"Zäune, Kugeln & Raupen","stage.3.sub":"Neu: Absperrungen, rollende Schneekugeln und Pistenraupen","stage.4":"Gletscherspalten","stage.4.sub":"Neu: Spalten und volle Reihen. Jetzt kommt alles gemischt","stage.5":"Profi","stage.5.sub":"Alles, immer schneller","stage.title":"Etappe {n}: {name}","sec.deep":"Tiefschnee","sec.deep.sub":"Langsamer, aber weich","sec.ice":"Eisplatte","sec.ice.sub":"Schneller und rutschig!","sec.tunnel":"Schneetunnel","sec.tunnel.sub":"Bleib in deiner Spur","sec.steep":"Steilhang","sec.steep.sub":"Vollgas!","trick.backflip":"Backflip","trick.backflips":"{n}× Backflip","trick.grab":"Grab","trick.bigAir":"Big Air","trick.mix":"Mix","trick.perfect":"Perfekt","trick.wobbly":"Wackelig","trick.comboEnd":"Kombo vorbei","trick.combo":"Kombo ×{n}","shop.title":"Shop","shop.coins":"Münzen","shop.upgrades":"Power-ups verbessern","shop.lasts":"Hält {n} Sekunden","shop.next":" · nächste Stufe {n} s","shop.max":"Maximal","shop.nextRun":"Für den nächsten Lauf","shop.stock":" Vorrat: {n}","shop.buy":"{label} für {n} Münzen kaufen","shop.price":"{n} Münzen","shop.choose":"{group} {name} wählen","shop.buyItem":"{group} {name} für {n} Münzen kaufen","shop.board":"Snowboard","shop.trail":"Schneespur","shop.startShield":"Start-Schild","shop.startShield.desc":"Du startest den nächsten Lauf mit einem Schild.","shop.turboStart":"Turbo-Start","shop.turboStart.desc":"Die ersten 6 Sekunden im Turbo, unverwundbar.","shop.active":"aktiv","trail.schnee":"Pulver","trail.gold":"Gold","trail.pink":"Pink","trail.eis":"Eis","trail.regenbogen":"Regenbogen","board.pink":"Pink","board.blau":"Ozean","board.flamme":"Flamme","board.gruen":"Tanne","board.carbon":"Carbon","board.gold":"Gold","mis.title":"Missi|onen","mis.note":"Erfülle Missionen für Extra-Münzen. Erledigte werden nach deinem nächsten Lauf durch neue ersetzt.","mis.done":"Mission erfüllt!","mis.reward":"+{n} Münzen","mis.runDist":"Fahre {n} m in einem Lauf","mis.runCoins":"Sammle {n} Münzen in einem Lauf","mis.runScore":"Erreiche {n} Punkte in einem Lauf","mis.runLanes":"Wechsle {n}-mal die Spur in einem Lauf","mis.coins":"Sammle insgesamt {n} Münzen","mis.spins":"Lande {n} Drehungen","mis.gates":"Ducke dich unter {n} Bannern durch","mis.crevasses":"Springe über {n} Gletscherspalten","mis.powers":"Sammle {n} Power-ups","mis.runs":"Spiele {n} Läufe","board.title":"Besten|liste","board.local":"Dieses Gerät","board.online":"Weltweit","board.today":"Heute","board.which":"Welche Liste","board.empty":"Noch keine Einträge. Fahr los!","board.loading":"Wird geladen …","board.onlineEmpty":"Noch keine Einträge weltweit.","board.onlineDown":"Die weltweite Bestenliste ist gerade nicht erreichbar.","board.onlineArtifact":"Die weltweite Bestenliste gibt es nur in der App.","board.onlineOff":"Die weltweite Bestenliste ist noch nicht eingerichtet.","board.dailyHead":"Tagesrennen {date} · {place}","board.dailyFirst":" · noch niemand gefahren. Sei der Erste!","board.dailyDown":"Die Tages-Bestenliste wird gerade eingerichtet.","set.title":"Einstel|lungen","set.music":"Musik","set.sfx":"Effekte","set.sound":"Ton","set.on":"An","set.off":"Aus","set.gfx":"Grafik","set.high":"Hoch","set.auto":"Auto","set.fast":"Schnell","set.fps":"Bildrate anzeigen","set.vibrate":"Vibration","set.snow":"Schneefall","set.shake":"Kamera wackelt bei Treffern","set.sens":"Wisch-Empfindlichkeit","set.low":"Niedrig","set.mid":"Mittel","set.lang":"Sprache","set.langAuto":"Automatisch","set.controls":"Steuerung","set.c1":"Wischen: eine Spur nach links oder rechts","set.c2":"Wischen oder Tippen: springen","set.c3":"Wischen: ducken, unter Bannern durch","set.cAir":"In der Luft","set.c4":"Tippen: 360°-Drehung · Hoch wischen: Backflip · Runter wischen: Grab · Seitlich: Spur wechseln","set.cCombo":"Kombo","set.c5":"Verschiedene Tricks in einem Sprung zählen mehr. Sauber landen und gleich weiter springen: Kombo ×2, ×3 …","set.cPause":"Pause","set.tutorial":"Tutorial nochmal spielen","set.privacy":"Datenschutz","set.imprint":"Impressum","common.back":"Zurück","common.cancel":"Abbrechen","pause.title":"Pause","pause.resume":"Weiter","pause.settings":"Einstellungen","pause.quit":"Lauf beenden","tut.tag":"Tutorial","tut.welcome":"Willkommen! Kurze Einführung …","tut.1":"Wische nach links oder rechts und fahr durch die freie Spur.","tut.2":"Wische nach oben und spring über die Baumstämme.","tut.3":"Wische nach unten und duck dich unter den Bannern durch.","tut.4":"Fahr über die Schanze: in der Luft hoch wischen = Backflip, runter = Grab, tippen = 360°!","tut.again":"Nochmal!","tut.good":"Super!","tut.done":"Tutorial geschafft!","tut.doneSub":"Jetzt geht es richtig los","duel.title":"Du|ell","duel.vs":"{name} fordert dich heraus! Ort: {place}","duel.note":"Du fährst exakt dieselbe Strecke. Dein Gegner fährt als Geist neben dir. Wer weiter kommt, gewinnt.","duel.go":"Duell starten","duel.beaten":"{name} geschlagen!","duel.beatenSub":"Fahr weiter für mehr Punkte","duel.behind":"{name}: {n} m hinter dir","duel.ahead":"{name}: {n} m vor dir","duel.rematch":"Zurückfordern","duel.revenge":"Revanche","duel.youWin":"Du gewinnst!","duel.theyWin":"{name} gewinnt","duel.draw":"Unentschieden","duel.broken":"Duell-Link kaputt","duel.brokenSub":"Lass ihn dir nochmal schicken","ch.title":"Heraus|fordern","ch.text":"Schick deinem Freund einen Link. Er fährt dieselbe Strecke gegen deinen Geist ({n} m).","ch.name":"Dein Spielername:","ch.share":"Link teilen","ch.linkAria":"Duell-Link","ch.shareText":"{name} fordert dich bei Mountain Ride heraus: {n} m! Schaffst du mehr?","ch.shareTitle":"Mountain Ride Duell","ch.shared":"Geteilt! Sobald dein Freund fährt, sieht er dich als Geist.","ch.copied":"Link kopiert! Füge ihn in WhatsApp oder eine Nachricht ein.","ch.copyIt":"Kopiere diesen Link und schick ihn deinem Freund.","daily.head":"Tagesrennen {date}","daily.newBest":" · neuer Tagesbestwert!","daily.thisRun":"Diese Fahrt","daily.best":"Dein Bestwert heute","daily.rank":"Platz heute","daily.rankOf":"{n} von {total}","daily.down":"nicht erreichbar","daily.namePh":"Dein Name","daily.nameAria":"Dein Name für die Tages-Bestenliste","live.title":"Live-|Duell","live.note":"Fahrt gleichzeitig dieselbe Strecke und seht euch live auf der Piste.","live.name":"Dein Spielername:","live.create":"Raum erstellen","live.codeLabel":"Oder Raum-Code eingeben:","live.join":"Beitreten","live.room":"Raum-Code","live.invite":"Einladung teilen","live.waiting":"Warte auf deinen Gegner … Teil ihm den Code oder die Einladung.","live.start":"Rennen starten","live.needName":"Gib zuerst deinen Spielernamen ein.","live.codeLen":"Der Raum-Code hat 4 Zeichen.","live.connecting":"Verbinde …","live.failed":"Verbindung fehlgeschlagen. Prüfe dein Internet und versuch es nochmal.","live.you":"du","live.opp":"Gegner","live.full":"Der Raum ist voll (nur 2 Fahrer).","live.ready":"{name} ist da. Bereit?","live.left":"{name} ist raus","live.leftSub":"Verbindung getrennt","live.fell":"{name} gestürzt","live.fellSub":"{n} m – fahr weiter!","live.starting":"Startet …","live.wantsRematch":"{name} will Revanche!","live.stillRiding":"{name} fährt noch …","live.waitFor":"Warte auf {name} …","live.gone":"Gegner ist weg","live.goneSub":"Zurück ins Menü","live.vs":"gegen {name}","live.go":"Los!","live.shareText":"Fahr live gegen mich bei Mountain Ride! Raum-Code: {code}","live.shareTitle":"Mountain Ride Live-Duell","live.copied":"Einladung kopiert! Schick sie deinem Gegner.","live.sendCode":"Schick deinem Gegner den Code {code}","live.enterName":"Gib deinen Namen ein und tipp auf „Beitreten“.","loading":"Lädt","ad.revive":"Weiterfahren","ad.video":"Video ansehen","ad.double":"Münzen ×2","ad.failed":"Gerade ist kein Video verfügbar.","ad.doubled":"+{n} Münzen extra!","ad.revived":"Weiter geht’s!","ad.revivedSub":"3 Sekunden unverwundbar","set.adPrivacy":"Werbe-Einstellungen","iap.title":"Münzen & Pakete","iap.starter":"Starter-Paket","iap.starter.desc":"Werbefrei + goldenes Board + {n} Münzen","iap.noAds":"Werbefrei","iap.noAds.desc":"Keine Zwischenwerbung mehr. Videos für Belohnungen bleiben freiwillig.","iap.coinsS":"Handvoll Münzen","iap.coinsM":"Münzbeutel","iap.coinsL":"Münzschatz","iap.coins":"{n} Münzen","iap.owned":"Gekauft","iap.thanks":"Danke für deinen Kauf!","iap.failed":"Kauf gerade nicht möglich. Versuch es später nochmal.","iap.restore":"Käufe wiederherstellen","iap.restored":"Käufe wiederhergestellt","iap.restoreNone":"Keine Käufe gefunden","over.distBonus":" (davon {n} Streckenbonus)","crash.cat":"Gegen eine Pistenraupe gefahren. Überhol sie seitlich!","sec.bonus":"Bonus-Abfahrt","sec.bonus.sub":"Keine Hindernisse – sammle alles ein!","sec.avalanche":"Lawine!","sec.avalanche.sub":"Fahr so schnell du kannst!","sec.escaped":"Der Lawine entkommen!","mis.cats":"Überhole {n} Pistenraupen","mis.avalanche":"Entkomme {n} Lawinen","mis.bonus":"Fahre {n} Bonus-Abfahrten","mis.combo":"Erreiche Kombo ×{n}","board.streifen":"Streifen","board.schach":"Schachbrett","board.lava":"Lava","bonus.title":"Tages|bonus","bonus.day":"Tag {n} deiner Serie – komm morgen wieder, dann gibt es mehr!","bonus.dayN":"Tag {n}","bonus.claim":"Abholen","bonus.double":"×2 abholen","bonus.got":"Tagesbonus!","set.remind":"Erinnerung ans Tagesrennen","push.body":"Das Tagesrennen von heute wartet – und dein Tagesbonus liegt bereit!","set.secSound":"Ton","set.secHaptics":"Haptik","set.secGfx":"Grafik","set.secGeneral":"Allgemein","set.secLegal":"Rechtliches","set.quality":"Qualität","set.vibrateSub":"bei Sturz, Landung und Tricks","set.name":"Spielername","shop.tabPower":"Power-ups","shop.tabRider":"Fahrer","shop.tabBoard":"Board","shop.tabCoins":"Münzen","shop.outfit":"Outfit","shop.offer":"Tagesangebot","shop.offerEnds":"noch {n} Std.","shop.shieldPack":"{n}× Start-Schild","outfit.klassik":"Klassik","outfit.feuer":"Feuer","outfit.gletscher":"Gletscher","outfit.wald":"Förster","outfit.nacht":"Nachtfalke","outfit.bonbon":"Bonbon","outfit.gold":"Champion","iap.doubler":"Münzen ×2 für immer","iap.doubler.desc":"Jede Fahrt bringt doppelt so viele Münzen.","shop.heart":"Zweite Chance","shop.heart.desc":"Nach einem Sturz einmal weiterfahren – ohne Video.","over.heart":"Herz einsetzen · noch {n}","over.doubled":"×2"};
   const LANGS = ['de', 'en', 'es', 'pt', 'fr', 'it', 'ru', 'zh', 'ja', 'ar'];
   const LOCALES = { de: 'de-DE', en: 'en-US', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', it: 'it-IT', ru: 'ru-RU', zh: 'zh-CN', ja: 'ja-JP', ar: 'ar-u-nu-latn' };
   let langPref = 'auto';
@@ -1096,6 +1100,59 @@ body {
   // centimetres. Spins, flips, carving lean and the slope stay on the root (poseRider3d); the board is kept under
   // the feet every frame, so it follows the tuck in the air
   const ANIM_SCALE = 1.4, DUCK_T = 0.68, BOARD_UNDER_ANKLE = 0.04;   // board top just under the soles
+  // the snowboard: a real outline (sidecut, round nose and tail), rockered tips, dark base, coloured sidewalls, the
+  // top sheet in the board's colours or pattern, and two bindings with highbacks and straps. Length along x.
+  const BOARD = { L: 0.8, tip: 0.56, waist: 0.135, wide: 0.158, thick: 0.024, kickAt: 0.5, kick: 1.35 };
+  function boardGeometry() {
+    const B = BOARD, N = 56, M = 8, half = x => {
+      const ax = Math.abs(x), w = B.waist + (B.wide - B.waist) * Math.min(1, (ax / B.tip) ** 2);
+      return ax <= B.tip ? w : w * Math.sqrt(Math.max(0, 1 - ((ax - B.tip) / (B.L - B.tip)) ** 2));
+    };
+    const lift = x => { const a = Math.abs(x) - B.kickAt; return a > 0 ? B.kick * a * a : 0; };
+    const xs = []; for (let i = 0; i <= N; i++) xs.push(-B.L * Math.cos(Math.PI * i / N));   // denser at the tips
+    const pos = [], uv = [], top = [], bot = [], side = [];
+    const vtx = (x, y, z, u, v) => { pos.push(x, y, z); uv.push(u, v); return pos.length / 3 - 1; };
+    const grid = (yOff, flip, out) => {
+      const idx = xs.map(x => { const w = half(x), y = lift(x) + yOff; const row = []; for (let j = 0; j <= M; j++) { const z = -w + 2 * w * j / M; row.push(vtx(x, y, z, (x + B.L) / (2 * B.L), z / 0.34 + 0.5)); } return row; });
+      for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+        const a = idx[i][j], b = idx[i + 1][j], c = idx[i][j + 1], d = idx[i + 1][j + 1];
+        if (flip) out.push(a, b, c, b, d, c); else out.push(a, c, b, b, c, d);
+      }
+      return idx;
+    };
+    const T = grid(B.thick, false, top), D = grid(0, true, bot);
+    for (const j of [0, M]) for (let i = 0; i < N; i++) {   // sidewalls along both edges
+      const a = T[i][j], b = T[i + 1][j], c = D[i][j], d = D[i + 1][j];
+      if (j === 0) side.push(a, b, c, b, d, c); else side.push(a, c, b, b, c, d);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex([...top, ...side, ...bot]);
+    g.addGroup(0, top.length, 0); g.addGroup(top.length, side.length, 1); g.addGroup(top.length + side.length, bot.length, 2);
+    g.computeVertexNormals();
+    return g;
+  }
+  let boardGeo = null;
+  function buildBoard(boardMat, topMat, ghost) {
+    const board = new THREE.Group();
+    boardGeo = boardGeo || boardGeometry();
+    const fade = m => { if (ghost) { m.transparent = true; m.opacity = 0.42; m.depthWrite = false; } return m; };
+    const baseMat = fade(new THREE.MeshLambertMaterial({ color: 0x1b1f27 })), bindMat = fade(new THREE.MeshLambertMaterial({ color: 0x23272f })), strapMat = fade(new THREE.MeshLambertMaterial({ color: 0x3a404c }));
+    const deck = new THREE.Mesh(boardGeo, [topMat, boardMat, baseMat]); deck.castShadow = !ghost; board.add(deck);
+    // bindings: base plate, highback on the heel side, ankle and toe strap; placed under the feet each frame
+    const binds = [];
+    for (const sx of [-1, 1]) {
+      const b = new THREE.Group(), y = BOARD.thick;
+      const add = (geo, m, x, yy, z, rx = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, yy, z); o.rotation.x = rx; o.castShadow = !ghost; b.add(o); };
+      add(new THREE.BoxGeometry(0.15, 0.016, 0.2), bindMat, 0, y + 0.008, 0);
+      add(new THREE.BoxGeometry(0.13, 0.15, 0.022), bindMat, 0, y + 0.085, 0.105, 0.22);
+      add(new THREE.BoxGeometry(0.15, 0.026, 0.05), strapMat, 0, y + 0.07, 0.0);
+      add(new THREE.BoxGeometry(0.15, 0.022, 0.04), strapMat, 0, y + 0.045, -0.085);
+      b.position.x = sx * 0.25; board.add(b); binds.push(b);
+    }
+    board.userData.binds = binds;
+    return board;
+  }
   function makeRiderAnim(g, ghost) {
     const model = g.scene;
     let skinned = null;
@@ -1112,10 +1169,7 @@ body {
     body.rotation.y = Math.PI;   // the clips face +z; the rider faces down the slope (-z)
     model.scale.setScalar(100 * ANIM_SCALE);
     body.add(model);
-    const board = new THREE.Group();
-    const part = (w, hh, d, m, x, y, rz) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), m); b.position.set(x, y, 0); b.rotation.z = rz || 0; b.castShadow = !ghost; board.add(b); };
-    part(1.2, 0.035, 0.29, boardMat, 0, 0.02); part(0.22, 0.035, 0.29, boardMat, 0.69, 0.055, 0.42); part(0.22, 0.035, 0.29, boardMat, -0.69, 0.055, -0.42);
-    part(1.0, 0.012, 0.22, topMat, 0, 0.042);
+    const board = buildBoard(boardMat, topMat, ghost);
     board.rotation.order = 'YZX';
     body.add(board);
     scene.add(root);
@@ -1137,11 +1191,33 @@ body {
     for (let i = 0; i < pos.count; i++) if (pos.getY(i) < minY + 0.0004) low.push(i);   // the FBX units are cm/100
     const soles = low.filter((_, k) => k % Math.max(1, Math.floor(low.length / 60)) === 0);
     const A = { mixer, act, duck, state: 'ride', fade: 0, model, body, board, fl: bone('LeftFoot'), fr: bone('RightFoot'), skinned, soles, rest: null, low: 0, yaw: null,
-      squat: { hips: bone('Hips'), thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], feet: [bone('LeftFoot'), bone('RightFoot')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') } };
+      squat: { hips: bone('Hips'), thighs: [bone('LeftUpLeg'), bone('RightUpLeg')], knees: [bone('LeftLeg'), bone('RightLeg')], feet: [bone('LeftFoot'), bone('RightFoot')], spine: [bone('Spine'), bone('Spine1'), bone('Spine2')], neck: bone('Neck') },
+      arms: [[bone('LeftArm'), bone('LeftForeArm')], [bone('RightArm'), bone('RightForeArm')]], chest: bone('Spine2'), steer: 0, balance: 0 };
     return { root, pivot, boardMat, topMat, skinMat: mat, anim: A, st: { duck: 0, airT: 0 } };
   }
   const IK = { t: [new THREE.Vector3(), new THREE.Vector3()], h: new THREE.Vector3(), k: new THREE.Vector3(), f: new THREE.Vector3(),
     a: new THREE.Vector3(), b: new THREE.Vector3(), n: new THREE.Vector3(), s: new THREE.Vector3(), q: new THREE.Quaternion(), pq: new THREE.Quaternion(), wq: new THREE.Quaternion() };
+  // steering and flying: the clip keeps the arms still, so they are swung on top of it – the shoulders turn into the
+  // turn, the arms lift out for balance (the outer one more), in the air both open up a little
+  const ARM = { up: new THREE.Vector3(0, 1, 0), a: new THREE.Vector3(), b: new THREE.Vector3(), q: new THREE.Quaternion() };
+  function steerArms(A, o, dt) {
+    if (!A.arms || !A.arms[0][0]) return;
+    A.steer += (clamp(o.steer || 0, -1, 1) - A.steer) * Math.min(1, dt * 9);
+    A.balance += ((o.air && !o.crashed ? 1 : 0) - A.balance) * Math.min(1, dt * 6);
+    if (o.crashed) return;
+    const s = A.steer, k = Math.abs(s);
+    if (k < 0.01 && A.balance < 0.01) return;
+    A.model.updateMatrixWorld(true);
+    rotateBoneWorld(A.chest, ARM.q.setFromAxisAngle(ARM.up, -s * 0.28));
+    for (const [arm, fore] of A.arms) {
+      arm.getWorldPosition(ARM.a); fore.getWorldPosition(ARM.b);
+      const dir = ARM.b.sub(ARM.a).normalize(), axis = ARM.a.crossVectors(dir, ARM.up);
+      if (axis.lengthSq() < 1e-6) continue;
+      const outer = clamp(0.5 - dir.x * Math.sign(s || 1) * 1.5, 0, 1);   // the arm away from the turn reaches out further
+      rotateBoneWorld(arm, ARM.q.setFromAxisAngle(axis.normalize(), k * (0.35 + 0.55 * outer) + A.balance * 0.25));
+      rotateBoneWorld(fore, ARM.q.setFromAxisAngle(axis, -k * 0.25));
+    }
+  }
   function rotateBoneWorld(bone, q) {   // turn a bone by a world-space rotation
     bone.parent.getWorldQuaternion(IK.pq); bone.getWorldQuaternion(IK.wq);
     IK.wq.premultiply(q);
@@ -1193,6 +1269,7 @@ body {
     // ducking: the riding clip with the hips lowered and the back bent forward; the knees are solved (two-bone
     // IK) so both feet stay exactly where the riding stance has them – on the board
     if (dk > 0.001) squatIK(A, dk);
+    steerArms(A, o, dt);
     // feet: measure the ankles in the body's space
     A.model.updateMatrixWorld(true);
     const fl = A.body.worldToLocal(A.fl.getWorldPosition(AV1)), fr = A.body.worldToLocal(A.fr.getWorldPosition(AV2));
@@ -1217,6 +1294,8 @@ body {
     else if (dk < 0.15) A.yaw += angDiff(yaw - A.yaw) * Math.min(1, dt * 10);
     A.board.position.set((fl.x + fr.x) / 2, ankle + A.low - BOARD_UNDER_ANKLE, (fl.z + fr.z) / 2);
     A.board.rotation.set(0, A.yaw, flat ? 0 : Math.atan2(dy, Math.hypot(dx, dz)));
+    const binds = A.board.userData.binds, hw = Math.min(0.34, Math.hypot(dx, dz) / 2);   // bindings under the boots
+    if (binds) { binds[0].position.x = -hw; binds[1].position.x = hw; }
     return rest - BOARD_UNDER_ANKLE;   // how high the board sits above the root while riding
   }
   // .glb models; where .glb files are not served (the Artifact) the same file comes base64-encoded as <name>.glb.txt
@@ -1245,7 +1324,7 @@ body {
     const r3 = rider3d, st = r3.st, e = k => Math.min(1, dt * k);
     if (r3.anim) {
       const dk = P.duckS * P.duckS * (3 - 2 * P.duckS);
-      const lift = animateRider(r3, { air: P.air, airT: P.airT, crashed: P.crashed, duck: dk }, dt);
+      const lift = animateRider(r3, { air: P.air, airT: P.airT, crashed: P.crashed, duck: dk, steer: P.air ? 0 : P.leanS }, dt);
       placeRoot(r3, dt, e, lift);
       return;
     }
@@ -1533,7 +1612,7 @@ body {
   let poleCount = 0;
   let P, ents = [], coins = [], poles = [], nextD = 0, nextDeco = 0, startD = 0;
   let lastScoreD = 0;
-  let runStartT = 0, runBonus = 0;
+  let runStartT = 0, runBonus = 0, runBooked = 0;   // runBooked: coins the run put in the wallet (doubled with the coin doubler)
   const COIN_PER_M = 50;   // wall clock at the start of a run, for the plausibility check of online scores
   let score = 0, bonus = 0, coinCount = 0, topSpeed = 0, crashT = 0, crashReason = '', clock = 0, shake = 0;
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), orbitPos = new THREE.Vector3(), orbitLook = new THREE.Vector3(), TV4 = new THREE.Vector3();
@@ -2396,7 +2475,7 @@ body {
   Sound.setVolumes(settings.music, settings.sfx);
   let wallet = store.get('wallet', 0);
   const upgrades = Object.assign({ magnet: 0, turbo: 0, double: 0, spring: 0 }, store.get('upgrades', {}));
-  const stock = Object.assign({ shield: 0, boost: 0 }, store.get('stock', {}));
+  const stock = Object.assign({ shield: 0, boost: 0, heart: 0 }, store.get('stock', {}));
   const trails = Object.assign({ owned: ['schnee'], active: 'schnee' }, store.get('trails', {}));
   const career = Object.assign({ coins: 0, runs: 0 }, store.get('career', {}));
   const gear = Object.assign({ outfits: ['klassik'], outfit: 'klassik', boards: ['pink'], board: 'pink' }, store.get('gear', {}));
@@ -2417,6 +2496,7 @@ body {
   const CONSUMABLES = {
     shield: { get name() { return tx('shop.startShield'); }, get desc() { return tx('shop.startShield.desc'); }, cost: 250, icon: 'shield' },
     boost:  { get name() { return tx('shop.turboStart'); }, get desc() { return tx('shop.turboStart.desc'); }, cost: 300, icon: 'turbo' },
+    heart:  { get name() { return tx('shop.heart'); }, get desc() { return tx('shop.heart.desc'); }, cost: 400, icon: 'shield' },
   };
   const TRAILS = {
     schnee:     { get name() { return tx('trail.schnee'); }, color: '#ffffff', cost: 0 },
@@ -2845,6 +2925,7 @@ body {
   // in-app products (ids must match App Store Connect / Play Console); prices come from the store
   const PRODUCTS = [
     { id: 'starter_pack', icon: 'double', noAds: true, coins: 3000, board: 'gold', get name() { return tx('iap.starter'); }, get desc() { return tx('iap.starter.desc', { n: fmt(3000) }); } },
+    { id: 'coin_doubler', icon: 'double', doubler: true, get name() { return tx('iap.doubler'); }, get desc() { return tx('iap.doubler.desc'); } },
     { id: 'no_ads', icon: 'shield', noAds: true, get name() { return tx('iap.noAds'); }, get desc() { return tx('iap.noAds.desc'); } },
     { id: 'coins_small', icon: 'magnet', coins: 1000, get name() { return tx('iap.coinsS'); }, get desc() { return tx('iap.coins', { n: fmt(1000) }); } },
     { id: 'coins_medium', icon: 'magnet', coins: 5500, get name() { return tx('iap.coinsM'); }, get desc() { return tx('iap.coins', { n: fmt(5500) }); } },
@@ -2853,7 +2934,7 @@ body {
   const PLATFORM = window.Capacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web';
   const ADS = NATIVE && NATIVE.AdMob ? NATIVE.AdMob : null;
   const IAP = NATIVE && NATIVE.Purchases && MONEY.revenueCatKey[PLATFORM] ? NATIVE.Purchases : null;
-  const money = Object.assign({ noAds: false, sinceAd: 0 }, store.get('money', {}));
+  const money = Object.assign({ noAds: false, doubler: false, sinceAd: 0 }, store.get('money', {}));
   const saveMoney = () => store.set('money', money);
   let adsReady = false, iapReady = false, storePrices = {}, adBusy = false;
   async function initMoney() {
@@ -2910,6 +2991,7 @@ body {
   function grantProduct(p) {
     if (p.coins) wallet += p.coins;
     if (p.noAds) money.noAds = true;
+    if (p.doubler) money.doubler = true;
     if (p.board && !gear.boards.includes(p.board)) gear.boards.push(p.board);
     saveMeta(); saveMoney(); setTimeout(backupSave, 300);
   }
@@ -2932,8 +3014,10 @@ body {
       const { customerInfo } = await IAP.restorePurchases();
       const ids = new Set((customerInfo.nonSubscriptionTransactions || []).map(t => t.productIdentifier));
       let found = false;
-      for (const p of PRODUCTS) if (p.noAds && ids.has(p.id)) {
-        found = true; money.noAds = true;
+      for (const p of PRODUCTS) if ((p.noAds || p.doubler) && ids.has(p.id)) {
+        found = true;
+        if (p.noAds) money.noAds = true;
+        if (p.doubler) money.doubler = true;
         if (p.board && !gear.boards.includes(p.board)) gear.boards.push(p.board);
       }
       saveMeta(); saveMoney();
@@ -2946,7 +3030,7 @@ body {
     if (!IAP) return;
     const h = document.createElement('h3'); h.textContent = tx('iap.title'); list.appendChild(h);
     for (const p of PRODUCTS) {
-      const owned = p.noAds && !p.coins && money.noAds;
+      const owned = (p.noAds && !p.coins && money.noAds) || (p.doubler && money.doubler);
       const row = shopRow(p.icon, p.name, p.desc);
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small';
       const sp = storePrices[p.id];
@@ -2961,11 +3045,14 @@ body {
   }
   // result card offers: continue once per run, or double the run's coins
   let revivedThisRun = false, doubledThisRun = false;
+  let offerRevive = false;
   function showAdOffers(canRevive) {
-    $('adRow').hidden = !adsReady;
-    $('reviveBtn').hidden = !canRevive || revivedThisRun;
-    $('doubleBtn').hidden = doubledThisRun || coinCount <= 0;
-    if ($('reviveBtn').hidden && $('doubleBtn').hidden) $('adRow').hidden = true;
+    offerRevive = canRevive;
+    $('heartBtn').hidden = !canRevive || revivedThisRun || stock.heart <= 0;   // a bought second chance, no video needed
+    $('heartSub').textContent = tx('over.heart', { n: stock.heart });
+    $('reviveBtn').hidden = !adsReady || !canRevive || revivedThisRun;
+    $('doubleBtn').hidden = !adsReady || doubledThisRun || coinCount <= 0 || money.doubler;
+    $('adRow').hidden = $('heartBtn').hidden && $('reviveBtn').hidden && $('doubleBtn').hidden;
   }
   $('doubleBtn').addEventListener('click', async () => {
     if (!(await rewardedAd())) return;
@@ -2974,7 +3061,12 @@ body {
     $('overWallet').innerHTML = '<i class="coin-dot"></i>';
     $('overWallet').append(tx('over.wallet', { n: coinCount * 2, w: fmt(wallet) }));
     popup(tx('ad.doubled', { n: coinCount }), '');
-    showAdOffers(!$('reviveBtn').hidden);
+    showAdOffers(offerRevive);
+  });
+  $('heartBtn').addEventListener('click', () => {
+    if (stock.heart <= 0 || revivedThisRun) return;
+    stock.heart--; revivedThisRun = true; saveMeta();
+    revive();
   });
   $('reviveBtn').addEventListener('click', async () => {
     if (!(await rewardedAd())) return;
@@ -3351,7 +3443,7 @@ body {
   // gameOver() booked for this run so nothing is counted twice when the run ends for real.
   function revive() {
     if (state !== 'over') return;
-    wallet -= coinCount; career.coins -= coinCount; career.runs--;
+    wallet -= runBooked; career.coins -= coinCount; career.runs--;
     if (doubledThisRun) { wallet -= coinCount; doubledThisRun = false; }
     coinCount -= runBonus; runBonus = 0;   // the distance bonus is booked again, for the whole run, at the real end
     saveMeta();
@@ -3374,7 +3466,8 @@ body {
     // economy: collected coins plus 1 coin per 50 m, so a long run always pays off
     runBonus = rec.tut ? 0 : Math.floor((P.d - startD) / COIN_PER_M);
     coinCount += runBonus;
-    wallet += coinCount; career.coins += coinCount; career.runs++;
+    runBooked = coinCount * (money.doubler && !rec.tut ? 2 : 1);
+    wallet += runBooked; career.coins += coinCount; career.runs++;
     if (career.runs === 3 && settings.remind) setTimeout(askReminder, 1500);
     progressMission('runScore', Math.floor(score), true);
     progressMission('runs', 1);
@@ -3389,7 +3482,7 @@ body {
     $('stCoins').textContent = coinCount - runBonus;
     $('overBest').textContent = tx('over.best', { n: fmt(best) });
     $('overWallet').innerHTML = '<i class="coin-dot"></i>';
-    $('overWallet').append(tx('over.wallet', { n: coinCount, w: fmt(wallet) }) + (runBonus ? tx('over.distBonus', { n: runBonus }) : ''));
+    $('overWallet').append(tx('over.wallet', { n: runBooked, w: fmt(wallet) }) + (runBonus ? tx('over.distBonus', { n: runBonus }) : '') + (runBooked > coinCount ? ' · ' + tx('over.doubled') : ''));
     renderMissions($('overMissions'));
     $('hud').hidden = true; showPanel('over');
     showAdOffers(!duel && !live.next && !daily && !rec.tut && crashReason !== tx('over.quit'));
@@ -3695,7 +3788,7 @@ body {
       if (ghost3d.anim) {
         gs.airT = air ? gs.airT + lastDt : 0;
         gs.duck += (duck - gs.duck) * k;
-        lift = animateRider(ghost3d, { air: !!air, airT: gs.airT, crashed: !!down, duck: gs.duck }, lastDt);
+        lift = animateRider(ghost3d, { air: !!air, airT: gs.airT, crashed: !!down, duck: gs.duck, steer: lean }, lastDt);
       } else {
         gs.crouch += ((down ? 0.9 : air ? 0.85 : duck ? 1.2 : 0.5) - gs.crouch) * k;
         gs.lean += ((duck ? 0.9 : 0.3) - gs.lean) * k;
