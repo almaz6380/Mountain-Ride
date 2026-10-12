@@ -1832,7 +1832,8 @@ body {
       ICE: list('ice_', builtSet.ICE), LOG: get('log', LOG), SNOWMAN: get('snowman', SNOWMAN), STUMP: get('stump', null) };
     const cat = get('cat', null); modelSet.CAT = cat ? catModel(cat) : builtSet.CAT;
     const ramp = get('ramp', null); if (ramp) RAMP_MODEL = prepRampModel(ramp);
-    modelSet.FENCE = get('fence', null); modelSet.HUT = get('hut', null);
+    modelSet.FENCE = get('fence', null); modelSet.HUT = get('hut', null); modelSet.CHALET = get('chalet', null); modelSet.CHURCH = get('church', null);
+    modelSet.LANTERN = get('lantern', null);
     const far = [0, 1, 2].map(i => get('fir_far_' + i, null));
     if (far.every(Boolean)) modelSet.FIR_FAR = far;
     const rfar = [0, 1, 2].map(i => get('rock_far_' + i, null));
@@ -1879,8 +1880,10 @@ body {
   const lampGlow = new THREE.SpriteMaterial({ map: glowTex, color: '#ffcf7a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
   function lightString(d, side) {   // a lamp post and a sagging string of coloured bulbs to the next post 18 m on
     const grp = new THREE.Group(), x = side * (TRACK + 1.8);
-    const post = shadowed(new THREE.Mesh(LAMP, modelMat)); post.position.set(x, baseH(d, x) - 0.05, -d); grp.add(post);
-    const g = new THREE.Sprite(lampGlow); g.scale.setScalar(2.2); g.position.set(x, baseH(d, x) + 2.86, -d); grp.add(g);
+    const lan = modelsOn && modelSet && modelSet.LANTERN;   // the owner's street lamp, or the built post
+    const post = shadowed(new THREE.Mesh(lan || LAMP, modelMat)); post.position.set(x, baseH(d, x) - 0.05, -d); grp.add(post);
+    if (lan) post.rotation.y = rand(0, TAU);
+    const g = new THREE.Sprite(lampGlow); g.scale.setScalar(lan ? 2.6 : 2.2); g.position.set(x, baseH(d, x) + (lan ? 2.5 : 2.86), -d); grp.add(g);
     for (let i = 1; i < 12; i++) {
       const t = i / 12, dd = d + t * 18, y = lerp(baseH(d, x), baseH(d + 18, x), t) + 2.7 - Math.sin(t * Math.PI) * 0.7;
       const b = new THREE.Sprite(bulbMats[i % bulbMats.length]); b.scale.setScalar(0.55); b.position.set(x, y, -dd); grp.add(b);
@@ -2235,24 +2238,28 @@ body {
     return lerp(12, 8.5, diff) + rr(0, 3);
   }
 
-  function spawnHut(d) {   // the owner's mountain hut: far out at sunset, closer and more often in the village
-    if (hutD - d > 300) hutD = d;   // the world was reset behind the last hut
+  function spawnHut(d) {   // the owner's houses: huts (and a chalet) far out at sunset; hut, chalet and church closer in the village
+    if (hutD - d > 300) hutD = d;   // the world was reset behind the last house
     if (d < hutD) return;
-    const v = LOC.village, side = Math.random() < 0.5 ? -1 : 1, x = side * rand(v ? TRACK + 8 : 17, v ? 24 : 34), dd = d + rand(-2, 2);
-    const m = shadowed(new THREE.Mesh(modelSet.HUT, modelMat), Math.abs(x) < 32);
-    m.rotation.y = -side * rand(0.15, 0.7); m.scale.setScalar(rand(1.25, 1.6));   // the door looks uphill, turned a bit towards the piste
+    const v = LOC.village, k = Math.random(), M = modelSet;
+    const [geo, sc, wide] = v && M.CHURCH && k < 0.2 ? [M.CHURCH, rand(1, 1.15), 6] : M.CHALET && k < (v ? 0.55 : 0.3) ? [M.CHALET, rand(1, 1.2), 3]
+      : [M.HUT, rand(1.25, 1.6), 4];
+    const side = Math.random() < 0.5 ? -1 : 1, x = side * (rand(v ? TRACK + 8 : 17, v ? 24 : 34) + wide - 3), dd = d + rand(-2, 2);
+    const m = shadowed(new THREE.Mesh(geo, modelMat), Math.abs(x) < 34);
+    m.rotation.y = -side * rand(0.15, 0.7); m.scale.setScalar(sc);   // the door looks uphill, turned a bit towards the piste
     m.position.set(x, baseH(dd, x) - 0.35, -dd); scene.add(m); poles.push({ d: dd, mesh: m });
-    hutSpot = { d: dd, x }; hutD = d + (v ? rand(30, 48) : rand(55, 90));
+    hutSpot = { d: dd, x, r: wide + 3.5 }; hutD = d + (v ? rand(30, 48) : rand(55, 90)) + (wide > 5 ? 12 : 0);
   }
+
 
   function spawnDeco(d) {
     if ((LOC.sunH || LOC.village) && modelsOn && modelSet && modelSet.HUT) spawnHut(d);
     // forest beside the piste: thick in the wood, sparse ice towers on the glacier
     for (const side of [-1, 1]) {
-      const n = LOC.dense ? 3 + (Math.random() < 0.5 ? 1 : 0) : LOC.ice ? (Math.random() < 0.5 ? 1 : 0) : Math.random() < 0.7 ? 2 : 1;
+      const n = LOC.dense ? 3 + (Math.random() < 0.5 ? 1 : 0) : LOC.ice || LOC.village ? (Math.random() < 0.5 ? 1 : 0) : Math.random() < 0.7 ? 2 : 1;   // the village: fewer trees, the houses show
       for (let k = 0; k < n; k++) {
         const x = side * rand(TRACK + (LOC.dense ? 2.6 : 3.5), LOC.dense ? 42 : 55);
-        if (hutSpot && Math.abs(hutSpot.x - x) < 7.5 && Math.abs(hutSpot.d - d) < 9) continue;   // no trees through the hut
+        if (hutSpot && Math.abs(hutSpot.x - x) < hutSpot.r && Math.abs(hutSpot.d - d) < hutSpot.r + 1.5) continue;   // no trees through the hut
         addEnt('tree', d + rand(-2, 2), x, { s: rand(0.9, 1.6), deco: true });
       }
       if (LOC.ice && Math.random() < 0.35) addEnt('rock', d + rand(-2, 2), side * rand(TRACK + 3, 30), { deco: true });
