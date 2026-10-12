@@ -6,7 +6,7 @@ Was jetzt noch fehlt, sind **deine Konten, deine IDs und das Hochladen**. Diese 
 
 Wo was liegt:
 - `store/listing/<sprache>.json` – Name, Untertitel, Beschreibungen, Keywords, „Neu in dieser Version“
-- `store/screenshots/<sprache>/ios-1…6.jpg` (1290 × 2796, iPhone 6,9") und `android-1…6.jpg` (1080 × 1920)
+- `store/screenshots/<sprache>/ios-1…7.jpg` (1290 × 2796, iPhone 6,9") und `android-1…7.jpg` (1080 × 1920)
 - `store/feature-graphic.png` – Google-Play-Grafik 1024 × 500
 - `store/products.md` – In-App-Produkte mit IDs und Preisen
 - `store/privacy-answers.md` – Antworten für App-Datenschutz, Datensicherheit, Altersfreigabe

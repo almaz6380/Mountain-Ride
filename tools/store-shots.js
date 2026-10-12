@@ -16,7 +16,7 @@ function makePreview() {
     .replace('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js', '../assets/lib/GLTFLoader.js')
     .replace('https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap', '../assets/lib/fonts/fonts.css')
     .replace('"assets/lib/i18n.js"', '"../assets/lib/i18n.js"')
-    .replace('  function render(dt) {', '  window.__dbg = { P: () => P, PW, ents: () => ents, addRamp, laneX, st: () => state, pop: popEl };\n  function render(dt) {');
+    .replace('  function render(dt) {', '  window.__dbg = { P: () => P, PW, ents: () => ents, addRamp, laneX, st: () => state, pop: popEl, addEnt };\n  function render(dt) {');
   s = s.replace(/(['"])assets\//g, '$1../assets/');
   fs.mkdirSync(path.join(root, '.preview'), { recursive: true });
   fs.writeFileSync(path.join(root, '.preview', 'store.html'), s);
@@ -34,7 +34,7 @@ async function shoot(browser, lang, device) {
       localStorage.setItem('mountain-ride-lang', l);
       localStorage.setItem('mountain-ride-wallet', '2450');
       localStorage.setItem('mountain-ride-best-3d', '18420');
-      localStorage.setItem('mountain-ride-locs', JSON.stringify({ owned: ['alpen', 'wald', 'nacht', 'gletscher'], active: loc }));
+      localStorage.setItem('mountain-ride-locs', JSON.stringify({ owned: ['alpen', 'wald', 'nacht', 'gletscher', 'sunset', 'park', 'aurora', 'dorf'], active: loc }));
       // daily bonus already collected today, so its window does not cover the menu
       const t = new Date(), day = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
       localStorage.setItem('mountain-ride-dailyBonus', JSON.stringify({ last: day, streak: 1 }));
@@ -52,10 +52,11 @@ async function shoot(browser, lang, device) {
     await p.waitForTimeout(secs * 1000);
   };
 
-  // 1 start screen, 2 shop
+  // 1 start screen, 2 shop (rider tab: outfits on the turning rider)
   let { p, ctx } = await page('alpen');
   await snap(p);
-  await p.click('#shopBtn'); await p.waitForTimeout(800); await snap(p);
+  await p.click('#shopBtn'); await p.waitForTimeout(600);
+  await p.click('#shopTabs [data-tab="rider"]').catch(() => {}); await p.waitForTimeout(1200); await snap(p);
   await ctx.close();
   // 3 riding in the Alps (stage banner), 4 a trick in the air
   ({ p, ctx } = await page('alpen'));
@@ -67,11 +68,12 @@ async function shoot(browser, lang, device) {
   await p.waitForFunction(() => __dbg.P().airT > 0.55 || !__dbg.P().air, null, { timeout: 60000 });   // ramp behind the camera, rider mid-flip
   await p.evaluate(() => { __dbg.pop.style.opacity = '0'; }); await snap(p);
   await ctx.close();
-  // 5 torch night, 6 glacier
-  for (const loc of ['nacht', 'gletscher']) {
+  // 5 mountain village, 6 northern lights, 7 sunset with the ski lift
+  for (const loc of ['dorf', 'aurora', 'sunset']) {
     ({ p, ctx } = await page(loc));
     await ride(p, 6);
-    await p.keyboard.press(loc === 'nacht' ? 'ArrowRight' : 'ArrowLeft'); await p.waitForTimeout(800);
+    if (loc === 'sunset') await p.evaluate(() => { const P = __dbg.P(); __dbg.addEnt('lift', P.d + 34, __dbg.laneX(P.lane < 2 ? P.lane + 1 : P.lane - 1)); });
+    await p.keyboard.press(loc === 'aurora' ? 'ArrowRight' : 'ArrowLeft'); await p.waitForTimeout(800);
     await p.evaluate(() => { __dbg.pop.style.opacity = '0'; }); await snap(p);
     await ctx.close();
   }
