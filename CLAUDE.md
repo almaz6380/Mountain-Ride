@@ -16,7 +16,7 @@ Endless snowboard runner in the browser (three.js r128), UI in 10 languages (Ger
 - `store/` – listing texts per language (`listing/<lang>.json`), screenshots (`tools/store-shots.js`, needs the local server), feature graphic, product list, privacy/age-rating answers.
 
 ## Release workflow (every change)
-1. Bump `CACHE` in `sw.js`.
+1. Bump `CACHE` in `sw.js` and the same number in `#appVersion` (`vNN`, bottom of the settings, so the owner sees which version runs).
 2. Commit and push `master`.
 3. `python3 tools/build-pages.py`, copy `dist/` into a `gh-pages` worktree (replace everything), commit, push `gh-pages`.
 4. Check `https://almaz6380.github.io/Mountain-Ride/sw.js` shows the new version (Pages can lag or get stuck; if a run sits queued for long, cancel it and push again).
