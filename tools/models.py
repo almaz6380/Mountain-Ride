@@ -281,8 +281,10 @@ JOBS = [
     ('ramp', gen('ramp', 1.0, rot_z=math.pi / 2)),
     # one fence section per lane (3.15 m wide, the game puts them side by side)
     ('fence', gen('fence', 1.75)),
-    # scenery beside the piste (places Abendrot, Bergdorf): mountain hut, door side towards -y in Blender
-    ('hut', gen('hut', 6.0)),
+    # scenery beside the piste (places Abendrot, Bergdorf): mountain hut, chalet, church, door side towards -y in Blender
+    ('hut', gen('hut', 6.0)), ('chalet', gen('chalet', 9.0)), ('church', gen('church', 12.0)),
+    # Bergdorf street lamp (the game puts the glow into its lantern head at 2.5 m)
+    ('lantern', gen('lantern', 3.0)),
 ]
 
 only = os.environ.get('ONLY')
