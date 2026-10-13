@@ -75,7 +75,7 @@
 	</array>
 	<!-- AdMob: Google's test app id; replace with the real iOS app id from admob.google.com before release -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-8860791993288062~1851154123</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Your choice lets us show you more relevant ads. The game stays free either way.</string>
 	<key>SKAdNetworkItems</key>
