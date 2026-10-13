@@ -1,6 +1,9 @@
 # In-App-Produkte
 
 Diese Produkte legst du **genau mit diesen IDs** in App Store Connect und in der Google Play Console an.
+**Apple:** Produkt-IDs gelten fürs ganze Entwicklerkonto; `no_ads` und die Münzpakete sind dort schon von anderen Apps belegt.
+Auf iOS heißen sie deshalb `mr_no_ads`, `mr_coins_small`, `mr_coins_medium`, `mr_coins_large` (im Spiel: `ios`-Feld in `PRODUCTS`).
+Angelegt per `tools/asc-upload.py products`.
 Danach trägst du sie in RevenueCat ein (Products, ohne Entitlements nötig; das Spiel wertet die Käufe selbst aus).
 
 | Produkt-ID      | Typ (Apple)            | Typ (Google)      | Preis (Vorschlag) | Inhalt                                          |

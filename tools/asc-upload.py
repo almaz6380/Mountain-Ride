@@ -113,7 +113,6 @@ if 'meta' in steps:
 
 if 'listing' in steps:
     have_info = {x['attributes']['locale']: x['id'] for x in call('GET', f'/v1/appInfos/{INFO}/appInfoLocalizations')['data']}
-    have_ver = {x['attributes']['locale']: x['id'] for x in call('GET', f'/v1/appStoreVersions/{VER}/appStoreVersionLocalizations')['data']}
     for l, loc in LANGS.items():
         d = listing[l]
         a = {'name': d['name'][:30], 'subtitle': d['subtitle'][:30], 'privacyPolicyUrl': PRIVACY}
@@ -122,6 +121,8 @@ if 'listing' in steps:
         else:
             call('POST', '/v1/appInfoLocalizations', {'data': {'type': 'appInfoLocalizations', 'attributes': dict(a, locale=loc),
                                                               'relationships': {'appInfo': rel('appInfos', INFO)}}})
+        # Apple creates the version's localization together with the app info's one, so look it up only now
+        have_ver = {x['attributes']['locale']: x['id'] for x in call('GET', f'/v1/appStoreVersions/{VER}/appStoreVersionLocalizations')['data']}
         v = {'description': d['description'][:4000], 'keywords': keywords(d['keywords']), 'promotionalText': d['promotionalText'][:170],
              'supportUrl': SITE, 'marketingUrl': SITE}
         if loc in have_ver:
@@ -155,13 +156,14 @@ if 'products' in steps:
     js = open(os.path.join(ROOT, 'assets', 'lib', 'i18n.js'), encoding='utf8').read()
     texts.update(json.loads(js[js.index('{'):js.rindex('}') + 1]))
     fmt = lambda s, n: s.replace('{n}', f'{n:,}'.replace(',', '.'))
+    # no_ads and the coin packs are already used by other apps of the account: on iOS they carry the prefix mr_
     PRODUCTS = [  # id, type, price in EUR, title key, description key / coins
         ('starter_pack', 'NON_CONSUMABLE', 4.99, 'iap.starter', ('iap.starter.desc', 3000)),
         ('coin_doubler', 'NON_CONSUMABLE', 2.99, 'iap.doubler', ('iap.doubler.desc', 0)),
-        ('no_ads', 'NON_CONSUMABLE', 2.99, 'iap.noAds', ('iap.noAds.desc', 0)),
-        ('coins_small', 'CONSUMABLE', 0.99, 'iap.coinsS', ('iap.coins', 1000)),
-        ('coins_medium', 'CONSUMABLE', 4.99, 'iap.coinsM', ('iap.coins', 5500)),
-        ('coins_large', 'CONSUMABLE', 9.99, 'iap.coinsL', ('iap.coins', 12000)),
+        ('mr_no_ads', 'NON_CONSUMABLE', 2.99, 'iap.noAds', ('iap.noAds.desc', 0)),
+        ('mr_coins_small', 'CONSUMABLE', 0.99, 'iap.coinsS', ('iap.coins', 1000)),
+        ('mr_coins_medium', 'CONSUMABLE', 4.99, 'iap.coinsM', ('iap.coins', 5500)),
+        ('mr_coins_large', 'CONSUMABLE', 9.99, 'iap.coinsL', ('iap.coins', 12000)),
     ]
     shot = os.path.join(ROOT, 'store', 'iap-review.jpg')
     have = {p['attributes']['productId']: p['id'] for p in call('GET', f'/v1/apps/{APP}/inAppPurchasesV2', params={'limit': 200})['data']}
@@ -171,7 +173,7 @@ if 'products' in steps:
             pid = have[sku]
         else:
             pid = call('POST', '/v2/inAppPurchases', {'data': {'type': 'inAppPurchases', 'attributes': {
-                'name': texts['de'][tkey][:30] if sku != 'coins_small' else 'Münzen 1000', 'productId': sku,
+                'name': texts['de'][tkey][:30], 'productId': sku,
                 'inAppPurchaseType': kind, 'reviewNote': 'Shop → Münzen. ' + fmt(texts['en'][dkey], n), 'familySharable': False},
                 'relationships': {'app': rel('apps', APP)}}})['data']['id']
         have_loc = {x['attributes']['locale']: x['id'] for x in call('GET', f'/v2/inAppPurchases/{pid}/inAppPurchaseLocalizations')['data']}
