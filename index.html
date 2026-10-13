@@ -624,7 +624,7 @@ body {
     <section class="set-sec"><h3 data-i18n="set.secLegal">Rechtliches</h3>
     <button class="btn ghost" id="adPrivacyBtn" type="button" hidden data-i18n="set.adPrivacy">Werbe-Einstellungen</button>
     <p class="legal-links"><a id="privacyLink" href="https://almaz6380.github.io/Mountain-Ride/privacy.html" target="_blank" rel="noopener" data-i18n="set.privacy">Datenschutz</a> · <a id="imprintLink" href="https://almaz6380.github.io/Mountain-Ride/imprint.html" target="_blank" rel="noopener" data-i18n="set.imprint">Impressum</a></p>
-    <p class="app-version" id="appVersion" dir="ltr">v68</p>
+    <p class="app-version" id="appVersion" dir="ltr">v69</p>
     </section>
   </div>
 </div>
@@ -3134,17 +3134,19 @@ body {
     revenueCatKey: { android: 'goog_wFymYZduMGTBaGGGLBdnkUsxSDL', ios: '' },   // public SDK keys from app.revenuecat.com (goog_… / appl_…)
     interstitialEvery: 4,                     // runs between two interstitials, never in the first runs or the tutorial
   };
-  // in-app products (ids must match App Store Connect / Play Console); prices come from the store
+  // in-app products (ids must match App Store Connect / Play Console); prices come from the store.
+  // Apple product ids are unique per developer account, so some need their own iOS id (`ios`)
   const PRODUCTS = [
     { id: 'starter_pack', icon: 'double', noAds: true, coins: 3000, board: 'gold', get name() { return tx('iap.starter'); }, get desc() { return tx('iap.starter.desc', { n: fmt(3000) }); } },
     { id: 'coin_doubler', icon: 'double', doubler: true, get name() { return tx('iap.doubler'); }, get desc() { return tx('iap.doubler.desc'); } },
-    { id: 'no_ads', icon: 'shield', noAds: true, get name() { return tx('iap.noAds'); }, get desc() { return tx('iap.noAds.desc'); } },
-    { id: 'coins_small', icon: 'magnet', coins: 1000, get name() { return tx('iap.coinsS'); }, get desc() { return tx('iap.coins', { n: fmt(1000) }); } },
-    { id: 'coins_medium', icon: 'magnet', coins: 5500, get name() { return tx('iap.coinsM'); }, get desc() { return tx('iap.coins', { n: fmt(5500) }); } },
-    { id: 'coins_large', icon: 'magnet', coins: 12000, get name() { return tx('iap.coinsL'); }, get desc() { return tx('iap.coins', { n: fmt(12000) }); } },
+    { id: 'no_ads', ios: 'mr_no_ads', icon: 'shield', noAds: true, get name() { return tx('iap.noAds'); }, get desc() { return tx('iap.noAds.desc'); } },
+    { id: 'coins_small', ios: 'mr_coins_small', icon: 'magnet', coins: 1000, get name() { return tx('iap.coinsS'); }, get desc() { return tx('iap.coins', { n: fmt(1000) }); } },
+    { id: 'coins_medium', ios: 'mr_coins_medium', icon: 'magnet', coins: 5500, get name() { return tx('iap.coinsM'); }, get desc() { return tx('iap.coins', { n: fmt(5500) }); } },
+    { id: 'coins_large', ios: 'mr_coins_large', icon: 'magnet', coins: 12000, get name() { return tx('iap.coinsL'); }, get desc() { return tx('iap.coins', { n: fmt(12000) }); } },
   ];
   const PLATFORM = window.Capacitor && window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web';
   const ADS = NATIVE && NATIVE.AdMob ? NATIVE.AdMob : null;
+  if (PLATFORM === 'ios') for (const p of PRODUCTS) if (p.ios) p.id = p.ios;
   const IAP = NATIVE && NATIVE.Purchases && MONEY.revenueCatKey[PLATFORM] ? NATIVE.Purchases : null;
   const money = Object.assign({ noAds: false, doubler: false, sinceAd: 0 }, store.get('money', {}));
   const saveMoney = () => store.set('money', money);
