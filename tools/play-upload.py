@@ -42,8 +42,12 @@ if 'listing' in steps or 'bundle' in steps:
                                media_body=MediaFileUpload(aab, mimetype='application/octet-stream', resumable=True)).execute()
         vc = b['versionCode']; print('bundle versionCode', vc)
         notes = [{'language': code, 'text': listing[l]['whatsNew'][:500]} for l, code in LANGS.items()]
-        E.tracks().update(packageName=PKG, editId=eid, track='production', body={'track': 'production', 'releases': [
-            {'name': '1.0', 'versionCodes': [str(vc)], 'status': 'draft', 'releaseNotes': notes}]}).execute()
+        # PLAY_TRACK=internal goes straight to the internal testers; production stays a draft the owner rolls out himself
+        track = os.environ.get('PLAY_TRACK', 'production')
+        E.tracks().update(packageName=PKG, editId=eid, track=track, body={'track': track, 'releases': [
+            {'name': f'1.0 ({vc})', 'versionCodes': [str(vc)], 'status': 'completed' if track == 'internal' else 'draft',
+             'releaseNotes': notes}]}).execute()
+        print('track', track)
     print('validate', E.validate(packageName=PKG, editId=eid).execute().get('id'))
     E.commit(packageName=PKG, editId=eid).execute(); print('committed')
 
