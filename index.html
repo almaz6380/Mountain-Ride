@@ -624,7 +624,7 @@ body {
     <section class="set-sec"><h3 data-i18n="set.secLegal">Rechtliches</h3>
     <button class="btn ghost" id="adPrivacyBtn" type="button" hidden data-i18n="set.adPrivacy">Werbe-Einstellungen</button>
     <p class="legal-links"><a id="privacyLink" href="https://almaz6380.github.io/Mountain-Ride/privacy.html" target="_blank" rel="noopener" data-i18n="set.privacy">Datenschutz</a> · <a id="imprintLink" href="https://almaz6380.github.io/Mountain-Ride/imprint.html" target="_blank" rel="noopener" data-i18n="set.imprint">Impressum</a></p>
-    <p class="app-version" id="appVersion" dir="ltr">v66</p>
+    <p class="app-version" id="appVersion" dir="ltr">v67</p>
     </section>
   </div>
 </div>
@@ -3126,7 +3126,7 @@ body {
   // Release: put the real ids in here and in android/app/src/main/res/values/strings.xml / ios Info.plist
   // (docs/store-veroeffentlichen.md). Until then Google's test ads are shown.
   const MONEY = {
-    adsTesting: true,
+    adsTesting: false,   // real ads in the store builds (register your own phone as a test device in AdMob)
     adUnits: {
       android: { rewarded: 'ca-app-pub-8860791993288062/8837118899', interstitial: 'ca-app-pub-8860791993288062/4786193241' },
       ios:     { rewarded: 'ca-app-pub-8860791993288062/1384425273', interstitial: 'ca-app-pub-8860791993288062/2697506946' },
