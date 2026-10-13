@@ -4,5 +4,5 @@
     <string name="title_activity_main">Mountain Ride</string>
     <string name="package_name">com.almaz6380.mountainride</string>
     <string name="custom_url_scheme">com.almaz6380.mountainride</string>
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_app_id">ca-app-pub-8860791993288062~9270479147</string>
 </resources>
