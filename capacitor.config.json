@@ -6,7 +6,7 @@
   "android": { "backgroundColor": "#020814" },
   "ios": { "backgroundColor": "#020814", "contentInset": "never" },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 1200, "launchAutoHide": true, "backgroundColor": "#020814", "showSpinner": false },
+    "SplashScreen": { "launchShowDuration": 300, "launchAutoHide": true, "backgroundColor": "#020814", "showSpinner": false },
     "StatusBar": { "overlaysWebView": true, "style": "DARK" }
   }
 }
