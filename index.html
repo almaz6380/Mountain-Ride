@@ -184,6 +184,18 @@ body {
 .combo-chip .pbar { width: 86px; }
 .loading { position: fixed; inset: 0; height: var(--app-h, auto); z-index: 5; display: grid; text-align: center; place-content: center; justify-items: center; gap: 28px; background: linear-gradient(180deg, #2b3d63 0%, #8fb6d8 100%); transition: opacity 0.5s ease; }
 .loading.done { opacity: 0; pointer-events: none; }
+/* store apps: studio intro – the W is written as a neon line, then the full WellApps logo fades in */
+.intro { position: fixed; inset: 0; z-index: 9; background: #020814; transition: opacity 0.5s ease; }
+.intro img, .intro svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.intro img { opacity: 0; transition: opacity 0.7s ease; }
+.intro svg { transition: opacity 0.8s ease 0.2s; }
+.intro path { fill: none; stroke: #8ff7ff; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 5px #3fe8ff) drop-shadow(0 0 14px #2a9dff); animation: wdraw 1.15s cubic-bezier(0.55, 0.05, 0.35, 1) 0.25s forwards; }
+@keyframes wdraw { to { stroke-dashoffset: 0; } }
+.intro.lit img { opacity: 1; }
+.intro.lit svg { opacity: 0; }
+.intro.out { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .intro path { animation: none; stroke-dashoffset: 0; } }
 .load-bar { width: min(260px, 70vw); height: 8px; border-radius: 4px; background: rgba(244, 248, 252, 0.25); overflow: hidden; }
 .load-bar i { display: block; height: 100%; width: 0; background: var(--jacket); border-radius: 4px; transition: width 0.2s ease; }
 .title-screen { place-items: stretch; grid-template-rows: 1fr auto; text-align: center; background: linear-gradient(180deg, rgba(20, 35, 58, 0.55) 0%, rgba(20, 35, 58, 0) 42%, rgba(20, 35, 58, 0) 70%, rgba(20, 35, 58, 0.55) 100%); }
@@ -336,6 +348,21 @@ body {
   </div>
 </div>
 
+<div class="intro" id="intro" hidden aria-hidden="true">
+  <img src="assets/wellapps-intro.jpg" alt="">
+  <svg viewBox="0 0 768 1376" preserveAspectRatio="xMidYMid slice"><path pathLength="1" d="M260 535 L325 690 L385 557 L442 690 L507 535"/></svg>
+</div>
+<script>
+  // only in the store apps (or with ?intro for testing): about 3 s, then the game's own loading screen
+  (function () {
+    var cap = window.Capacitor, el = document.getElementById('intro');
+    if (!((cap && cap.isNativePlatform && cap.isNativePlatform()) || /[?&]intro\b/.test(location.search))) { el.remove(); return; }
+    el.hidden = false;
+    setTimeout(function () { el.classList.add('lit'); }, 1450);
+    setTimeout(function () { el.classList.add('out'); }, 2900);
+    setTimeout(function () { el.remove(); }, 3450);
+  })();
+</script>
 <div class="loading" id="loading" role="progressbar" aria-label="Lädt" data-i18n-aria="loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
   <h1 class="logo">Mountain<span>Ride</span></h1>
   <div class="load-bar"><i id="loadFill"></i></div>
@@ -624,7 +651,7 @@ body {
     <section class="set-sec"><h3 data-i18n="set.secLegal">Rechtliches</h3>
     <button class="btn ghost" id="adPrivacyBtn" type="button" hidden data-i18n="set.adPrivacy">Werbe-Einstellungen</button>
     <p class="legal-links"><a id="privacyLink" href="https://almaz6380.github.io/Mountain-Ride/privacy.html" target="_blank" rel="noopener" data-i18n="set.privacy">Datenschutz</a> · <a id="imprintLink" href="https://almaz6380.github.io/Mountain-Ride/imprint.html" target="_blank" rel="noopener" data-i18n="set.imprint">Impressum</a></p>
-    <p class="app-version" id="appVersion" dir="ltr">v70</p>
+    <p class="app-version" id="appVersion" dir="ltr">v71</p>
     </section>
   </div>
 </div>
