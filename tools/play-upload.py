@@ -44,8 +44,11 @@ if 'listing' in steps or 'bundle' in steps:
         notes = [{'language': code, 'text': listing[l]['whatsNew'][:500]} for l, code in LANGS.items()]
         # PLAY_TRACK=internal goes straight to the internal testers; production stays a draft the owner rolls out himself
         track = os.environ.get('PLAY_TRACK', 'production')
+        # PLAY_STATUS=completed rolls a production release out right away (only once the app is published)
+        status = os.environ.get('PLAY_STATUS') or ('completed' if track == 'internal' else 'draft')
+        name = os.environ.get('PLAY_RELEASE_NAME', '1.0')
         E.tracks().update(packageName=PKG, editId=eid, track=track, body={'track': track, 'releases': [
-            {'name': f'1.0 ({vc})', 'versionCodes': [str(vc)], 'status': 'completed' if track == 'internal' else 'draft',
+            {'name': f'{name} ({vc})', 'versionCodes': [str(vc)], 'status': status,
              'releaseNotes': notes}]}).execute()
         print('track', track)
     print('validate', E.validate(packageName=PKG, editId=eid).execute().get('id'))
