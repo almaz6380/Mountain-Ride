@@ -2,7 +2,8 @@
 # Start it by hand: GitHub → Actions → "Android → Google Play" → Run workflow.
 # Secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_KEYSTORE_BASE64   the upload key (.jks) as base64
-#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD (optional: default = the keystore's first alias / the keystore password)
 #   PLAY_SERVICE_ACCOUNT_JSON (optional) – without it the .aab is only kept as a download (artifact "app-bundle")
 # versionCode = run number + 3 (Play already has 1–3).
 name: Android → Google Play
@@ -49,12 +50,28 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
           test -s "$RUNNER_TEMP/upload.jks"
 
+      - name: Key alias
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          alias="$ANDROID_KEY_ALIAS"
+          if [ -z "$alias" ]; then
+            alias=$(keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep -i 'PrivateKeyEntry' | head -1 | cut -d, -f1)
+          fi
+          test -n "$alias" || { echo "No key alias found (wrong keystore password?)"; exit 1; }
+          echo "Using key alias: $alias"
+          echo "KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" >> "$GITHUB_ENV"
+          echo "::add-mask::${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+
       - name: Build signed app bundle
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         working-directory: android
         run: |
           chmod +x gradlew
