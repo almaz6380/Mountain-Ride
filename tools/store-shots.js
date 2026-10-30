@@ -62,7 +62,7 @@ async function shoot(browser, lang, device) {
   ({ p, ctx } = await page('alpen'));
   await p.waitForTimeout(500);
   await p.click('#slalomBtn'); await p.waitForTimeout(400);
-  await p.evaluate(() => { setInterval(() => { const P = __dbg.P(), g = __dbg.sg().find(g => !g.done && g.d > P.d + 4); if (g) P.tx = g.x; }, 40); });
+  await p.evaluate(() => { setInterval(() => { const P = __dbg.P(), g = __dbg.sg().find(g => !g.done && g.d > P.d - 1); if (g) P.tx = g.x; }, 40); });
   // a moment with a gate just passed and the next one close ahead
   await p.waitForTimeout(15000);
   await p.waitForFunction(() => { const P = __dbg.P(), g = __dbg.sg(); return g.some(x => x.done) && g.some(x => !x.done && x.d - P.d > 8 && x.d - P.d < 14); }, null, { timeout: 300000, polling: 100 });
@@ -106,7 +106,7 @@ async function featureGraphic(browser) {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   fs.mkdirSync(path.join(root, 'store'), { recursive: true });
   await featureGraphic(browser);
-  for (const lang of LANGS) for (const device of Object.keys(DEVICES)) {
+  for (const lang of LANGS) for (const device of (process.env.SHOT_DEVICES || 'ios,android').split(',')) {   // SHOT_DEVICES=ios: App Store only
     try { await shoot(browser, lang, device); } catch (e) { console.log(lang, device, 'FAILED', e.message.split('\n')[0]); }
   }
   await browser.close();
