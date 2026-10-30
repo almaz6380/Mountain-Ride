@@ -16,7 +16,7 @@ function makePreview() {
     .replace('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js', '../assets/lib/GLTFLoader.js')
     .replace('https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Barlow+Condensed:wght@500;600;800&display=swap', '../assets/lib/fonts/fonts.css')
     .replace('"assets/lib/i18n.js"', '"../assets/lib/i18n.js"')
-    .replace('  function render(dt) {', '  window.__dbg = { P: () => P, PW, ents: () => ents, addRamp, laneX, st: () => state, pop: popEl, addEnt };\n  function render(dt) {');
+    .replace('  function render(dt) {', '  window.__dbg = { P: () => P, PW, ents: () => ents, addRamp, laneX, st: () => state, pop: popEl, addEnt, sg: () => sgates };\n  function render(dt) {');
   s = s.replace(/(['"])assets\//g, '$1../assets/');
   fs.mkdirSync(path.join(root, '.preview'), { recursive: true });
   fs.writeFileSync(path.join(root, '.preview', 'store.html'), s);
@@ -58,7 +58,16 @@ async function shoot(browser, lang, device) {
   await p.click('#shopBtn'); await p.waitForTimeout(600);
   await p.click('#shopTabs [data-tab="rider"]').catch(() => {}); await p.waitForTimeout(1200); await snap(p);
   await ctx.close();
-  // 3 riding in the Alps (stage banner), 4 a trick in the air
+  // 3 slalom: steered through the gates
+  ({ p, ctx } = await page('alpen'));
+  await p.waitForTimeout(500);
+  await p.click('#slalomBtn'); await p.waitForTimeout(400);
+  await p.evaluate(() => { setInterval(() => { const P = __dbg.P(), g = __dbg.sg().find(g => !g.done && g.d > P.d + 4); if (g) P.tx = g.x; }, 40); });
+  // a moment with a few gates done and the next one close ahead
+  await p.waitForFunction(() => { const P = __dbg.P(), g = __dbg.sg(); return g.filter(x => x.done).length >= 2 && g.some(x => !x.done && x.d - P.d > 8 && x.d - P.d < 14); }, null, { timeout: 300000, polling: 100 });
+  await p.evaluate(() => { __dbg.pop.style.transition = 'none'; __dbg.pop.style.opacity = '0'; }); await snap(p);
+  await ctx.close();
+  // 4 riding in the Alps (stage banner), 5 a trick in the air
   ({ p, ctx } = await page('alpen'));
   await ride(p, 5);
   await p.keyboard.press('ArrowLeft'); await p.waitForTimeout(700); await snap(p);
@@ -68,7 +77,7 @@ async function shoot(browser, lang, device) {
   await p.waitForFunction(() => __dbg.P().airT > 0.55 || !__dbg.P().air, null, { timeout: 60000 });   // ramp behind the camera, rider mid-flip
   await p.evaluate(() => { __dbg.pop.style.opacity = '0'; }); await snap(p);
   await ctx.close();
-  // 5 mountain village, 6 northern lights, 7 sunset with the ski lift
+  // 6 mountain village, 7 northern lights, 8 sunset with the ski lift
   for (const loc of ['dorf', 'aurora', 'sunset']) {
     ({ p, ctx } = await page(loc));
     await ride(p, 6);
