@@ -58,6 +58,7 @@ async function shoot(browser, lang, device) {
   await p.click('#shopBtn'); await p.waitForTimeout(600);
   await p.click('#shopTabs [data-tab="rider"]').catch(() => {}); await p.waitForTimeout(1200); await snap(p);
   await ctx.close();
+  if (process.env.SHOT_MENU_ONLY) { console.log(lang, device, n, 'shots'); return; }   // only the start screen and shop again
   // 3 slalom: steered through the gates
   ({ p, ctx } = await page('alpen'));
   await p.waitForTimeout(500);

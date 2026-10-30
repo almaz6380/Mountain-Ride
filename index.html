@@ -213,8 +213,11 @@ body {
 .app-version { margin: 14px 0 0; text-align: center; font-size: 12px; opacity: 0.5; }
 .loc-sub { font-size: 14px; opacity: 0.8; text-wrap: balance; }
 .menu-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
-.menu-row .btn { display: grid; gap: 3px; padding: 11px 10px; font-size: 18px; }
-.menu-row .btn small { font-size: 12px; letter-spacing: 0.06em; font-weight: 600; text-transform: none; opacity: 0.85; }
+.menu-row .btn { display: grid; justify-items: center; gap: 3px; padding: 9px 4px 8px; font-size: clamp(13px, 3.7vw, 16px); letter-spacing: 0.04em; min-width: 0; }
+.menu-row .btn > span, .menu-row .btn small { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.menu-row .btn svg { color: var(--jacket); }
+.menu-row .btn small { font-size: 12px; letter-spacing: 0.02em; font-weight: 600; text-transform: none; opacity: 0.8; }
+.home { overflow: hidden; }
 .lang-select { font: 600 17px var(--ui); color: var(--snow); background: rgba(244, 248, 252, 0.12); border: 0; border-radius: 10px; padding: 8px 10px; }
 .lang-select option { color: #14233a; }
 .duel-chip { margin-top: 6px; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; background: rgba(20, 35, 58, 0.45); border-radius: 99px; padding: 3px 10px; display: inline-block; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
@@ -276,7 +279,8 @@ body {
   .home .loc-pick { padding: 4px 6px; }
   .home .loc-info strong { font-size: 20px; }
   .btn.big { padding: 14px 16px; }
-  .home .menu-row .btn { padding: 9px 8px; font-size: 16px; }
+  .home .menu-row .btn { padding: 7px 4px 6px; }
+  .home .menu-row .btn svg { display: none; }
   .nav-btn { padding: 4px 2px; }
 }
 /* full-screen pages (settings) */
@@ -380,9 +384,9 @@ body {
     </div>
     <button class="btn big" id="startBtn" type="button">Losfahren</button>
     <div class="menu-row">
-      <button class="btn ghost" id="dailyBtn" type="button"><span data-i18n="menu.daily">Tagesrennen</span><small id="dailySub"></small></button>
-      <button class="btn ghost" id="slalomBtn" type="button"><span data-i18n="menu.slalom">Slalom</span><small id="slalomSub"></small></button>
-      <button class="btn ghost" id="liveBtn" type="button" hidden><span data-i18n="menu.live">Live-Duell</span><small data-i18n="menu.liveSub">gegen Freunde</small></button>
+      <button class="btn ghost" id="dailyBtn" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2zM5 9v11h14V9zm2 2h4v4H7z"/></svg><span data-i18n="menu.daily">Tagesrennen</span><small id="dailySub"></small></button>
+      <button class="btn ghost" id="slalomBtn" type="button"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 2h1.6v20H4zm2 1h7l-2 3 2 3H6zm12.4 4H20v15h-1.6zM18 8h-7l2 3-2 3h7z"/></svg><span data-i18n="menu.slalom">Slalom</span><small id="slalomSub"></small></button>
+      <button class="btn ghost" id="liveBtn" type="button" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm8 0a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM8 13c-3 0-6 1.5-6 4v3h12v-3c0-2.5-3-4-6-4zm8 0c-.6 0-1.2.1-1.8.2 1.1.9 1.8 2.2 1.8 3.8v3h6v-3c0-2.5-3-4-6-4z"/></svg><span data-i18n="menu.live">Live-Duell</span><small data-i18n="menu.liveSub">gegen Freunde</small></button>
     </div>
     <nav class="home-nav">
       <button class="nav-btn" id="shopBtn" type="button"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5.2 4l-.4-2H1v2h2.2l3.1 10.6-1.2 2.2A1 1 0 0 0 6 18h14v-2H7.6l1-1.9h7.6c.7 0 1.4-.4 1.7-1L22 6.5A1 1 0 0 0 21.1 5H5.6L5.2 4z"/></svg><span data-i18n="menu.shop">Shop</span><span class="badge" id="shopBadge" hidden>%</span></button>
@@ -647,7 +651,7 @@ body {
     <section class="set-sec"><h3 data-i18n="set.secLegal">Rechtliches</h3>
     <button class="btn ghost" id="adPrivacyBtn" type="button" hidden data-i18n="set.adPrivacy">Werbe-Einstellungen</button>
     <p class="legal-links"><a id="privacyLink" href="https://almaz6380.github.io/Mountain-Ride/privacy.html" target="_blank" rel="noopener" data-i18n="set.privacy">Datenschutz</a> · <a id="imprintLink" href="https://almaz6380.github.io/Mountain-Ride/imprint.html" target="_blank" rel="noopener" data-i18n="set.imprint">Impressum</a></p>
-    <p class="app-version" id="appVersion" dir="ltr">v72</p>
+    <p class="app-version" id="appVersion" dir="ltr">v73</p>
     </section>
   </div>
 </div>
@@ -3004,13 +3008,13 @@ body {
     sb.textContent = owned ? tx('menu.start') : tx('menu.unlock', { n: fmt(L.cost) });
     sb.disabled = !owned && wallet < L.cost;
     const dy = dailyInfo(), mine = store.get('dailyBest', {});
-    $('dailySub').textContent = mine.day === dy.day ? tx('menu.dailyBest', { place: LOCS[dy.loc].name, n: fmt(mine.dist) }) : tx('menu.dailyNew', { place: LOCS[dy.loc].name });
+    $('dailySub').textContent = mine.day === dy.day ? fmt(mine.dist) + ' m' : LOCS[dy.loc].name;   // one short line under the tile
     $('slalomSub').textContent = slalomSub();
     const done = missions.filter(m => m.done).length;
     $('missionBadge').hidden = !done;
     $('missionBadge').textContent = done ? '✓' + done : '';
     const off = dailyOffer(); $('shopBadge').hidden = !off || store.get('offerSeen', '') === off.day;   // today's offer not looked at yet
-    $('menuBest').textContent = best ? tx('menu.best', { n: fmt(best) }) : tx('menu.hint');
+    $('menuBest').textContent = best ? tx('menu.best', { n: fmt(best) }) : ''; $('menuBest').hidden = !best;
   }
 
   // ---------- Shop ----------
@@ -4259,7 +4263,7 @@ body {
     if (!slalom.missed) progressMission('slalomClean', 1);
     gcScore('slalom', cs);
   }
-  function slalomSub() { const b = store.get('slalomBest', 0); return b ? tx('menu.slalomBest', { t: fmtTime(b / 100) }) : tx('menu.slalomSub'); }
+  function slalomSub() { const b = store.get('slalomBest', 0); return b ? fmtTime(b / 100) : tx('menu.slalomSub'); }
   $('slalomBtn').addEventListener('click', () => { slalom = {}; startAfterAd(); });
 
   // ---------- Daily race: one fixed course per day for everyone, with its own leaderboard ----------
