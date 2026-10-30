@@ -63,8 +63,9 @@ async function shoot(browser, lang, device) {
   await p.waitForTimeout(500);
   await p.click('#slalomBtn'); await p.waitForTimeout(400);
   await p.evaluate(() => { setInterval(() => { const P = __dbg.P(), g = __dbg.sg().find(g => !g.done && g.d > P.d + 4); if (g) P.tx = g.x; }, 40); });
-  // a moment with a few gates done and the next one close ahead
-  await p.waitForFunction(() => { const P = __dbg.P(), g = __dbg.sg(); return g.filter(x => x.done).length >= 2 && g.some(x => !x.done && x.d - P.d > 8 && x.d - P.d < 14); }, null, { timeout: 300000, polling: 100 });
+  // a moment with a gate just passed and the next one close ahead
+  await p.waitForTimeout(15000);
+  await p.waitForFunction(() => { const P = __dbg.P(), g = __dbg.sg(); return g.some(x => x.done) && g.some(x => !x.done && x.d - P.d > 8 && x.d - P.d < 14); }, null, { timeout: 300000, polling: 100 });
   await p.evaluate(() => { __dbg.pop.style.transition = 'none'; __dbg.pop.style.opacity = '0'; }); await snap(p);
   await ctx.close();
   // 4 riding in the Alps (stage banner), 5 a trick in the air
